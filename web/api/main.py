@@ -484,6 +484,25 @@ def update_command(guild_id: str, req: CommandPermUpdate):
     conn.close()
     return {"status": "success"}
 
+@app.get("/api/roles/{guild_id}")
+def search_roles(guild_id: str, q: Optional[str] = ""):
+    conn = sqlite3.connect(USER_DB_PATH)
+    conn.row_factory = dict_factory
+    c = conn.cursor()
+    query = "SELECT role_id, role_name FROM roles WHERE guild_id = ?"
+    params = [guild_id]
+    if q:
+        query += " AND role_name LIKE ?"
+        params.append(f"%{q}%")
+    query += " LIMIT 20"
+    try:
+        c.execute(query, params)
+        roles = c.fetchall()
+    except:
+        roles = []
+    conn.close()
+    return {"roles": roles}
+
 class CategoryPermUpdate(BaseModel):
     commands: list[str]
     is_enabled: int
@@ -501,6 +520,41 @@ def update_category_commands(guild_id: str, req: CategoryPermUpdate):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+class CategoryRoleUpdate(BaseModel):
+    commands: list[str]
+    role_id: str
+
+@app.post("/api/commands/category/{guild_id}/roles")
+def add_role_to_category(guild_id: str, req: CategoryRoleUpdate):
+    import json
+    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn.row_factory = dict_factory
+    c = conn.cursor()
+    for cmd_name in req.commands:
+        c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
+        row = c.fetchone()
+        is_enabled = 1
+        allowed_roles = []
+        if row:
+            is_enabled = row["is_enabled"]
+            if row["allowed_roles"] and row["allowed_roles"] != "[]":
+                try:
+                    allowed_roles = json.loads(row["allowed_roles"])
+                except:
+                    pass
+        if req.role_id not in allowed_roles:
+            allowed_roles.append(req.role_id)
+            
+        c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+                     VALUES (?, ?, ?, ?)
+                     ON CONFLICT(guild_id, command_name) 
+                     DO UPDATE SET allowed_roles=excluded.allowed_roles''',
+                  (guild_id, cmd_name, is_enabled, json.dumps(allowed_roles)))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
 
 # ---------------------------------------------------------------------------
 # Pending Actions (V2) - Moderasyon

@@ -1,14 +1,119 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Command, Shield, Plus, X, Save, Loader, ChevronDown, ChevronUp } from 'lucide-react';
+import { Command, Shield, Plus, X, Loader, ChevronDown, ChevronUp, Search, Users } from 'lucide-react';
 import { GUILD_ID, API_BASE_URL } from '../config';
+
+// ── Rol Arama Bileşeni (Autocomplete) ──
+const RoleSearch = ({ onSelect, placeholder, disabled, currentRoles = [] }) => {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (query.trim().length === 0) {
+      setResults([]);
+      return;
+    }
+    const fetchRoles = async () => {
+      setLoading(true);
+      try {
+        const res = await axios.get(`${API_BASE_URL}/roles/${GUILD_ID}?q=${query}`);
+        // Daha önce eklenenleri gösterme
+        const filtered = (res.data.roles || []).filter(r => !currentRoles.includes(r.role_id));
+        setResults(filtered);
+      } catch (err) {
+        console.error('Roller aranırken hata:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    const timer = setTimeout(fetchRoles, 300); // 300ms gecikmeli istek (Debounce)
+    return () => clearTimeout(timer);
+  }, [query, currentRoles]);
+
+  return (
+    <div ref={dropdownRef} style={{ position: 'relative', flex: 1, display: 'flex' }}>
+      <div style={{ position: 'relative', flex: 1 }}>
+        <input
+          disabled={disabled}
+          value={query}
+          onChange={e => {
+            setQuery(e.target.value);
+            setShowDropdown(true);
+          }}
+          onFocus={() => { if (query) setShowDropdown(true); }}
+          placeholder={placeholder || "Rol Ara..."}
+          style={{
+            width: '100%', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--panel-border)',
+            color: '#fff', padding: '6px 10px', paddingLeft: '28px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none'
+          }}
+        />
+        <Search size={14} style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+        {loading && <Loader size={12} style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite', color: 'var(--text-secondary)' }} />}
+      </div>
+
+      <AnimatePresence>
+        {showDropdown && results.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -5 }}
+            style={{
+              position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px',
+              background: '#1e1e24', border: '1px solid var(--panel-border)',
+              borderRadius: '6px', maxHeight: '150px', overflowY: 'auto', zIndex: 50,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.5)'
+            }}
+          >
+            {results.map(role => (
+              <div
+                key={role.role_id}
+                onClick={() => {
+                  onSelect(role.role_id, role.role_name);
+                  setQuery('');
+                  setShowDropdown(false);
+                }}
+                style={{
+                  padding: '8px 12px', fontSize: '0.85rem', cursor: 'pointer',
+                  borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: '8px',
+                  color: '#e2e8f0'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--accent-blue)' }} />
+                {role.role_name}
+              </div>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
 
 const CommandManagementPage = () => {
   const [categories, setCategories] = useState({});
   const [expandedCats, setExpandedCats] = useState({});
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState(null);
+  
+  // Rol isimlerini cachelemek için (Aksi halde veritabanındaki rolleri ID olarak görürüz)
+  const [roleCache, setRoleCache] = useState({});
 
   useEffect(() => {
     fetchCommandPerms();
@@ -40,6 +145,9 @@ const CommandManagementPage = () => {
       
       setCategories(mergedCats);
       setExpandedCats(initialExpanded);
+
+      // Sayfa yüklenirken ID'den isim eşleştirmesi yapabilmek için Rol Cache'i doldurabiliriz
+      // Ancak şu an için sadece arama yapıldıkça cache'e ekliyoruz (Aşağıdaki metodlarda var).
     } catch (err) {
       console.error('Komut izinleri çekilemedi:', err);
     } finally {
@@ -103,8 +211,10 @@ const CommandManagementPage = () => {
     }
   };
 
-  const addRoleToCommand = (catName, cmdName, roleId) => {
-    if (!roleId.trim()) return;
+  const addRoleToCommand = (catName, cmdName, roleId, roleName) => {
+    if (!roleId) return;
+    if (roleName) setRoleCache(prev => ({ ...prev, [roleId]: roleName }));
+
     const updatedCats = { ...categories };
     updatedCats[catName] = updatedCats[catName].map(c => {
       if (c.name === cmdName) {
@@ -132,12 +242,43 @@ const CommandManagementPage = () => {
     setCategories(updatedCats);
   };
 
+  const addRoleToCategory = async (catName, roleId, roleName) => {
+    if (!roleId) return;
+    if (roleName) setRoleCache(prev => ({ ...prev, [roleId]: roleName }));
+    
+    setSavingId(`catRole-${catName}`);
+    const cmds = categories[catName];
+    const cmdNames = cmds.map(c => c.name);
+    
+    // Optimistic UI Update
+    const updatedCats = { ...categories };
+    updatedCats[catName] = cmds.map(c => {
+      if (!c.allowed_roles.includes(roleId)) {
+        return { ...c, allowed_roles: [...c.allowed_roles, roleId] };
+      }
+      return c;
+    });
+    setCategories(updatedCats);
+
+    try {
+      await axios.post(`${API_BASE_URL}/commands/category/${GUILD_ID}/roles`, {
+        commands: cmdNames,
+        role_id: roleId
+      });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingId(null);
+    }
+  };
+
   const toggleExpand = (catName) => {
     setExpandedCats(prev => ({ ...prev, [catName]: !prev[catName] }));
   };
 
   return (
-    <div style={{ padding: '32px', color: '#fff', maxWidth: '1200px', margin: '0 auto', width: '100%' }}>
+    // SCROLL BAR FIX: overflowY: 'auto' ve maxHeight: '100vh' eklendi!
+    <div style={{ padding: '32px', color: '#fff', maxWidth: '1200px', margin: '0 auto', width: '100%', height: 'calc(100vh - 64px)', overflowY: 'auto', paddingBottom: '100px' }}>
       <header style={{ marginBottom: '32px' }}>
         <h1 style={{ fontSize: '2rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '12px' }}>
           <Command size={32} color="var(--accent-green)" />
@@ -158,13 +299,14 @@ const CommandManagementPage = () => {
             const isExpanded = expandedCats[catName];
             const allEnabled = cmds.every(c => c.is_enabled);
             const masterSaving = savingId === `master-${catName}`;
+            const catRoleSaving = savingId === `catRole-${catName}`;
 
             return (
               <div key={catName} style={{ 
                 background: 'rgba(0,0,0,0.4)', 
                 borderRadius: '12px', 
                 border: '1px solid var(--panel-border)',
-                overflow: 'hidden'
+                overflow: 'visible' // Dropdownların dışarı taşabilmesi için visible yaptık
               }}>
                 {/* Category Header */}
                 <div 
@@ -189,28 +331,48 @@ const CommandManagementPage = () => {
                     </div>
                   </div>
 
-                  {/* Master Toggle */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }} onClick={e => e.stopPropagation()}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ana Şalter</span>
-                    <div 
-                      onClick={() => toggleMasterCategory(catName)}
-                      style={{
-                        width: '48px', height: '26px', borderRadius: '13px',
-                        backgroundColor: allEnabled ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.1)',
-                        display: 'flex', alignItems: 'center', padding: '0 3px', cursor: 'pointer',
-                        border: '1px solid', borderColor: allEnabled ? 'var(--accent-green-glow)' : 'rgba(255, 255, 255, 0.2)',
-                        transition: 'all 0.3s ease',
-                        boxShadow: allEnabled ? '0 0 12px var(--accent-green-glow)' : 'none'
-                      }}
-                    >
-                      <motion.div
-                        layout
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
-                        animate={{ x: allEnabled ? 20 : 0 }}
-                      />
+                  {/* Kategori Bazlı Aksiyonlar */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }} onClick={e => e.stopPropagation()}>
+                    
+                    {/* Toplu Rol Ekleme (Master Role Assigner) */}
+                    {isExpanded && (
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                         <Users size={16} color="var(--text-secondary)" />
+                         <div style={{ width: '200px' }}>
+                            <RoleSearch 
+                              placeholder="Tüm Kategoriye Rol Ekle..." 
+                              onSelect={(rId, rName) => addRoleToCategory(catName, rId, rName)}
+                            />
+                         </div>
+                         {catRoleSaving && <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />}
+                       </div>
+                    )}
+
+                    <div style={{ width: '1px', height: '24px', background: 'var(--panel-border)' }} />
+
+                    {/* Master Toggle */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Kategoriyi {allEnabled ? "Kapat" : "Aç"}</span>
+                      <div 
+                        onClick={() => toggleMasterCategory(catName)}
+                        style={{
+                          width: '48px', height: '26px', borderRadius: '13px',
+                          backgroundColor: allEnabled ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.1)',
+                          display: 'flex', alignItems: 'center', padding: '0 3px', cursor: 'pointer',
+                          border: '1px solid', borderColor: allEnabled ? 'var(--accent-green-glow)' : 'rgba(255, 255, 255, 0.2)',
+                          transition: 'all 0.3s ease',
+                          boxShadow: allEnabled ? '0 0 12px var(--accent-green-glow)' : 'none'
+                        }}
+                      >
+                        <motion.div
+                          layout
+                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                          style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#fff', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}
+                          animate={{ x: allEnabled ? 20 : 0 }}
+                        />
+                      </div>
+                      {masterSaving && <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />}
                     </div>
-                    {masterSaving && <Loader size={16} style={{ animation: 'spin 1s linear infinite' }} />}
                   </div>
                 </div>
 
@@ -221,7 +383,7 @@ const CommandManagementPage = () => {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      style={{ overflow: 'hidden' }}
+                      style={{ overflow: 'visible' }} // İçerideki dropdownların taşmasına izin ver
                     >
                       <div style={{ 
                         display: 'grid', 
@@ -239,7 +401,8 @@ const CommandManagementPage = () => {
                               border: `1px solid ${cmd.is_enabled ? 'var(--panel-border-glow)' : 'var(--panel-border)'}`,
                               background: cmd.is_enabled ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.5)',
                               opacity: cmd.is_enabled ? 1 : 0.6,
-                              transition: 'all 0.3s ease'
+                              transition: 'all 0.3s ease',
+                              overflow: 'visible'
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
@@ -283,10 +446,11 @@ const CommandManagementPage = () => {
                                 {cmd.allowed_roles.map(roleId => (
                                   <div key={roleId} style={{
                                     background: 'rgba(59, 130, 246, 0.15)', border: '1px solid var(--accent-blue)',
-                                    color: 'var(--accent-blue)', padding: '2px 8px', borderRadius: '12px',
-                                    fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px'
+                                    color: 'var(--accent-blue)', padding: '4px 8px', borderRadius: '12px',
+                                    fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '6px'
                                   }}>
-                                    {roleId}
+                                    {/* Eğer ismini biliyorsak ismini yaz, bilmiyorsak ID'yi yaz */}
+                                    {roleCache[roleId] ? roleCache[roleId] : roleId}
                                     <X size={10} style={{ cursor: 'pointer', opacity: 0.7 }} onClick={() => removeRoleFromCommand(catName, cmd.name, roleId)} />
                                   </div>
                                 ))}
@@ -295,32 +459,19 @@ const CommandManagementPage = () => {
                                 )}
                               </div>
 
-                              {/* Rol Ekleme Input'u */}
-                              <form 
-                                onSubmit={(e) => {
-                                  e.preventDefault();
-                                  addRoleToCommand(catName, cmd.name, e.target.roleInput.value);
-                                  e.target.roleInput.value = '';
-                                }}
-                                style={{ display: 'flex', gap: '6px' }}
-                              >
-                                <input 
-                                  name="roleInput"
+                              {/* Akıllı Rol Arama Input'u */}
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <RoleSearch 
                                   disabled={!cmd.is_enabled}
-                                  placeholder="Role ID ekle..."
-                                  style={{
-                                    flex: 1, background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)',
-                                    color: '#fff', padding: '6px 10px', borderRadius: '6px', fontSize: '0.85rem', outline: 'none'
-                                  }}
+                                  currentRoles={cmd.allowed_roles}
+                                  onSelect={(rId, rName) => addRoleToCommand(catName, cmd.name, rId, rName)}
                                 />
-                                <button type="submit" disabled={!cmd.is_enabled} style={{
-                                  background: 'rgba(255,255,255,0.05)', border: '1px solid var(--panel-border)',
-                                  color: '#fff', padding: '0 10px', borderRadius: '6px', cursor: cmd.is_enabled ? 'pointer' : 'not-allowed',
-                                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                                }}>
-                                  {savingId === cmd.name ? <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Plus size={14} />}
-                                </button>
-                              </form>
+                                {savingId === cmd.name && (
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px' }}>
+                                    <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
                         ))}
