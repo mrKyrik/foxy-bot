@@ -3,7 +3,6 @@ import discord
 from discord.ext import commands
 
 from core.embed import EmbedBuilder
-from Commands.administration.permission_check import has_permission
 
 log = logging.getLogger(__name__)
 
@@ -19,7 +18,6 @@ class Settings(commands.Cog):
         return await self.bot.db.fetchone("SELECT * FROM log_settings WHERE guild_id=?", str(guild_id))
 
     @commands.group(invoke_without_command=True)
-    @has_permission("log")
     async def log(self, ctx: commands.Context) -> None:
         """Discord kanalı log sistemi paneli. Embed logların kanal ve şalter durumlarını gösterir."""
         row_db = await self.get_log_settings(ctx.guild.id)
@@ -141,7 +139,6 @@ class Settings(commands.Cog):
 
 
     @log.command(name="set")
-    @has_permission("log")
     async def log_set(self, ctx: commands.Context, log_type: str, channel: discord.TextChannel) -> None:
         """Log kanalını ayarlar. (mesaj, ses, uyari, ticket, mod, basvuru, davet, sunucu, rol)"""
         types = {
@@ -175,170 +172,138 @@ class Settings(commands.Cog):
 
     # TEXT
     @log.group(name="text", invoke_without_command=True)
-    @has_permission("log")
     async def log_text(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log text delete <on|off>` veya `f.log text edit <on|off>`")
 
     @log_text.command(name="delete")
-    @has_permission("log")
     async def log_text_delete(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "msg_delete_on", state, "Silinen mesaj")
 
     @log_text.command(name="edit")
-    @has_permission("log")
     async def log_text_edit(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "msg_edit_on", state, "Düzenlenen mesaj")
 
     # VOICE
     @log.group(name="voice", invoke_without_command=True)
-    @has_permission("log")
     async def log_voice(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log voice join/switch/stream <on|off>`")
 
     @log_voice.command(name="join")
-    @has_permission("log")
     async def log_voice_join(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "ses_join_on", state, "Sese giriş/çıkış")
 
     @log_voice.command(name="switch")
-    @has_permission("log")
     async def log_voice_switch(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "ses_switch_on", state, "Kanal değiştirme")
 
     @log_voice.command(name="stream")
-    @has_permission("log")
     async def log_voice_stream(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "ses_stream_on", state, "Kamera/Yayın")
 
     # MOD
     @log.group(name="mod", invoke_without_command=True)
-    @has_permission("log")
     async def log_mod(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log mod role/channel/msg <on|off>`")
 
     @log_mod.command(name="role")
-    @has_permission("log")
     async def log_mod_role(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "mod_role_on", state, "Yetkili rol verme/alma")
 
     @log_mod.command(name="channel")
-    @has_permission("log")
     async def log_mod_channel(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "mod_channel_on", state, "Yetkili kanal oluşturma/silme")
 
     @log_mod.command(name="msg")
-    @has_permission("log")
     async def log_mod_msg(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "mod_msg_on", state, "Yetkili başkasının mesajını silme")
 
     # SERVER
     @log.group(name="server", invoke_without_command=True)
-    @has_permission("log")
     async def log_server(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log server update/emoji/role/perm <on|off>`")
 
     @log_server.command(name="update")
-    @has_permission("log")
     async def log_server_update(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "srv_update_on", state, "Sunucu ayar")
 
     @log_server.command(name="emoji")
-    @has_permission("log")
     async def log_server_emoji(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "srv_emoji_on", state, "Emoji ekleme/çıkarma")
 
     @log_server.command(name="role")
-    @has_permission("log")
     async def log_server_role(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "srv_role_on", state, "Sunucuda yeni rol oluşturma/silme")
 
     @log_server.command(name="perm")
-    @has_permission("log")
     async def log_server_perm(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "srv_perm_on", state, "Kanal izinleri güncelleme")
 
     # WARN
     @log.group(name="warn", invoke_without_command=True)
-    @has_permission("log")
     async def log_warn(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log warn add/remove <on|off>`")
 
     @log_warn.command(name="add")
-    @has_permission("log")
     async def log_warn_add(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "warn_add_on", state, "Uyarı ekleme")
 
     @log_warn.command(name="remove")
-    @has_permission("log")
     async def log_warn_remove(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "warn_remove_on", state, "Uyarı silme")
 
     # TICKET
     @log.group(name="ticket", invoke_without_command=True)
-    @has_permission("log")
     async def log_ticket(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log ticket create/close <on|off>`")
 
     @log_ticket.command(name="create")
-    @has_permission("log")
     async def log_ticket_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "ticket_create_on", state, "Ticket oluşturma")
 
     @log_ticket.command(name="close")
-    @has_permission("log")
     async def log_ticket_close(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "ticket_close_on", state, "Ticket kapatma")
 
     # APP
     @log.group(name="app", invoke_without_command=True)
-    @has_permission("log")
     async def log_app(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log app create/accept/reject <on|off>`")
 
     @log_app.command(name="create")
-    @has_permission("log")
     async def log_app_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "app_create_on", state, "Başvuru oluşturma")
 
     @log_app.command(name="accept")
-    @has_permission("log")
     async def log_app_accept(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "app_accept_on", state, "Başvuru kabul")
 
     @log_app.command(name="reject")
-    @has_permission("log")
     async def log_app_reject(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "app_reject_on", state, "Başvuru red")
 
     # INVITE
     @log.group(name="invite", invoke_without_command=True)
-    @has_permission("log")
     async def log_invite(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log invite create/use <on|off>`")
 
     @log_invite.command(name="create")
-    @has_permission("log")
     async def log_invite_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "invite_create_on", state, "Davet oluşturma")
 
     @log_invite.command(name="use")
-    @has_permission("log")
     async def log_invite_use(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "invite_use_on", state, "Davet kullanma")
 
     # ROLE
     @log.group(name="role", invoke_without_command=True)
-    @has_permission("log")
     async def log_role(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.log role add/remove <on|off>`")
 
     @log_role.command(name="add")
-    @has_permission("log")
     async def log_role_add(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "role_add_on", state, "Rol verilme")
 
     @log_role.command(name="remove")
-    @has_permission("log")
     async def log_role_remove(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_log(ctx, "role_remove_on", state, "Rol alınma")
 

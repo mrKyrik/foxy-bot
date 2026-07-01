@@ -2,7 +2,6 @@ import logging
 import discord
 from discord.ext import commands
 
-from Commands.administration.permission_check import has_permission
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +12,6 @@ class DBSettings(commands.Cog):
         self.bot = bot
 
     @commands.group(invoke_without_command=True)
-    @has_permission("log")
     async def db(self, ctx: commands.Context) -> None:
         """Veritabanı log sistemi paneli. Web dashboard için kayıt şalterlerinin durumunu gösterir."""
         await self.bot.db.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
@@ -129,176 +127,143 @@ class DBSettings(commands.Cog):
 
     # TEXT
     @db.group(name="text", invoke_without_command=True)
-    @has_permission("log")
     async def db_text(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db text delete <on|off>` veya `f.db text edit <on|off>`")
 
     @db_text.command(name="delete")
-    @has_permission("log")
     async def db_text_delete(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "msg_delete_on", state, "Silinen mesaj")
 
     @db_text.command(name="edit")
-    @has_permission("log")
     async def db_text_edit(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "msg_edit_on", state, "Düzenlenen mesaj")
 
     # VOICE
     @db.group(name="voice", invoke_without_command=True)
-    @has_permission("log")
     async def db_voice(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db voice join/switch/stream <on|off>`")
 
     @db_voice.command(name="join")
-    @has_permission("log")
     async def db_voice_join(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "ses_join_on", state, "Sese giriş/çıkış")
 
     @db_voice.command(name="switch")
-    @has_permission("log")
     async def db_voice_switch(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "ses_switch_on", state, "Kanal değiştirme")
 
     @db_voice.command(name="stream")
-    @has_permission("log")
     async def db_voice_stream(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "ses_stream_on", state, "Kamera/Yayın")
 
     # MOD
     @db.group(name="mod", invoke_without_command=True)
-    @has_permission("log")
     async def db_mod(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db mod role/channel/msg <on|off>`")
 
     @db_mod.command(name="role")
-    @has_permission("log")
     async def db_mod_role(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "mod_role_on", state, "Yetkili rol verme/alma")
 
     @db_mod.command(name="channel")
-    @has_permission("log")
     async def db_mod_channel(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "mod_channel_on", state, "Yetkili kanal oluşturma/silme")
 
     @db_mod.command(name="msg")
-    @has_permission("log")
     async def db_mod_msg(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "mod_msg_on", state, "Yetkili başkasının mesajını silme")
 
     # SERVER
     @db.group(name="server", invoke_without_command=True)
-    @has_permission("log")
     async def db_server(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db server update/emoji/role/perm <on|off>`")
 
     @db_server.command(name="update")
-    @has_permission("log")
     async def db_server_update(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "srv_update_on", state, "Sunucu ayar")
 
     @db_server.command(name="emoji")
-    @has_permission("log")
     async def db_server_emoji(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "srv_emoji_on", state, "Emoji ekleme/çıkarma")
 
     @db_server.command(name="role")
-    @has_permission("log")
     async def db_server_role(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "srv_role_on", state, "Sunucuda yeni rol oluşturma/silme")
 
     @db_server.command(name="perm")
-    @has_permission("log")
     async def db_server_perm(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "srv_perm_on", state, "Kanal izinleri güncelleme")
 
     # WARN
     @db.group(name="warn", invoke_without_command=True)
-    @has_permission("log")
     async def db_warn(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db warn add/remove <on|off>`")
 
     @db_warn.command(name="add")
-    @has_permission("log")
     async def db_warn_add(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "warn_add_on", state, "Uyarı ekleme")
 
     @db_warn.command(name="remove")
-    @has_permission("log")
     async def db_warn_remove(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "warn_remove_on", state, "Uyarı silme")
 
     # TICKET
     @db.group(name="ticket", invoke_without_command=True)
-    @has_permission("log")
     async def db_ticket(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db ticket create/close <on|off>`")
 
     @db_ticket.command(name="create")
-    @has_permission("log")
     async def db_ticket_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "ticket_create_on", state, "Ticket oluşturma")
 
     @db_ticket.command(name="close")
-    @has_permission("log")
     async def db_ticket_close(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "ticket_close_on", state, "Ticket kapatma")
 
     # APP
     @db.group(name="app", invoke_without_command=True)
-    @has_permission("log")
     async def db_app(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db app create/accept/reject <on|off>`")
 
     @db_app.command(name="create")
-    @has_permission("log")
     async def db_app_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "app_create_on", state, "Başvuru oluşturma")
 
     @db_app.command(name="accept")
-    @has_permission("log")
     async def db_app_accept(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "app_accept_on", state, "Başvuru kabul")
 
     @db_app.command(name="reject")
-    @has_permission("log")
     async def db_app_reject(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "app_reject_on", state, "Başvuru red")
 
     # INVITE
     @db.group(name="invite", invoke_without_command=True)
-    @has_permission("log")
     async def db_invite(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db invite create/use <on|off>`")
 
     @db_invite.command(name="create")
-    @has_permission("log")
     async def db_invite_create(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "invite_create_on", state, "Davet oluşturma")
 
     @db_invite.command(name="use")
-    @has_permission("log")
     async def db_invite_use(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "invite_use_on", state, "Davet kullanma")
 
     # ROLE
     @db.group(name="role", invoke_without_command=True)
-    @has_permission("log")
     async def db_role(self, ctx: commands.Context) -> None:
         await ctx.send("Kullanım: `f.db role add/remove <on|off>`")
 
     @db_role.command(name="add")
-    @has_permission("log")
     async def db_role_add(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "role_add_on", state, "Rol verilme")
 
     @db_role.command(name="remove")
-    @has_permission("log")
     async def db_role_remove(self, ctx: commands.Context, state: str) -> None:
         await self._toggle_db_log(ctx, "role_remove_on", state, "Rol alınma")
 
     # DBLOG Command
     @commands.command(name="dblog")
-    @has_permission("log")
     async def dblog(self, ctx: commands.Context, event_type: str = None, user: discord.Member = None, limit: int = 10):
         """
         Veritabanına kaydedilen logları listeler.

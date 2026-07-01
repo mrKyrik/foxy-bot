@@ -557,6 +557,59 @@ async def on_ready():
             log.warning("Owner DM gönderilemedi (%s): %s", owner_id_str, e)
 
 
+class CommandDisabled(commands.CheckFailure):
+    pass
+
+class CommandNotAllowed(commands.CheckFailure):
+    pass
+
+@bot.check
+async def global_command_check(ctx):
+    if not ctx.guild:
+        return True # DM commands are okay
+    
+    # Owners and Admins bypass permissions
+    if (ctx.author.id == ctx.guild.owner_id
+        or ctx.author.guild_permissions.administrator
+        or str(ctx.author.id) in [o.strip() for o in OWNER_IDS_RAW.split(",")]):
+        return True
+
+    cmd_name = ctx.command.name if ctx.command else None
+    if not cmd_name:
+        return True
+
+    import aiosqlite
+    import json
+    
+    try:
+        async with aiosqlite.connect("kumiho.db") as db:
+            async with db.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (str(ctx.guild.id), cmd_name)) as cursor:
+                row = await cursor.fetchone()
+                
+        if row:
+            is_enabled = row[0]
+            allowed_roles_str = row[1]
+            
+            if is_enabled == 0:
+                raise CommandDisabled()
+                
+            if allowed_roles_str and allowed_roles_str != '[]':
+                try:
+                    allowed_roles = json.loads(allowed_roles_str)
+                    user_role_ids = [str(r.id) for r in ctx.author.roles]
+                    has_role = any(r in user_role_ids for r in allowed_roles)
+                    if not has_role:
+                        raise CommandNotAllowed()
+                except json.JSONDecodeError:
+                    pass
+    except Exception as e:
+        if isinstance(e, commands.CheckFailure):
+            raise e
+        log.error(f"Global check error: {e}")
+        
+    return True
+
+
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
@@ -568,13 +621,49 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.BadArgument):
         await ctx.send("❌ Geçersiz argüman. Kullanım için `f.help <komut>` yaz.")
         return
+    if isinstance(error, commands.BotMissingPermissions):
+        missing = ", ".join(error.missing_permissions)
+        from core.embed import EmbedBuilder
+        import discord
+        embed = EmbedBuilder(
+            title="❌ Bot Yetkisi Eksik",
+            description=f"Bu işlem için şu yetki(ler) gerekiyor: **{missing}**",
+            color=discord.Color.red(),
+        ).build()
+        await ctx.send(embed=embed)
+        return
+    if isinstance(error, CommandDisabled):
+        from core.embed import EmbedBuilder
+        import discord
+        embed = EmbedBuilder(
+            title="⛔ Komut Devre Dışı",
+            description="Bu komut web panelinden kapatılmıştır.",
+            color=discord.Color.orange(),
+        ).build()
+        await ctx.send(embed=embed)
+        return
+    if isinstance(error, CommandNotAllowed):
+        from core.embed import EmbedBuilder
+        import discord
+        embed = EmbedBuilder(
+            title="❌ Yetki Reddedildi",
+            description="Bu komutu kullanmak için gerekli role sahip değilsiniz.",
+            color=discord.Color.red(),
+        ).build()
+        await ctx.send(embed=embed)
+        return
+    if isinstance(error, commands.MemberNotFound):
+        from core.embed import EmbedBuilder
+        import discord
+        embed = EmbedBuilder(
+            title="❌ Üye Bulunamadı",
+            description="Belirtilen kullanıcı bu sunucuda bulunamadı.",
+            color=discord.Color.red(),
+        ).build()
+        await ctx.send(embed=embed)
+        return
     if isinstance(error, commands.CheckFailure):
         log.warning("Komut yetki hatası [%s]: %s", ctx.command, error)
-        try:
-            from Commands.administration.permission_check import send_denied
-            await send_denied(ctx, str(error))
-        except Exception as e:
-            log.error("send_denied cagrilamadi: %s", e)
         return
 
     log.error("Komut hatası [%s]: %s", ctx.command, error, exc_info=error)

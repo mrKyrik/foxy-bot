@@ -20,7 +20,6 @@ import discord
 from discord.ext import commands
 
 from core.embed import EmbedBuilder
-from Commands.administration.permission_check import has_permission, send_denied
 
 log = logging.getLogger(__name__)
 
@@ -60,7 +59,6 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
-    @has_permission("kick")
     @commands.bot_has_permissions(kick_members=True)
     async def kick(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -94,7 +92,6 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @has_permission("ban")
     @commands.bot_has_permissions(ban_members=True)
     async def ban(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -128,7 +125,6 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @has_permission("ban")
     @commands.bot_has_permissions(ban_members=True)
     async def unban(
         self, ctx: commands.Context, user_id: int, *, reason: str = "Belirtilmedi"
@@ -156,7 +152,6 @@ class Moderation(commands.Cog):
             ).build())
 
     @commands.command()
-    @has_permission("timeout")
     @commands.bot_has_permissions(moderate_members=True)
     async def timeout(
         self,
@@ -189,7 +184,6 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @has_permission("untimeout")
     @commands.bot_has_permissions(moderate_members=True)
     async def untimeout(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -220,7 +214,6 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
-    @has_permission("purge")
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx: commands.Context, amount: int) -> None:
         """
@@ -246,7 +239,6 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
-    @has_permission("warn")
     async def warn(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
@@ -282,7 +274,6 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["warnlist"])
-    @has_permission("warn")
     async def warns(self, ctx: commands.Context, user: discord.Member) -> None:
         """
         Kullanıcının uyarı geçmişini gösterir.
@@ -321,7 +312,6 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    @has_permission("clearwarn")
     async def clearwarn(self, ctx: commands.Context, warn_id: int) -> None:
         """
         Belirtilen ID'li uyarıyı siler.
@@ -358,7 +348,6 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
-    @has_permission("voice_mute")
     @commands.bot_has_permissions(mute_members=True)
     async def vmute(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -378,7 +367,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("voice_mute")
     @commands.bot_has_permissions(mute_members=True)
     async def vunmute(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -398,7 +386,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("voice_deafen")
     @commands.bot_has_permissions(deafen_members=True)
     async def vdeafen(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -418,7 +405,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("voice_deafen")
     @commands.bot_has_permissions(deafen_members=True)
     async def vundeafen(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -438,7 +424,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("voice_disconnect")
     @commands.bot_has_permissions(move_members=True)
     async def vdisconnect(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -458,7 +443,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("voice_move")
     @commands.bot_has_permissions(move_members=True)
     async def vmove(
         self,
@@ -487,7 +471,6 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
-    @has_permission("create_channel")
     @commands.bot_has_permissions(manage_channels=True)
     async def create_channel(self, ctx: commands.Context, *, channel_name: str) -> None:
         """Yeni bir metin kanalı oluşturur. Kullanım: `f.create_channel <isim>`"""
@@ -500,7 +483,6 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
-    @has_permission("delete_channel")
     @commands.bot_has_permissions(manage_channels=True)
     async def delete_channel(
         self, ctx: commands.Context, channel: discord.TextChannel
@@ -563,44 +545,8 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     # ==================================================================
-    # Hata yönetimi
+    # Son
     # ==================================================================
-
-    async def cog_command_error(
-        self, ctx: commands.Context, error: Exception
-    ) -> None:
-        # has_permission tarafından fırlatılan CheckFailure — mesajı burada göster
-        if isinstance(error, commands.CheckFailure) and not isinstance(
-            error, commands.BotMissingPermissions
-        ):
-            perm_name = str(error) if str(error) else "unknown"
-            await send_denied(ctx, perm_name)
-            return
-
-        if isinstance(error, commands.BotMissingPermissions):
-            missing = ", ".join(error.missing_permissions)
-            embed = EmbedBuilder(
-                title="❌ Bot Yetkisi Eksik",
-                description=f"Bu işlem için şu yetki(ler) gerekiyor: **{missing}**",
-                color=discord.Color.red(),
-            ).build()
-            return await ctx.send(embed=embed)
-
-        if isinstance(error, commands.MemberNotFound):
-            embed = EmbedBuilder(
-                title="❌ Üye Bulunamadı",
-                description="Belirtilen kullanıcı bu sunucuda bulunamadı.",
-                color=discord.Color.red(),
-            ).build()
-            return await ctx.send(embed=embed)
-
-        log.error("Moderation cog hatası [%s]: %s", ctx.command, error, exc_info=error)
-        embed = EmbedBuilder(
-            title="❌ Beklenmeyen Hata",
-            description=f"```py\n{error}```",
-            color=discord.Color.dark_red(),
-        ).build()
-        await ctx.send(embed=embed)
 
 
 async def setup(bot: commands.Bot) -> None:
