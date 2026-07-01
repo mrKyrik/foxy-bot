@@ -1,0 +1,19 @@
+# Core Discord library
+discord.py>=2.3.2
+
+# Environment variable loading
+python-dotenv>=1.0.0
+
+# Async SQLite — non-blocking DB calls in async bot
+aiosqlite>=0.19.0
+
+# Async HTTP requests (utils, leveling rank cards, etc.)
+aiohttp>=3.9.0
+
+# Image generation (rank cards)
+Pillow>=10.0.0
+
+# System metrics (uptime, CPU/RAM in f.about)
+psutil>=5.9.0
+
+# Removed music streaming requirements

@@ -1,0 +1,3 @@
+# DEPRECATED — Bu dosya artık kullanılmıyor.
+# Bağımlılıklar için requirements.txt kullanın:
+#   pip install -r requirements.txt
