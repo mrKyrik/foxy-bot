@@ -458,7 +458,18 @@ def get_commands(guild_id: str):
     c.execute("SELECT * FROM command_permissions WHERE guild_id = ?", (guild_id,))
     perms = c.fetchall()
     conn.close()
-    return {"permissions": perms}
+
+    # Read generated command list
+    try:
+        import json
+        import os
+        json_path = os.path.join(os.path.dirname(__file__), "commands_list.json")
+        with open(json_path, "r", encoding="utf-8") as f:
+            categories = json.load(f)
+    except Exception as e:
+        categories = {}
+        
+    return {"permissions": perms, "categories": categories}
 
 @app.post("/api/commands/{guild_id}")
 def update_command(guild_id: str, req: CommandPermUpdate):
@@ -469,6 +480,24 @@ def update_command(guild_id: str, req: CommandPermUpdate):
                  ON CONFLICT(guild_id, command_name) 
                  DO UPDATE SET is_enabled=excluded.is_enabled, allowed_roles=excluded.allowed_roles''',
               (guild_id, req.command_name, req.is_enabled, req.allowed_roles))
+    conn.commit()
+    conn.close()
+    return {"status": "success"}
+
+class CategoryPermUpdate(BaseModel):
+    commands: list[str]
+    is_enabled: int
+
+@app.post("/api/commands/category/{guild_id}")
+def update_category_commands(guild_id: str, req: CategoryPermUpdate):
+    conn = sqlite3.connect(MAIN_DB_PATH)
+    c = conn.cursor()
+    for cmd_name in req.commands:
+        c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+                     VALUES (?, ?, ?, '[]')
+                     ON CONFLICT(guild_id, command_name) 
+                     DO UPDATE SET is_enabled=excluded.is_enabled''',
+                  (guild_id, cmd_name, req.is_enabled))
     conn.commit()
     conn.close()
     return {"status": "success"}

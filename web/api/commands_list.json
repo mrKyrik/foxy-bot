@@ -1,0 +1,874 @@
+{
+  "Automod": [
+    {
+      "name": "antilink",
+      "desc": "Toggles link/invite filter. Usage: `f.automod antilink <enable|disable>`"
+    },
+    {
+      "name": "antispam",
+      "desc": "Toggles spam mute. Usage: `f.automod antispam <enable|disable>`"
+    },
+    {
+      "name": "antiprofanity",
+      "desc": "Toggles profanity filter. Usage: `f.automod antiprofanity <enable|disable>`"
+    },
+    {
+      "name": "antizalgo",
+      "desc": "Toggles zalgo text filter. Usage: `f.automod antizalgo <enable|disable>`"
+    },
+    {
+      "name": "add",
+      "desc": "Adds a domain to the antilink whitelist."
+    },
+    {
+      "name": "remove",
+      "desc": "Removes a domain from the whitelist."
+    }
+  ],
+  "Economy": [
+    {
+      "name": "color",
+      "desc": "Changes your top role color if you own the Custom Color Perk."
+    },
+    {
+      "name": "title",
+      "desc": "Sets your custom profile title if you own the Custom Title Perk."
+    },
+    {
+      "name": "balance",
+      "desc": "Shows wallet and bank balances. Usage: `f.balance [@user]`"
+    },
+    {
+      "name": "deposit",
+      "desc": "Deposits coins to your bank. Usage: `f.deposit <amount | all>`"
+    },
+    {
+      "name": "withdraw",
+      "desc": "Withdraws coins from your bank. Usage: `f.withdraw <amount | all>`"
+    },
+    {
+      "name": "daily",
+      "desc": "Claims your daily coins. Usage: `f.daily`"
+    },
+    {
+      "name": "work",
+      "desc": "Works a shift to earn coins. Usage: `f.work`"
+    },
+    {
+      "name": "beg",
+      "desc": "Begs for loose coins. Usage: `f.beg`"
+    },
+    {
+      "name": "fish",
+      "desc": "Goes fishing. Usage: `f.fish` (requires Fishing Rod)"
+    },
+    {
+      "name": "hunt",
+      "desc": "Goes hunting. Usage: `f.hunt` (requires Hunting Rifle)"
+    },
+    {
+      "name": "mine",
+      "desc": "Mines for ores. Usage: `f.mine` (requires Steel Pickaxe)"
+    },
+    {
+      "name": "shop",
+      "desc": "Shows the item shop. Usage: `f.shop`"
+    },
+    {
+      "name": "buy",
+      "desc": "Buys an item from the shop. Usage: `f.buy <item_id>`"
+    },
+    {
+      "name": "sell",
+      "desc": "Sells items for coins. Usage: `f.sell <item_id> [amount | all]`"
+    },
+    {
+      "name": "inventory",
+      "desc": "Shows your inventory. Usage: `f.inventory [@user]`"
+    },
+    {
+      "name": "use",
+      "desc": "Uses a consumable item. Usage: `f.use <item_id>`"
+    },
+    {
+      "name": "slots",
+      "desc": "Spin the slot machine. Usage: `f.slots <bet | all>`"
+    },
+    {
+      "name": "gamble",
+      "desc": "High-stakes coin flip. Usage: `f.gamble <heads|tails> <bet | all>`"
+    },
+    {
+      "name": "roulette",
+      "desc": "French Roulette. Usage: `f.roulette <red|black|green|0-36> <bet | all>`"
+    },
+    {
+      "name": "blackjack",
+      "desc": "Play Blackjack. Usage: `f.blackjack <bet | all>`"
+    },
+    {
+      "name": "highlow",
+      "desc": "Guess higher or lower. Usage: `f.highlow <bet | all>`"
+    },
+    {
+      "name": "crime",
+      "desc": "Commit a risky crime. Usage: `f.crime` (45min cooldown)"
+    },
+    {
+      "name": "scratch",
+      "desc": "Scratch a lottery card. Usage: `f.scratch`"
+    },
+    {
+      "name": "rob",
+      "desc": "Steals coins from another user. Usage: `f.rob @user`"
+    },
+    {
+      "name": "pay",
+      "desc": "Transfer coins to another user. Usage: `f.pay @user <amount>`"
+    },
+    {
+      "name": "marry",
+      "desc": "Proposes marriage. Usage: `f.marry @user` (requires Engagement Ring)"
+    },
+    {
+      "name": "divorce",
+      "desc": "Divorces your current partner. Usage: `f.divorce`"
+    },
+    {
+      "name": "profile",
+      "desc": "Shows economy stats. Usage: `f.profile [@user]`"
+    },
+    {
+      "name": "leaderboard",
+      "desc": "Shows the richest players. Usage: `f.leaderboard`"
+    },
+    {
+      "name": "cooldowns",
+      "desc": "Shows all active economy cooldowns. Usage: `f.cooldowns`"
+    },
+    {
+      "name": "plant",
+      "desc": "Plants a seed from inventory."
+    },
+    {
+      "name": "water",
+      "desc": "Waters crops to cut remaining time by 50%."
+    },
+    {
+      "name": "status",
+      "desc": "Checks crop growth progress."
+    },
+    {
+      "name": "harvest",
+      "desc": "Harvests fully grown crops."
+    }
+  ],
+  "Forms": [
+    {
+      "name": "form_olustur",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "form_sil",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "form_mesaji_gonder",
+      "desc": "Açıklama bulunamadı."
+    }
+  ],
+  "Fun": [
+    {
+      "name": "8ball",
+      "desc": "Ask the magic 8-ball a yes/no question. Usage: `f.8ball <question>`"
+    },
+    {
+      "name": "say",
+      "desc": "Make the bot say something."
+    },
+    {
+      "name": "joke",
+      "desc": "Tells a random safe joke. Usage: `f.joke`"
+    },
+    {
+      "name": "mock",
+      "desc": "Mocks a message in SpOnGeBoB CaSe."
+    },
+    {
+      "name": "love",
+      "desc": "Measures the love between two users."
+    },
+    {
+      "name": "list",
+      "desc": "Lists the server's ragebait leaderboard. Usage: `f.rage list`"
+    },
+    {
+      "name": "remove",
+      "desc": "Removes rage points from a user. Usage: `f.rage remove @user <amount>`"
+    },
+    {
+      "name": "set",
+      "desc": "Sets a user's rage points. Usage: `f.rage set @user <amount>`"
+    },
+    {
+      "name": "howgay",
+      "desc": "Measures how gay a user is. Usage: `f.howgay [user]`"
+    },
+    {
+      "name": "howaustic",
+      "desc": "Measures how autistic a user is. Usage: `f.howaustic [user]`"
+    },
+    {
+      "name": "iq",
+      "desc": "Measures IQ (consistent per user per day). Usage: `f.iq [user]`"
+    },
+    {
+      "name": "meme",
+      "desc": "Fetches a random meme from Reddit. Usage: `f.meme`"
+    },
+    {
+      "name": "cat",
+      "desc": "Fetches a random cat image. Usage: `f.cat`"
+    },
+    {
+      "name": "dog",
+      "desc": "Fetches a random dog image. Usage: `f.dog`"
+    },
+    {
+      "name": "coinflip",
+      "desc": "Flips a coin. Usage: `f.coinflip`"
+    },
+    {
+      "name": "roll",
+      "desc": "Rolls a dice. Usage: `f.roll [sides]`"
+    },
+    {
+      "name": "rps",
+      "desc": "Rock-paper-scissors. Usage: `f.rps <rock|paper|scissors>`"
+    },
+    {
+      "name": "choose",
+      "desc": "Picks a random item from comma-separated choices. Usage: `f.choose opt1, opt2, ...`"
+    },
+    {
+      "name": "fact",
+      "desc": "Fetches a random interesting fact. Usage: `f.fact`"
+    },
+    {
+      "name": "trivia",
+      "desc": "Play a quick trivia game. Correct answers reward 100 coins (via Economy cog)."
+    },
+    {
+      "name": "slap",
+      "desc": "Slaps another user. Usage: `f.slap @user [reason]`"
+    },
+    {
+      "name": "hug",
+      "desc": "Hugs another user. Usage: `f.hug @user`"
+    },
+    {
+      "name": "pat",
+      "desc": "Pats another user. Usage: `f.pat @user`"
+    },
+    {
+      "name": "kiss",
+      "desc": "Kisses another user. Usage: `f.kiss @user`"
+    },
+    {
+      "name": "cuddle",
+      "desc": "Cuddles another user. Usage: `f.cuddle @user`"
+    },
+    {
+      "name": "bite",
+      "desc": "Bites another user. Usage: `f.bite @user`"
+    },
+    {
+      "name": "punch",
+      "desc": "Punches another user. Usage: `f.punch @user`"
+    },
+    {
+      "name": "poke",
+      "desc": "Pokes another user. Usage: `f.poke @user`"
+    },
+    {
+      "name": "lick",
+      "desc": "Licks another user. Usage: `f.lick @user`"
+    },
+    {
+      "name": "boop",
+      "desc": "Boops another user's nose. Usage: `f.boop @user`"
+    },
+    {
+      "name": "tickle",
+      "desc": "Tickles another user. Usage: `f.tickle @user`"
+    },
+    {
+      "name": "wave",
+      "desc": "Waves to another user. Usage: `f.wave @user`"
+    },
+    {
+      "name": "highfive",
+      "desc": "High-fives another user. Usage: `f.highfive @user`"
+    },
+    {
+      "name": "cry",
+      "desc": "Cries, optionally because of another user. Usage: `f.cry [@user]`"
+    },
+    {
+      "name": "laugh",
+      "desc": "Laughs, optionally at another user. Usage: `f.laugh [@user]`"
+    },
+    {
+      "name": "blush",
+      "desc": "Blushes, optionally because of another user. Usage: `f.blush [@user]`"
+    },
+    {
+      "name": "yeet",
+      "desc": "Yeets another user into orbit. Usage: `f.yeet @user`"
+    },
+    {
+      "name": "dance",
+      "desc": "Dances, optionally with another user. Usage: `f.dance [@user]`"
+    },
+    {
+      "name": "8ball",
+      "desc": "Ask the magic 8-ball a yes/no question."
+    },
+    {
+      "name": "say",
+      "desc": "Make the bot say something."
+    },
+    {
+      "name": "joke",
+      "desc": "Tells a random joke."
+    },
+    {
+      "name": "mock",
+      "desc": "Mock a message. Example: hello. Output: hElLo"
+    },
+    {
+      "name": "love",
+      "desc": "Measures the love between you and the tagged user."
+    },
+    {
+      "name": "list",
+      "desc": "Lists the server's ragebait leaderboard."
+    },
+    {
+      "name": "remove",
+      "desc": "Removes a specific amount of rage points from a user."
+    },
+    {
+      "name": "set",
+      "desc": "Sets a user's rage points to a specific number."
+    }
+  ],
+  "Giveaways": [
+    {
+      "name": "start",
+      "desc": "Starts a server giveaway in the current channel."
+    },
+    {
+      "name": "end",
+      "desc": "Ends an active giveaway early. Usage: `f.giveaway end <message_id>`"
+    },
+    {
+      "name": "reroll",
+      "desc": "Rerolls a new winner from an ended giveaway. Usage: `f.giveaway reroll <message_id>`"
+    },
+    {
+      "name": "list",
+      "desc": "Lists all active giveaways in the server."
+    }
+  ],
+  "Leveling": [
+    {
+      "name": "rank",
+      "desc": "Displays your rank card. Usage: `f.rank [@user]`"
+    },
+    {
+      "name": "reward_add",
+      "desc": "Creates a level reward role. Usage: `f.level reward_add <level> <@role>`"
+    },
+    {
+      "name": "reward_remove",
+      "desc": "Removes a level reward role. Usage: `f.level reward_remove <level>`"
+    },
+    {
+      "name": "reward_list",
+      "desc": "Lists all level reward roles. Usage: `f.level reward_list`"
+    },
+    {
+      "name": "ignore_add",
+      "desc": "Blocks XP in a channel. Usage: `f.level ignore_add [#channel]`"
+    },
+    {
+      "name": "ignore_remove",
+      "desc": "Unblocks XP in a channel. Usage: `f.level ignore_remove [#channel]`"
+    },
+    {
+      "name": "leaderboard_xp",
+      "desc": "Shows the XP leaderboard. Usage: `f.leaderboard_xp`"
+    }
+  ],
+  "Moderation": [
+    {
+      "name": "kick",
+      "desc": "Kicks the specified user from the server if you have permission."
+    },
+    {
+      "name": "soft",
+      "desc": "Bans and unbans the specified user from the server to kick and purge their messages."
+    },
+    {
+      "name": "temporary",
+      "desc": "Bans the specified user from the server for a temporary period."
+    },
+    {
+      "name": "list",
+      "desc": "Shows banned users with pagination."
+    },
+    {
+      "name": "list",
+      "desc": "Shows banned users with pagination."
+    },
+    {
+      "name": "clear",
+      "desc": "Remove a specific warning by its ID or clear all warnings."
+    },
+    {
+      "name": "list",
+      "desc": "List all warned users or view specific user infractions."
+    },
+    {
+      "name": "bot",
+      "desc": "Purges only bot messages."
+    },
+    {
+      "name": "user",
+      "desc": "Purges messages from a specific user."
+    },
+    {
+      "name": "contains",
+      "desc": "Purges messages containing specific text."
+    },
+    {
+      "name": "embeds",
+      "desc": "Purges messages with embeds or attachments."
+    },
+    {
+      "name": "nuke",
+      "desc": "Nukes a channel by cloning it and deleting the old one."
+    },
+    {
+      "name": "userinfo",
+      "desc": "Returns information about the mentioned/replyed person"
+    },
+    {
+      "name": "kick",
+      "desc": "Kullanıcıyı sunucudan atar."
+    },
+    {
+      "name": "ban",
+      "desc": "Kullanıcıyı sunucudan banlar."
+    },
+    {
+      "name": "unban",
+      "desc": "Kullanıcının banını kaldırır."
+    },
+    {
+      "name": "timeout",
+      "desc": "Kullanıcıyı belirtilen süre boyunca susturur."
+    },
+    {
+      "name": "untimeout",
+      "desc": "Kullanıcının susturmasını kaldırır."
+    },
+    {
+      "name": "purge",
+      "desc": "Kanaldan belirtilen sayıda mesajı siler (komut mesajı dahil)."
+    },
+    {
+      "name": "warn",
+      "desc": "Kullanıcıya uyarı verir ve veritabanına kaydeder."
+    },
+    {
+      "name": "warns",
+      "desc": "Kullanıcının uyarı geçmişini gösterir."
+    },
+    {
+      "name": "clearwarn",
+      "desc": "Belirtilen ID'li uyarıyı siler."
+    },
+    {
+      "name": "vmute",
+      "desc": "Kullanıcıyı ses kanalında susturur. Kullanım: `f.vmute @kullanıcı [sebep]`"
+    },
+    {
+      "name": "vunmute",
+      "desc": "Kullanıcının ses susturmasını kaldırır. Kullanım: `f.vunmute @kullanıcı [sebep]`"
+    },
+    {
+      "name": "vdeafen",
+      "desc": "Kullanıcıyı ses kanalında sağırlaştırır. Kullanım: `f.vdeafen @kullanıcı [sebep]`"
+    },
+    {
+      "name": "vundeafen",
+      "desc": "Kullanıcının sağırlaştırmasını kaldırır. Kullanım: `f.vundeafen @kullanıcı [sebep]`"
+    },
+    {
+      "name": "vdisconnect",
+      "desc": "Kullanıcıyı ses kanalından atar. Kullanım: `f.vdisconnect @kullanıcı [sebep]`"
+    },
+    {
+      "name": "vmove",
+      "desc": "Kullanıcıyı başka bir ses kanalına taşır. Kullanım: `f.vmove @kullanıcı #kanal [sebep]`"
+    },
+    {
+      "name": "create_channel",
+      "desc": "Yeni bir metin kanalı oluşturur. Kullanım: `f.create_channel <isim>`"
+    },
+    {
+      "name": "delete_channel",
+      "desc": "Bir metin kanalını siler. Kullanım: `f.delete_channel #kanal`"
+    },
+    {
+      "name": "modlogs",
+      "desc": "Sunucunun mod eylem geçmişini gösterir."
+    }
+  ],
+  "Nsfw": [
+    {
+      "name": "bdsm",
+      "desc": "Queries premium BDSM networks for uncensored media."
+    },
+    {
+      "name": "hentai",
+      "desc": "Returns high-resolution uncensored Japanese hentai and anime art."
+    },
+    {
+      "name": "feet",
+      "desc": "Displays ultra high-definition foot fetish gallery uploads."
+    },
+    {
+      "name": "rule34",
+      "desc": "Connects directly to the rule34 API to fetch the latest artwork."
+    }
+  ],
+  "Owner": [
+    {
+      "name": "givemoney",
+      "desc": "Gives wallet coins to a user."
+    },
+    {
+      "name": "takemoney",
+      "desc": "Takes wallet coins from a user."
+    },
+    {
+      "name": "ecoban",
+      "desc": "Bans a user from the economy system."
+    },
+    {
+      "name": "ecounban",
+      "desc": "Unbans a user from the economy system."
+    },
+    {
+      "name": "botban",
+      "desc": "Bans a user from using the bot entirely."
+    },
+    {
+      "name": "botunban",
+      "desc": "Unbans a user from the bot."
+    },
+    {
+      "name": "sync",
+      "desc": "Syncs application (slash) commands to the current guild or globally."
+    }
+  ],
+  "Role_sync": [
+    {
+      "name": "sync_roles",
+      "desc": "Sunucudaki tüm üyelerin mevcut rollerini Web UI için senkronize eder."
+    }
+  ],
+  "Suggestions": [
+    {
+      "name": "channel",
+      "desc": "Sets the server suggestions channel. Usage: `f.suggest channel #kanal`"
+    },
+    {
+      "name": "approve",
+      "desc": "Approves a suggestion. Usage: `f.suggest approve <id> [reason]`"
+    },
+    {
+      "name": "deny",
+      "desc": "Denies a suggestion. Usage: `f.suggest deny <id> [reason]`"
+    },
+    {
+      "name": "consider",
+      "desc": "Marks suggestion as under consideration. Usage: `f.suggest consider <id> [reason]`"
+    }
+  ],
+  "Tickets": [
+    {
+      "name": "setup",
+      "desc": "Deploys the ticket open panel. Usage: `f.ticket setup`"
+    },
+    {
+      "name": "category",
+      "desc": "Sets the category for ticket channels. Usage: `f.ticket category <category_id>`"
+    },
+    {
+      "name": "support",
+      "desc": "Sets the support staff role. Usage: `f.ticket support <@role>`"
+    },
+    {
+      "name": "log",
+      "desc": "Sets the transcript log channel. Usage: `f.ticket log <#channel>`"
+    },
+    {
+      "name": "add",
+      "desc": "Adds a member to an existing ticket. Usage: `f.ticket add <@user>`"
+    },
+    {
+      "name": "remove",
+      "desc": "Removes a member from a ticket channel. Usage: `f.ticket remove <@user>`"
+    }
+  ],
+  "Utils": [
+    {
+      "name": "ping",
+      "desc": "Returns the bot's latency."
+    },
+    {
+      "name": "owners",
+      "desc": "Returns the owners of the bot."
+    },
+    {
+      "name": "banner",
+      "desc": "Returns the displayed banner of the mentioned/replyed person"
+    },
+    {
+      "name": "avatar",
+      "desc": "Returns the displayed avatar of the mentioned/replyed person"
+    },
+    {
+      "name": "about",
+      "desc": "Returns statistics and details about the bot."
+    }
+  ],
+  "Db_settings": [
+    {
+      "name": "delete",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "edit",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "join",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "switch",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "stream",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "role",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "channel",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "msg",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "update",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "emoji",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "role",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "perm",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "add",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "remove",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "close",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "accept",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "reject",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "use",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "add",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "remove",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "dblog",
+      "desc": "Veritabanına kaydedilen logları listeler."
+    }
+  ],
+  "Permissions": [
+    {
+      "name": "grant",
+      "desc": "Bir role bot komutu izni verir."
+    },
+    {
+      "name": "revoke",
+      "desc": "Bir rolden bot komutu iznini kaldırır."
+    },
+    {
+      "name": "check_perms",
+      "desc": "Bir rolün sahip olduğu bot izinlerini listeler."
+    },
+    {
+      "name": "list_perms",
+      "desc": "Sunucudaki tüm rol izinlerini listeler."
+    }
+  ],
+  "Settings": [
+    {
+      "name": "set",
+      "desc": "Log kanalını ayarlar. (mesaj, ses, uyari, ticket, mod, basvuru, davet, sunucu, rol)"
+    },
+    {
+      "name": "delete",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "edit",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "join",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "switch",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "stream",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "role",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "channel",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "msg",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "update",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "emoji",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "role",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "perm",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "add",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "remove",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "close",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "accept",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "reject",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "create",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "use",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "add",
+      "desc": "Açıklama bulunamadı."
+    },
+    {
+      "name": "remove",
+      "desc": "Açıklama bulunamadı."
+    }
+  ]
+}
