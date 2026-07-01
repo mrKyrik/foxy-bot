@@ -631,10 +631,6 @@ threading.excepthook = handle_thread_crash
 # Giriş noktası
 # ---------------------------------------------------------------------------
 async def main():
-    # --- LISANS KONTROLU (Senkron) ---
-    from core.license import check_license_sync, license_check_loop
-    check_license_sync()
-    # ---------------------------------
     
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_crash)
@@ -642,9 +638,6 @@ async def main():
     # Veritabanını başlat ve bot'a bağla
     bot.db = Database()
     await bot.db.init()
-
-    # Arka planda lisans kontrolunu baslat
-    asyncio.create_task(license_check_loop())
 
     async with bot:
         try:
