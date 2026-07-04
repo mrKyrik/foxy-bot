@@ -14,7 +14,6 @@ const EVENT_OPTIONS = [
 
 const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags, onUserClick }) => {
   const [selectedEvents, setSelectedEvents] = useState(['ses_join', 'ses_leave', 'ses_move', 'ses_camera', 'ses_stream']);
-  const [svgLines, setSvgLines] = useState([]);
   const containerRef = useRef(null);
 
   const { parsed } = useLogFilter(logs, {
@@ -91,73 +90,6 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
   const timeMax = viewWindow ? viewWindow[1] : 0;
   const hasAnyData = Object.keys(parsed.channels).length > 0;
 
-  useEffect(() => {
-    const drawLines = () => {
-      if (!containerRef.current) return;
-      const container = containerRef.current.closest('.timeline-zoom-container') || containerRef.current;
-      const content = containerRef.current;
-      const cRect = content.getBoundingClientRect();
-      const lines = [];
-      
-      const usersPortals = {};
-      parsed.portals.forEach(p => {
-        if (!usersPortals[p.uId]) usersPortals[p.uId] = [];
-        usersPortals[p.uId].push(p);
-      });
-
-      Object.values(usersPortals).forEach(userPortals => {
-        const sorted = userPortals.sort((a, b) => a.ts - b.ts);
-        for (let i = 0; i < sorted.length - 1; i++) {
-          if (sorted[i].type === 'leave' && sorted[i+1].type === 'join') {
-            if (sorted[i+1].ts - sorted[i].ts < 30000) { // 30 seconds threshold
-               const leaveEl = document.getElementById(`portal-${sorted[i].uId}-${sorted[i].ts}`);
-               const joinEl = document.getElementById(`portal-${sorted[i+1].uId}-${sorted[i+1].ts}`);
-               if (leaveEl && joinEl) {
-                  const r1 = leaveEl.getBoundingClientRect();
-                  const r2 = joinEl.getBoundingClientRect();
-                  
-                  const scrollX = content.scrollLeft || 0;
-                  const scrollY = content.scrollTop || 0;
-
-                  // Çıkan portalın (leave) sağ tarafı
-                  const x1 = r1.right - cRect.left + scrollX;
-                  const y1 = r1.top - cRect.top + (r1.height / 2) + scrollY;
-                  
-                  // Giren portalın (join) sol tarafı
-                  const x2 = r2.left - cRect.left + scrollX;
-                  const y2 = r2.top - cRect.top + (r2.height / 2) + scrollY;
-                  
-                  const offset = Math.abs(x2 - x1) * 0.5; // Kavis (bezier) eğriliği
-                  
-                  // S-Curve (Cubic Bezier)
-                  const d = `M ${x1} ${y1} C ${x1 + offset} ${y1}, ${x2 - offset} ${y2}, ${x2} ${y2}`;
-                  
-                  lines.push({ d });
-               }
-            }
-          }
-        }
-      });
-      setSvgLines(lines);
-    };
-
-    let observer;
-    if (containerRef.current && window.ResizeObserver) {
-       observer = new ResizeObserver(() => drawLines());
-       observer.observe(containerRef.current);
-    }
-
-    drawLines();
-    const t1 = setTimeout(drawLines, 50);
-    const t2 = setTimeout(drawLines, 200);
-    const t3 = setTimeout(drawLines, 500);
-
-    return () => {
-      if (observer) observer.disconnect();
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-    };
-  }, [parsed, viewWindow]); 
-
   return (
     <LogPageLayout
       title="Ses Hareketleri"
@@ -176,21 +108,6 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
         ref={containerRef}
         style={{ position: 'relative', width: '100%', minHeight: '100%' }}
       >
-        <svg style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 10, overflow: 'visible' }}>
-           {svgLines.map((l, i) => (
-             <path 
-                key={i} 
-                d={l.d}
-                stroke="#b1ff33" 
-                strokeWidth="3" 
-                strokeDasharray="8,8"
-                fill="none"
-                opacity="0.9"
-                className="portal-link"
-             />
-           ))}
-        </svg>
-
         {nowTS >= timeMin && nowTS <= timeMax && (
           <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${getPercent(nowTS, timeMin, timeMax)}%`, width: '2px', background: 'var(--accent-red)', zIndex: 5, boxShadow: '0 0 10px red' }} />
         )}

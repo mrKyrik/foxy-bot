@@ -1,13 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import axios from 'axios';
 import { X, Mic, MessageSquare, ShieldAlert, Tag, Hash, Calendar, Edit3, Send, AlertTriangle, ShieldX, Hammer } from 'lucide-react';
 import { formatTime } from '../utils/time';
-import { GUILD_ID, API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { GuildContext } from '../GuildContext';
 
 const UserLookPanel = ({ user, allLogs, onClose }) => {
+  const { activeGuildId } = useContext(GuildContext);
   const [notes, setNotes] = useState([]);
+  const [currentRoles, setCurrentRoles] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
+  const [loadingRoles, setLoadingRoles] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
   // Sadece bu kullanıcıya ait (user_id veya admin_id) logları filtrele
@@ -38,8 +42,25 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
   useEffect(() => {
     if (user && user.id) {
       fetchNotes();
+      fetchCurrentRoles();
     }
-  }, [user]);
+  }, [user, activeGuildId]);
+
+  const fetchCurrentRoles = async () => {
+    if (!activeGuildId || !user) return;
+    setLoadingRoles(true);
+    try {
+      const token = localStorage.getItem('kumiho_token');
+      const res = await axios.get(`${API_BASE_URL}/users/${activeGuildId}/${user.id}/roles`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCurrentRoles(res.data.roles || []);
+    } catch (err) {
+      console.error("Roller çekilemedi:", err);
+    } finally {
+      setLoadingRoles(false);
+    }
+  };
 
   const fetchNotes = async () => {
     setLoadingNotes(true);
@@ -75,7 +96,8 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
     
     setActionLoading(true);
     try {
-      await axios.post(`${API_BASE_URL}/actions/${GUILD_ID}`, {
+      if (!activeGuildId) return;
+      await axios.post(`${API_BASE_URL}/actions/${activeGuildId}`, {
         target_user_id: user.id,
         action_type: actionType,
         reason: "Dashboard üzerinden işlem yapıldı."
@@ -137,7 +159,32 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
             alt="avatar" 
         />
         <h2 style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontFamily: 'Outfit, sans-serif' }}>{user.name}</h2>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontFamily: 'monospace' }}>{user.id}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontFamily: 'monospace', marginBottom: '16px' }}>{user.id}</span>
+        
+        {/* Current Roles */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', justifyContent: 'center' }}>
+          {loadingRoles ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Roller yükleniyor...</span>
+          ) : currentRoles.length === 0 ? (
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Rol bulunamadı</span>
+          ) : (
+            currentRoles.map((role) => (
+              <div key={role.role_id} style={{
+                background: 'var(--accent-purple-glow)',
+                border: '1px solid var(--accent-purple)',
+                color: '#fff',
+                padding: '4px 10px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px'
+              }}>
+                <Tag size={12} /> {role.role_name}
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {/* Aksiyon Butonları (Moderasyon) */}

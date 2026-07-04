@@ -1,0 +1,365 @@
+.cmd-mgmt-container {
+  padding: 32px;
+  color: #fff;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+  height: calc(100vh - 64px);
+  display: flex;
+  flex-direction: column;
+}
+
+.cmd-header {
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+
+.cmd-title {
+  font-size: 2rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cmd-subtitle {
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+/* Layout Split: Sidebar for Categories + Main Content */
+.cmd-layout {
+  display: flex;
+  gap: 24px;
+  flex: 1;
+  min-height: 0; /* Important for scroll */
+}
+
+/* Sidebar */
+.cmd-sidebar {
+  width: 280px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cmd-search-box {
+  padding: 16px;
+  border-bottom: 1px solid var(--panel-border);
+  background: rgba(255,255,255,0.02);
+}
+
+.cmd-search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cmd-search-input {
+  width: 100%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--panel-border);
+  color: #fff;
+  padding: 10px 10px 10px 36px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.3s;
+}
+.cmd-search-input:focus {
+  border-color: var(--accent-blue);
+}
+.cmd-search-icon {
+  position: absolute;
+  left: 10px;
+  color: var(--text-muted);
+}
+
+.cmd-category-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cmd-category-item {
+  padding: 12px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+}
+
+.cmd-category-item:hover {
+  background: rgba(255,255,255,0.05);
+  color: #fff;
+}
+
+.cmd-category-item.active {
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid var(--accent-blue-glow);
+  color: var(--accent-blue);
+}
+
+.cmd-category-name {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.cmd-category-count {
+  font-size: 0.75rem;
+  background: rgba(255,255,255,0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+.cmd-category-item.active .cmd-category-count {
+  background: var(--accent-blue);
+  color: #fff;
+}
+
+
+/* Main Area */
+.cmd-main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.cmd-main-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--panel-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255,255,255,0.02);
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.cmd-main-header-info h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.cmd-main-header-info p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.cmd-main-actions {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.master-toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.master-toggle-label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.cmd-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  align-content: start;
+}
+
+/* Command Card */
+.cmd-card {
+  padding: 20px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--panel-border);
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+.cmd-card.enabled {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: var(--accent-green-glow);
+}
+.cmd-card.disabled {
+  opacity: 0.6;
+}
+
+.cmd-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.cmd-name {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+.cmd-card.disabled .cmd-name {
+  color: var(--text-muted);
+}
+
+.cmd-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  padding: 0 2px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+.toggle-switch.on {
+  background-color: var(--accent-green);
+  border-color: var(--accent-green-glow);
+  box-shadow: 0 0 12px var(--accent-green-glow);
+}
+.toggle-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #fff;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Roles Area */
+.cmd-roles-section {
+  border-top: 1px solid var(--panel-border);
+  padding-top: 16px;
+  margin-top: auto;
+}
+
+.cmd-roles-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cmd-roles-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.role-badge {
+  background: rgba(88, 101, 242, 0.15); /* Discord blurple */
+  border: 1px solid rgba(88, 101, 242, 0.4);
+  color: #5865F2; /* Discord blurple */
+  padding: 4px 8px;
+  border-radius: 4px; /* More discord like */
+  font-size: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 500;
+}
+
+.role-badge-remove {
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+.role-badge-remove:hover {
+  opacity: 1;
+}
+
+.empty-roles {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+/* Role search inline */
+.role-search-wrapper {
+  position: relative;
+  display: flex;
+  flex: 1;
+  gap: 8px;
+}
+.role-search-input {
+  width: 100%;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--panel-border);
+  color: #fff;
+  padding: 8px 10px 8px 32px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  outline: none;
+}
+.role-search-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.role-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: #1e1e24;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  z-index: 50;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+}
+
+.role-option {
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e2e8f0;
+}
+.role-option:hover {
+  background: rgba(255,255,255,0.1);
+}
+.role-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #5865F2; /* Default discord role color fallback */
+}

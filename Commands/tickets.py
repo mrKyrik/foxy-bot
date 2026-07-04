@@ -7,6 +7,7 @@ Veri depolama: Data/tickets.json (kanal/rol yapılandırması — JSON'da kalır
 Transkriptler: Data/transcripts/ticket-<channel_id>.txt
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import asyncio
 import io
 import logging
@@ -214,6 +215,7 @@ class TicketOpenView(discord.ui.View):
 
 
 class Tickets(commands.Cog):
+    category = "Topluluk ve Etkileşim"
     """
     State-of-the-art server-scoped button ticket support system.
     """
@@ -225,7 +227,7 @@ class Tickets(commands.Cog):
         self.bot.add_view(TicketConfirmCloseView(self))
 
     @commands.group(name="ticket", invoke_without_command=True)
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def ticket_group(self, ctx: commands.Context) -> None:
         """Setup and manage the ticketing system."""
         p = ctx.prefix
@@ -240,9 +242,9 @@ class Tickets(commands.Cog):
         )
 
     @ticket_group.command(name="setup")
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def ticket_setup(self, ctx: commands.Context) -> None:
-        """Deploys the ticket open panel. Usage: `f.ticket setup`"""
+        """Sistemdeki setup ayarını yapılandırır. Kullanım: `f.ticket setup`"""
         embed = discord.Embed(
             title="🎟️ Server Support Center",
             description=(
@@ -255,7 +257,7 @@ class Tickets(commands.Cog):
         await ctx.send(embed=embed, view=view)
 
     @ticket_group.command(name="category")
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def ticket_category(
         self, ctx: commands.Context, category: discord.CategoryChannel = None
     ) -> None:
@@ -268,7 +270,7 @@ class Tickets(commands.Cog):
         await ctx.send(f"✅ Ticket category set to `{category.name}`.")
 
     @ticket_group.command(name="support")
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def ticket_support(
         self, ctx: commands.Context, role: discord.Role = None
     ) -> None:
@@ -281,7 +283,7 @@ class Tickets(commands.Cog):
         await ctx.send(f"✅ Support role set to {role.mention}.")
 
     @ticket_group.command(name="log", aliases=["logs"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def ticket_log(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
@@ -302,6 +304,22 @@ class Tickets(commands.Cog):
             return await ctx.send(f"Usage: `{ctx.prefix}ticket add <@user>`")
         if "ticket-" not in ctx.channel.name:
             return await ctx.send("❌ This command can only be used inside ticket channels!")
+            
+        owner_id = int(ctx.channel.topic) if ctx.channel.topic and ctx.channel.topic.isdigit() else 0
+        is_owner = ctx.author.id == owner_id
+        is_admin = ctx.author.guild_permissions.administrator or ctx.author.guild_permissions.manage_channels
+        
+        data = await asyncio.to_thread(json_load, DB_FILE)
+        support_role_id = data.get("support", {}).get(str(ctx.guild.id))
+        is_support = False
+        if support_role_id:
+            support_role = ctx.guild.get_role(int(support_role_id))
+            if support_role and support_role in ctx.author.roles:
+                is_support = True
+                
+        if not (is_owner or is_admin or is_support):
+            return await ctx.send("❌ Bu işlemi yapabilmek için bilet sahibi veya yetkili olmalısınız.")
+            
         await ctx.channel.set_permissions(
             member, view_channel=True, send_messages=True, read_message_history=True
         )
@@ -316,6 +334,22 @@ class Tickets(commands.Cog):
             return await ctx.send(f"Usage: `{ctx.prefix}ticket remove <@user>`")
         if "ticket-" not in ctx.channel.name:
             return await ctx.send("❌ This command can only be used inside ticket channels!")
+            
+        owner_id = int(ctx.channel.topic) if ctx.channel.topic and ctx.channel.topic.isdigit() else 0
+        is_owner = ctx.author.id == owner_id
+        is_admin = ctx.author.guild_permissions.administrator or ctx.author.guild_permissions.manage_channels
+        
+        data = await asyncio.to_thread(json_load, DB_FILE)
+        support_role_id = data.get("support", {}).get(str(ctx.guild.id))
+        is_support = False
+        if support_role_id:
+            support_role = ctx.guild.get_role(int(support_role_id))
+            if support_role and support_role in ctx.author.roles:
+                is_support = True
+                
+        if not (is_owner or is_admin or is_support):
+            return await ctx.send("❌ Bu işlemi yapabilmek için bilet sahibi veya yetkili olmalısınız.")
+            
         await ctx.channel.set_permissions(member, overwrite=None)
         await ctx.send(f"✅ Removed {member.mention} from this ticket.")
 

@@ -6,10 +6,23 @@
  */
 
 // İzlenecek Discord sunucusunun ID'si
-export const GUILD_ID = "1494456063729078294";
+// export const GUILD_ID = "1494456063729078294"; // Artık Context üzerinden dinamik yönetiliyor
+
+import axios from 'axios';
 
 // FastAPI backend'in base URL'si
-// Dev: http://localhost:8000/api
-// Prod: https://your-api.example.com/api
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api";
+// Dev: http://localhost:3001/api
+// Prod: https://api.kumiho.bot/api
+export const API_BASE_URL = "http://localhost:3001/api";
+
+// Axios interceptor: Her isteğe JWT token ekle
+axios.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('kumiho_token');
+    if (token) {
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);

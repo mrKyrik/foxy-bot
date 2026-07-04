@@ -1,3 +1,4 @@
+from core.checks import kumiho_check, kumiho_app_check
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -174,7 +175,7 @@ class AdminReviewView(discord.ui.View):
         form_id_match = re.search(r'Form ID: (\S+)', embed.footer.text)
         form_id = form_id_match.group(1) if form_id_match else None
         
-        form_data_row = await self.bot.db.fetchone("SELECT * FROM custom_forms WHERE form_id=?", form_id)
+        form_data_row = await self.bot.db.fetchone("SELECT * FROM custom_forms WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
         if not form_data_row:
             return submitter_id, None, None
             
@@ -288,6 +289,7 @@ class FormTriggerViewButton(discord.ui.View):
 # ---------------------------------------------------------
 
 class FormsCog(commands.Cog):
+    category = "Topluluk ve Etkileşim"
     def __init__(self, bot):
         self.bot = bot
         
@@ -301,13 +303,13 @@ class FormsCog(commands.Cog):
                 form_data = dict(f)
                 form_type = form_data.get("form_type", 1)
                 
-                questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=?", form_data["form_id"])
+                questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_data["form_id"], form_data["guild_id"])
                 qs = [dict(q) for q in questions]
                 
                 if form_type in [1, 4]:
                     self.bot.add_view(FormTriggerViewButton(form_data, qs, self.bot))
                 elif form_type == 2:
-                    roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=?", form_data["form_id"])
+                    roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=? AND guild_id=?", form_data["form_id"], form_data["guild_id"])
                     role_ids = [r["role_id"] for r in roles_db]
                     
                     guild = self.bot.get_guild(int(form_data["guild_id"]))
@@ -319,7 +321,7 @@ class FormsCog(commands.Cog):
             print(f"Form views yuklenirken hata: {e}")
 
     @app_commands.command(name="form_olustur", description="Yeni bir özel form oluşturur")
-    @app_commands.default_permissions(administrator=True)
+    @kumiho_app_check("owner")
     @app_commands.choices(form_turu=[
         app_commands.Choice(name="Normal / Sadece Log", value=1),
         app_commands.Choice(name="Rol Seçimli Form", value=2),
@@ -375,13 +377,13 @@ class FormsCog(commands.Cog):
         )
         
         # 2. Soruları ekle
-        q_data = [(form_id, q["question_text"]) for q in sorular]
-        await self.bot.db.executemany("INSERT INTO form_questions (form_id, question_text) VALUES (?, ?)", q_data)
+        q_data = [(form_id, str(interaction.guild_id), q["question_text"]) for q in sorular]
+        await self.bot.db.executemany("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", q_data)
         
         # 3. Rolleri ekle
         if form_turu.value == 2 and r_ids:
-            r_data = [(form_id, rid) for rid in r_ids]
-            await self.bot.db.executemany("INSERT INTO form_roles (form_id, role_id) VALUES (?, ?)", r_data)
+            r_data = [(form_id, str(interaction.guild_id), rid) for rid in r_ids]
+            await self.bot.db.executemany("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", r_data)
         
         # Arayüze trigger ekle
         form_data = {
@@ -408,7 +410,7 @@ class FormsCog(commands.Cog):
         return choices[:25]
 
     @app_commands.command(name="form_sil", description="Bir formu veritabanından siler")
-    @app_commands.default_permissions(administrator=True)
+    @kumiho_app_check("owner")
     @app_commands.autocomplete(form_id=form_id_autocompletion)
     async def form_sil(self, interaction: discord.Interaction, form_id: str):
         mevcut = await self.bot.db.fetchone("SELECT form_id FROM custom_forms WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
@@ -419,7 +421,7 @@ class FormsCog(commands.Cog):
         await interaction.response.send_message(f"🗑️ `{form_id}` ID'li form silindi.", ephemeral=True)
 
     @app_commands.command(name="form_mesaji_gonder", description="Kullanıcıların formu doldurması için butonu veya menüyü gönderir")
-    @app_commands.default_permissions(administrator=True)
+    @kumiho_app_check("owner")
     @app_commands.autocomplete(form_id=form_id_autocompletion)
     async def form_mesaji_gonder(self, interaction: discord.Interaction, form_id: str):
         form_data_row = await self.bot.db.fetchone(
@@ -433,7 +435,7 @@ class FormsCog(commands.Cog):
         form_data = dict(form_data_row)
         form_type = form_data.get("form_type", 1)
         
-        questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=?", form_id)
+        questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
         qs = [dict(q) for q in questions]
         
         embed = discord.Embed(
@@ -443,7 +445,7 @@ class FormsCog(commands.Cog):
         )
         
         if form_type == 2:
-            roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=?", form_id)
+            roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
             roles = []
             for r_db in roles_db:
                 r = interaction.guild.get_role(int(r_db["role_id"]))

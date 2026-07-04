@@ -23,6 +23,7 @@ _ALLOWED_IDS: frozenset[int] = frozenset(int(i.strip()) for i in _EXTRA_ADMINS.s
 
 
 class Owner(commands.Cog):
+    category = "Yönetim ve Ayarlar"
     """
     Premium developer and server owner command suite.
     """
@@ -77,10 +78,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="givemoney", aliases=["ecogive", "mint"])
     async def givemoney(self, ctx: commands.Context, target: str = None, amount: int = None) -> None:
-        """
-        Gives wallet coins to a user.
-        Usage: `f.givemoney <@user/ID/username> <amount>`
-        """
+        """givemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.givemoney [parametreler]`"""
         if not target or amount is None or amount <= 0:
             return await ctx.send(f"Usage: `{ctx.prefix}givemoney <@user/ID/username> <amount>`")
 
@@ -106,10 +104,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="takemoney", aliases=["ecotake"])
     async def takemoney(self, ctx: commands.Context, target: str = None, amount: int = None) -> None:
-        """
-        Takes wallet coins from a user.
-        Usage: `f.takemoney <@user/ID/username> <amount>`
-        """
+        """takemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.takemoney [parametreler]`"""
         if not target or amount is None or amount <= 0:
             return await ctx.send(f"Usage: `{ctx.prefix}takemoney <@user/ID/username> <amount>`")
 
@@ -132,10 +127,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecoban", aliases=["economyban"])
     async def ecoban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """
-        Bans a user from the economy system.
-        Usage: `f.ecoban <@user/ID/username>`
-        """
+        """ecoban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecoban [parametreler]`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecoban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -151,10 +143,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecounban", aliases=["economyunban"])
     async def ecounban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """
-        Unbans a user from the economy system.
-        Usage: `f.ecounban <@user/ID/username>`
-        """
+        """ecounban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecounban [parametreler]`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecounban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -168,10 +157,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botban", aliases=["banbot"])
     async def botban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """
-        Bans a user from using the bot entirely.
-        Usage: `f.botban <@user/ID/username>`
-        """
+        """botban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botban [parametreler]`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -187,10 +173,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botunban", aliases=["unbanbot"])
     async def botunban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """
-        Unbans a user from the bot.
-        Usage: `f.botunban <@user/ID/username>`
-        """
+        """botunban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botunban [parametreler]`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botunban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -206,10 +189,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="sync")
     async def sync_tree(self, ctx: commands.Context) -> None:
-        """
-        Syncs application (slash) commands to the current guild or globally.
-        Usage: `f.sync` (Syncs to current guild for immediate availability)
-        """
+        """sync işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync [parametreler]`"""
         try:
             # Sadece bu sunucuya anında senkronize et (hemen çalışması için)
             ctx.bot.tree.copy_global_to(guild=ctx.guild)

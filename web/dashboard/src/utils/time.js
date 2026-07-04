@@ -1,6 +1,10 @@
 export const parseTimestamp = (tsString) => {
   if (!tsString) return 0;
-  const tsObj = new Date(tsString.replace(' ', 'T') + 'Z');
+  let cleanStr = tsString.replace(' ', 'T');
+  if (!cleanStr.endsWith('Z')) {
+    cleanStr += 'Z';
+  }
+  const tsObj = new Date(cleanStr);
   return tsObj.getTime();
 };
 
@@ -11,9 +15,10 @@ export const formatTime = (ts) => {
 };
 
 export const getPercent = (ts, timeMin, timeMax) => {
-  if (ts < timeMin) return -10; 
-  if (ts > timeMax) return 110; 
+  const tsNum = typeof ts === 'string' ? parseTimestamp(ts) : ts;
+  if (tsNum < timeMin) return -10; 
+  if (tsNum > timeMax) return 110; 
   const zoomWindowMs = timeMax - timeMin;
   if (zoomWindowMs === 0) return 0;
-  return ((ts - timeMin) / zoomWindowMs) * 100;
+  return ((tsNum - timeMin) / zoomWindowMs) * 100;
 };

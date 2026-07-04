@@ -1,266 +1,103 @@
-"""
-Commands/administration/permissions.py
---------------------------------------
-Sunucu bazlı bot içi rol izin yönetimi.
-
-Yöneticiler bu komutlarla belirli Discord rollerine komut izni verebilir
-ya da mevcut izinleri kaldırabilir. İzinler `USER-DB.db → role_permissions`
-tablosunda saklanır.
-
-Komutlar:
-    f.grant @rol <izin>       — Role izin ver
-    f.revoke @rol <izin>      — Rolden izin kaldır
-    f.check_perms @rol         — Rolün izinlerini listele
-    f.list_perms               — Tüm sunucu izinlerini listele
-"""
-
-import logging
-
 import discord
 from discord.ext import commands
-
-from core.embed import EmbedBuilder
-
-log = logging.getLogger(__name__)
-
-# Geçerli izin adları — moderation.py ile senkronize tutulmalı
-VALID_PERMISSIONS = {
-    "kick", "ban", "timeout", "untimeout",
-    "purge", "warn", "clearwarn",
-    "create_channel", "delete_channel",
-    "voice_mute", "voice_deafen", "voice_disconnect", "voice_move",
-    "log",
-}
-
+from discord import app_commands
+import aiosqlite
+import json
 
 class Permissions(commands.Cog):
-    """
-    Bot içi rol izin yönetimi. Rol bazlı komut erişim kontrolü için kullanılır.
-    """
-
-    def __init__(self, bot: commands.Bot) -> None:
+    category = "Yönetim ve Ayarlar"
+    """Komut yetkilerini Discord üzerinden yönetmenizi sağlayan sistem."""
+    def __init__(self, bot):
         self.bot = bot
 
-    # ------------------------------------------------------------------
-    # grant
-    # ------------------------------------------------------------------
-    @commands.command(name="grant")
-    @commands.has_permissions(administrator=True)
-    async def grant(
-        self, ctx: commands.Context, role: discord.Role, permission: str
-    ) -> None:
-        """
-        Bir role bot komutu izni verir.
-        Kullanım: `f.grant @rol <izin>`
-        Örnek: `f.grant @Moderatör kick`
-        """
-        perm = permission.lower()
+    yetki_group = app_commands.Group(name="yetki", description="Komut yetkilerini yönetin")
 
-        if perm not in VALID_PERMISSIONS:
-            valid_list = ", ".join(f"`{p}`" for p in sorted(VALID_PERMISSIONS))
-            embed = EmbedBuilder(
-                title="❌ Geçersiz İzin",
-                description=f"Geçerli izinler:\n{valid_list}",
-                color=discord.Color.red(),
-            ).build()
-            return await ctx.send(embed=embed)
+    @yetki_group.command(name="ekle", description="Bir komutu kullanabilmesi için belirli bir role yetki verir")
+    @app_commands.default_permissions(administrator=True)
+    async def yetki_ekle(self, interaction: discord.Interaction, komut_adi: str, rol: discord.Role):
+        # Sadece komut var mı diye basit bir kontrol (Prefix veya Slash)
+        cmd = self.bot.get_command(komut_adi)
+        if not cmd:
+            app_cmd = discord.utils.get(self.bot.tree.get_commands(), name=komut_adi)
+            if not app_cmd:
+                return await interaction.response.send_message(f"❌ `{komut_adi}` adında bir komut bulunamadı.", ephemeral=True)
+                
+        async with aiosqlite.connect("kumiho.db") as db:
+            async with db.execute("SELECT allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (str(interaction.guild.id), komut_adi)) as cursor:
+                row = await cursor.fetchone()
+                
+            allowed_roles = []
+            if row and row[0]:
+                try:
+                    allowed_roles = json.loads(row[0])
+                except:
+                    pass
+                    
+            if str(rol.id) not in allowed_roles:
+                allowed_roles.append(str(rol.id))
+                
+            roles_json = json.dumps(allowed_roles)
+            
+            await db.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+                                VALUES (?, ?, 1, ?)
+                                ON CONFLICT(guild_id, command_name) 
+                                DO UPDATE SET allowed_roles=excluded.allowed_roles''',
+                             (str(interaction.guild.id), komut_adi, roles_json))
+            await db.commit()
+            
+        await interaction.response.send_message(f"✅ `{komut_adi}` komutu artık {rol.mention} rolü tarafından kullanılabilir.")
 
-        db = self.bot.db
-        guild_id = str(ctx.guild.id)
-        role_id = str(role.id)
-
-        # Role kaydı yoksa ekle
-        await db.execute(
-            "INSERT OR IGNORE INTO roles (guild_id, role_id, role_name) VALUES (?, ?, ?)",
-            guild_id, role_id, role.name,
-        )
-
-        # İzni ver
-        try:
-            await db.execute(
-                "INSERT INTO role_permissions (guild_id, role_id, permission_name) VALUES (?, ?, ?)",
-                guild_id, role_id, perm,
-            )
-            log.info("İzin verildi | guild=%s | role=%s | perm=%s", guild_id, role_id, perm)
-            embed = EmbedBuilder(
-                title="✅ İzin Verildi",
-                description=f"{role.mention} rolüne `{perm}` izni başarıyla eklendi.",
-                color=discord.Color.green(),
-            ).set_timestamp().build()
-        except Exception:
-            # UNIQUE constraint — zaten var
-            embed = EmbedBuilder(
-                title="⚠️ Zaten Mevcut",
-                description=f"{role.mention} rolünün `{perm}` izni zaten var.",
-                color=discord.Color.orange(),
-            ).build()
-
-        await ctx.send(embed=embed)
-
-    # ------------------------------------------------------------------
-    # revoke
-    # ------------------------------------------------------------------
-    @commands.command(name="revoke")
-    @commands.has_permissions(administrator=True)
-    async def revoke(
-        self, ctx: commands.Context, role: discord.Role, permission: str
-    ) -> None:
-        """
-        Bir rolden bot komutu iznini kaldırır.
-        Kullanım: `f.revoke @rol <izin>`
-        """
-        perm = permission.lower()
-        db = self.bot.db
-        guild_id = str(ctx.guild.id)
-        role_id = str(role.id)
-
-        # Önce var mı kontrol et
-        row = await db.fetchone(
-            "SELECT 1 FROM role_permissions WHERE guild_id=? AND role_id=? AND permission_name=?",
-            guild_id, role_id, perm,
-        )
-
-        if not row:
-            embed = EmbedBuilder(
-                title="❌ İzin Bulunamadı",
-                description=f"{role.mention} rolünde `{perm}` izni yok.",
-                color=discord.Color.red(),
-            ).build()
-            return await ctx.send(embed=embed)
-
-        await db.execute(
-            "DELETE FROM role_permissions WHERE guild_id=? AND role_id=? AND permission_name=?",
-            guild_id, role_id, perm,
-        )
-        log.info("İzin kaldırıldı | guild=%s | role=%s | perm=%s", guild_id, role_id, perm)
-
-        embed = EmbedBuilder(
-            title="✅ İzin Kaldırıldı",
-            description=f"{role.mention} rolünden `{perm}` izni başarıyla kaldırıldı.",
-            color=discord.Color.green(),
-        ).set_timestamp().build()
-        await ctx.send(embed=embed)
-
-    # ------------------------------------------------------------------
-    # check_perms
-    # ------------------------------------------------------------------
-    @commands.command(name="check_perms")
-    @commands.has_permissions(administrator=True)
-    async def check_perms(
-        self, ctx: commands.Context, role: discord.Role
-    ) -> None:
-        """
-        Bir rolün sahip olduğu bot izinlerini listeler.
-        Kullanım: `f.check_perms @rol`
-        """
-        db = self.bot.db
-        guild_id = str(ctx.guild.id)
-        role_id = str(role.id)
-
-        rows = await db.fetchall(
-            "SELECT permission_name FROM role_permissions WHERE guild_id=? AND role_id=?",
-            guild_id, role_id,
-        )
-
-        if rows:
-            perms_list = "\n".join(f"• `{row['permission_name']}`" for row in rows)
-            embed = EmbedBuilder(
-                title=f"🔐 {role.name} — İzinler",
-                description=perms_list,
-                color=discord.Color.blurple(),
-            ).set_footer(f"Toplam {len(rows)} izin").build()
-        else:
-            embed = EmbedBuilder(
-                title=f"🔐 {role.name} — İzinler",
-                description="Bu rolün hiçbir bot izni yok.",
-                color=discord.Color.orange(),
-            ).build()
-
-        await ctx.send(embed=embed)
-
-    # ------------------------------------------------------------------
-    # list_perms
-    # ------------------------------------------------------------------
-    @commands.command(name="list_perms")
-    @commands.has_permissions(administrator=True)
-    async def list_perms(self, ctx: commands.Context) -> None:
-        """
-        Sunucudaki tüm rol izinlerini listeler.
-        Kullanım: `f.list_perms`
-        """
-        db = self.bot.db
-        guild_id = str(ctx.guild.id)
-
-        rows = await db.fetchall(
-            """
-            SELECT rp.role_id, rp.permission_name, r.role_name
-            FROM role_permissions rp
-            LEFT JOIN roles r ON rp.guild_id = r.guild_id AND rp.role_id = r.role_id
-            WHERE rp.guild_id=?
-            ORDER BY rp.role_id, rp.permission_name
-            """,
-            guild_id,
-        )
-
+    @yetki_group.command(name="kaldir", description="Bir komutun yetkisini belirli bir rolden alır")
+    @app_commands.default_permissions(administrator=True)
+    async def yetki_kaldir(self, interaction: discord.Interaction, komut_adi: str, rol: discord.Role):
+        async with aiosqlite.connect("kumiho.db") as db:
+            async with db.execute("SELECT allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (str(interaction.guild.id), komut_adi)) as cursor:
+                row = await cursor.fetchone()
+                
+            if not row or not row[0]:
+                return await interaction.response.send_message(f"❌ Bu komut için atanmış özel bir rol bulunamadı.", ephemeral=True)
+                
+            try:
+                allowed_roles = json.loads(row[0])
+            except:
+                allowed_roles = []
+                
+            if str(rol.id) in allowed_roles:
+                allowed_roles.remove(str(rol.id))
+                
+            roles_json = json.dumps(allowed_roles)
+            
+            await db.execute("UPDATE command_permissions SET allowed_roles = ? WHERE guild_id = ? AND command_name = ?", 
+                             (roles_json, str(interaction.guild.id), komut_adi))
+            await db.commit()
+            
+        await interaction.response.send_message(f"✅ `{komut_adi}` komutu için {rol.mention} yetkisi kaldırıldı.")
+        
+    @yetki_group.command(name="listele", description="Sunucudaki özelleştirilmiş komut yetkilerini listeler")
+    @app_commands.default_permissions(administrator=True)
+    async def yetki_listele(self, interaction: discord.Interaction):
+        async with aiosqlite.connect("kumiho.db") as db:
+            async with db.execute("SELECT command_name, allowed_roles FROM command_permissions WHERE guild_id = ?", (str(interaction.guild.id),)) as cursor:
+                rows = await cursor.fetchall()
+                
         if not rows:
-            embed = EmbedBuilder(
-                title="🔐 Sunucu İzinleri",
-                description="Bu sunucuda henüz hiçbir rol izni tanımlanmamış.\n"
-                            "Eklemek için `f.grant @rol <izin>` kullan.",
-                color=discord.Color.orange(),
-            ).build()
-            return await ctx.send(embed=embed)
+            return await interaction.response.send_message("ℹ️ Bu sunucu için ayarlanmış özel bir komut yetkisi bulunmuyor.")
+            
+        embed = discord.Embed(title="🛡️ Özel Komut Yetkileri", color=discord.Color.blue())
+        for cmd_name, roles_str in rows:
+            if not roles_str or roles_str == '[]':
+                continue
+            try:
+                role_ids = json.loads(roles_str)
+                roles_mentions = [f"<@&{r_id}>" for r_id in role_ids]
+                embed.add_field(name=f"/{cmd_name}", value=", ".join(roles_mentions), inline=False)
+            except:
+                pass
+                
+        if not embed.fields:
+            return await interaction.response.send_message("ℹ️ Bu sunucu için ayarlanmış özel bir komut yetkisi bulunmuyor.")
+            
+        await interaction.response.send_message(embed=embed)
 
-        # Role göre gruplandır
-        grouped: dict[str, list[str]] = {}
-        for row in rows:
-            role_name = row["role_name"] or f"<@&{row['role_id']}>"
-            grouped.setdefault(role_name, []).append(row["permission_name"])
-
-        description = ""
-        for role_name, perms in grouped.items():
-            description += f"**{role_name}**\n"
-            description += " ".join(f"`{p}`" for p in perms) + "\n\n"
-
-        embed = EmbedBuilder(
-            title="🔐 Sunucu İzinleri",
-            description=description.strip(),
-            color=discord.Color.blurple(),
-        ).set_footer(f"Toplam {len(rows)} izin atanmış").build()
-        await ctx.send(embed=embed)
-
-    # ------------------------------------------------------------------
-    # Hata yönetimi
-    # ------------------------------------------------------------------
-    async def cog_command_error(
-        self, ctx: commands.Context, error: Exception
-    ) -> None:
-        if isinstance(error, commands.MissingPermissions):
-            embed = EmbedBuilder(
-                title="❌ Yetki Eksik",
-                description="Bu komutları kullanmak için **Yönetici** yetkisine ihtiyacın var.",
-                color=discord.Color.red(),
-            ).build()
-            await ctx.send(embed=embed)
-            return
-
-        if isinstance(error, commands.RoleNotFound):
-            embed = EmbedBuilder(
-                title="❌ Rol Bulunamadı",
-                description="Belirtilen rol bulunamadı. Rol mention (@Rol) veya ID kullan.",
-                color=discord.Color.red(),
-            ).build()
-            await ctx.send(embed=embed)
-            return
-
-        log.error("Permissions cog hatası [%s]: %s", ctx.command, error, exc_info=error)
-        embed = EmbedBuilder(
-            title="❌ Beklenmeyen Hata",
-            description=f"```py\n{error}```",
-            color=discord.Color.dark_red(),
-        ).build()
-        await ctx.send(embed=embed)
-
-
-async def setup(bot: commands.Bot) -> None:
+async def setup(bot):
     await bot.add_cog(Permissions(bot))

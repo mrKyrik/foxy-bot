@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { Routes, Route, useLocation } from 'react-router-dom';
 import LogSidebar from '../components/LogSidebar';
@@ -18,9 +18,11 @@ import InviteLogPage from '../pages/InviteLogPage';
 import RoleLogPage from '../pages/RoleLogPage';
 import SettingsPage from '../pages/SettingsPage';
 
-import { GUILD_ID, API_BASE_URL } from '../config';
+import { API_BASE_URL } from '../config';
+import { GuildContext } from '../GuildContext';
 
 const LogSystemLayout = () => {
+  const { activeGuildId } = useContext(GuildContext);
   const location = useLocation();
   const isSettings = location.pathname.includes('/settings');
   const [logs, setLogs] = useState([]);
@@ -31,8 +33,8 @@ const LogSystemLayout = () => {
   // Zaman State'leri
   const [fetchRange, setFetchRange] = useState(() => {
     const end = Date.now();
-    const start = end - 86400000; // Default: Son 24 saat
-    return { start, end, isLive: true, hours: 24 };
+    const start = end - (86400000 * 7); // Default: Son 7 gün
+    return { start, end, isLive: true, hours: 168 };
   });
   const [globalRange, setGlobalRange] = useState(null);
   const [viewWindow, setViewWindow] = useState(null);
@@ -40,9 +42,11 @@ const LogSystemLayout = () => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [availableTags, setAvailableTags] = useState([]);
 
+  const lastDataSignature = useRef('');
+
   useEffect(() => {
     fetchData();
-    const pollInterval = setInterval(fetchData, 3000);
+    const pollInterval = setInterval(fetchData, 5000);
     return () => clearInterval(pollInterval);
   }, [fetchRange]);
 
@@ -55,11 +59,20 @@ const LogSystemLayout = () => {
         currentEnd = Date.now();
         currentStart = currentEnd - (fetchRange.hours * 60 * 60 * 1000);
       }
+      
+      if (!activeGuildId) return;
 
-      const url = `${API_BASE_URL}/logs/${GUILD_ID}?start_time=${currentStart}&end_time=${currentEnd}`;
+      const url = `${API_BASE_URL}/logs/${activeGuildId}?start_time=${currentStart}&end_time=${currentEnd}`;
       const logRes = await axios.get(url);
       const allLogs = logRes.data.logs || []; 
       
+      const newSig = allLogs.length > 0 ? `${allLogs.length}-${allLogs[0].id}-${allLogs[allLogs.length-1].id}` : 'empty';
+      if (lastDataSignature.current === newSig) {
+        setGlobalRange([currentStart, currentEnd]);
+        return;
+      }
+      lastDataSignature.current = newSig;
+
       const userMap = new Map();
       const channelMap = new Map();
       const categoryMap = new Map();
@@ -74,6 +87,7 @@ const LogSystemLayout = () => {
       });
 
       allLogs.forEach(l => {
+         l.ts = l.timestamp; // Fix ev.ts undefined issue
          // Users
          if (l.user_id && !userMap.has(l.user_id)) {
             userMap.set(l.user_id, { type: 'user', id: l.user_id, name: l.username || l.user_id, avatar_url: l.avatar_url });

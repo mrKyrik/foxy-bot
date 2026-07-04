@@ -1,24 +1,21 @@
 import logging
 import discord
 from discord.ext import commands
+from core.checks import kumiho_check
 
 log = logging.getLogger(__name__)
 
 class RoleSync(commands.Cog):
+    category = "Yönetim ve Ayarlar"
     """Rol Senkronizasyonu"""
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
     @commands.command(name="sync_roles", aliases=["rol_senkronize", "rolesync"])
+    @kumiho_check("owner")
     async def sync_roles(self, ctx: commands.Context) -> None:
-        """Sunucudaki tüm üyelerin mevcut rollerini Web UI için senkronize eder."""
-        import os
-        owner_ids = [x.strip() for x in (os.getenv("OWNER_ID") or "").split(",") if x.strip()]
-        is_owner = str(ctx.author.id) in owner_ids or ctx.author.id == 601344424429092864
-        if not (ctx.author.guild_permissions.administrator or is_owner):
-            raise commands.CheckFailure("Yönetici yetkisi")
-
+        """sync_roles işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync_roles [parametreler]`"""
         msg = await ctx.send("🔄 Üye rolleri taranıyor, lütfen bekleyin... (Bu işlem sunucu büyüklüğüne göre sürebilir.)")
         
         events = []
@@ -49,23 +46,16 @@ class RoleSync(commands.Cog):
                 if hasattr(self.bot, "db"):
                     await self.bot.db.update_role_cache(str(guild.id), str(role.id), role.name)
                 
-                details = {
-                    "username": str(member.name),
-                    "avatar_url": member.display_avatar.url if member.display_avatar else None,
-                    "text": f"Toplu Rol Senkronizasyonu ile eklendi: {role.name}"
-                }
-                
                 events.append((
-                    guild.id,
-                    "role_sync_add",  # Web UI bunu bar başlangıcı olarak görecek (includes 'add')
+                    str(guild.id),
                     str(member.id),
-                    details,
-                    str(role.id)
+                    str(role.id),
+                    role.name
                 ))
                 role_count += 1
 
-        if events and hasattr(self.bot.db, "log_db_events_bulk"):
-            await self.bot.db.log_db_events_bulk(events)
+        if events and hasattr(self.bot, "db") and hasattr(self.bot.db, "sync_user_roles_bulk"):
+            await self.bot.db.sync_user_roles_bulk(str(guild.id), events)
             
         await msg.edit(content=f"✅ Başarıyla **{member_count}** üyede toplam **{role_count}** rol senkronize edildi. (Web UI barları oluşturuldu.)")
 

@@ -6,6 +6,7 @@ Sunucu bazlı öneri kartı, oylama ve inceleme sistemi.
 Veri depolama: SQLite USER-DB.db (suggestions, suggestion_config)
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import asyncio
 import logging
 
@@ -16,6 +17,7 @@ log = logging.getLogger(__name__)
 
 
 class Suggestions(commands.Cog):
+    category = "Topluluk ve Etkileşim"
     """
     State-of-the-art server-scoped suggestion cards voting and reviewing system.
     """
@@ -86,7 +88,7 @@ class Suggestions(commands.Cog):
         )
 
     @suggest.command(name="channel")
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def suggest_channel(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
@@ -151,7 +153,7 @@ class Suggestions(commands.Cog):
         )
 
     @suggest.command(name="approve")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def suggest_approve(
         self, ctx: commands.Context, suggestion_id: int = None, *, reason: str = ""
     ) -> None:
@@ -163,7 +165,7 @@ class Suggestions(commands.Cog):
         )
 
     @suggest.command(name="deny")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def suggest_deny(
         self, ctx: commands.Context, suggestion_id: int = None, *, reason: str = ""
     ) -> None:
@@ -175,7 +177,7 @@ class Suggestions(commands.Cog):
         )
 
     @suggest.command(name="consider")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def suggest_consider(
         self, ctx: commands.Context, suggestion_id: int = None, *, reason: str = ""
     ) -> None:

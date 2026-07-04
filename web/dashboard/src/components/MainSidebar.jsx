@@ -1,15 +1,17 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, LogOut, Activity } from 'lucide-react';
+import { LayoutDashboard, Terminal, LogOut, Activity, Server } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { GuildContext } from '../GuildContext';
 
 const MainSidebar = ({ setAuthToken }) => {
+  const { guilds, activeGuildId, changeGuild } = useContext(GuildContext);
   const getNavClass = ({ isActive }) => isActive ? "nav-item active" : "nav-item";
 
   const navItems = [
     { to: "/", icon: <LayoutDashboard size={18} />, label: "Genel Bakış" },
     { to: "/commands", icon: <Terminal size={18} />, label: "Komut Yönetimi" },
-    { to: "/logs/ses", icon: <Activity size={18} />, label: "Log Sistemi", special: true },
+    { to: "/logs/ses", icon: <Activity size={18} />, label: "Log Sistemi" },
   ];
 
   const handleLogout = () => {
@@ -29,6 +31,35 @@ const MainSidebar = ({ setAuthToken }) => {
         Kumiho Panel
       </div>
       
+      {/* Guild Selector */}
+      {guilds && guilds.length > 0 && (
+        <div style={{ marginBottom: '16px', padding: '0 8px' }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <Server size={12} /> Seçili Sunucu
+          </div>
+          <select 
+            value={activeGuildId || ''} 
+            onChange={(e) => changeGuild(e.target.value)}
+            style={{ 
+              width: '100%', 
+              padding: '8px', 
+              background: 'rgba(255,255,255,0.05)', 
+              color: 'var(--text-primary)',
+              border: '1px solid rgba(255,255,255,0.1)', 
+              borderRadius: '8px',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {guilds.map(g => (
+              <option key={g.id} value={g.id} style={{ background: '#09090b', color: '#fff' }}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
         {navItems.map((item, i) => (
           <motion.div 
@@ -39,23 +70,13 @@ const MainSidebar = ({ setAuthToken }) => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            {item.special ? (
-              <a 
-                href={item.to} 
-                className={getNavClass({ isActive: false })} 
-                style={{ background: 'rgba(16, 185, 129, 0.1)', color: 'var(--accent-green)', border: '1px solid var(--accent-green-glow)', textDecoration: 'none' }}
-              >
-                {item.icon} {item.label}
-              </a>
-            ) : (
-              <NavLink 
-                to={item.to} 
-                className={getNavClass} 
-                end={item.to === "/"}
-              >
-                {item.icon} {item.label}
-              </NavLink>
-            )}
+            <NavLink 
+              to={item.to} 
+              className={getNavClass} 
+              end={item.to === "/"}
+            >
+              {item.icon} {item.label}
+            </NavLink>
           </motion.div>
         ))}
         

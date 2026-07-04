@@ -6,6 +6,7 @@ from discord.ext import commands
 log = logging.getLogger(__name__)
 
 class DBSettings(commands.Cog):
+    category = "Yönetim ve Ayarlar"
     """Veritabanı (DB) Log kayıt sistemi ayarları."""
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -265,10 +266,7 @@ class DBSettings(commands.Cog):
     # DBLOG Command
     @commands.command(name="dblog")
     async def dblog(self, ctx: commands.Context, event_type: str = None, user: discord.Member = None, limit: int = 10):
-        """
-        Veritabanına kaydedilen logları listeler.
-        Kullanım: f.dblog <event_type> [@kullanici] [limit]
-        """
+        """dblog işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dblog [parametreler]`"""
         if not event_type:
             types = [
                 "msg_delete", "msg_edit", 

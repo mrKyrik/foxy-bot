@@ -3,6 +3,7 @@ import { Settings, PlusCircle, Trash2, Edit } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
+import DiscordMention from '../components/DiscordMention';
 
 const EVENT_OPTIONS = [
   { value: 'create', label: 'Oluşturma', color: '#10b981' },
@@ -15,7 +16,19 @@ const ServerLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedT
 
   const { parsed } = useLogFilter(logs, {
     typeFilter: (log, type) => type.startsWith('srv_') || type.includes('channel') || type.includes('emoji'),
-    eventMatcher: (log, type, selected) => selected.some(se => type.includes(se)),
+    eventMatcher: (log, type, selected) => {
+        const detailStr = String(log.details || "").toLowerCase();
+        const isCreate = type.includes('create') || type.includes('add') || detailStr.includes('oluşturuldu') || detailStr.includes('eklendi');
+        const isDelete = type.includes('delete') || type.includes('remove') || detailStr.includes('silindi');
+        const isUpdate = type.includes('update') || type.includes('edit') || detailStr.includes('güncellendi') || type === 'srv_perm';
+        
+        return selected.some(se => {
+            if (se === 'create') return isCreate;
+            if (se === 'delete') return isDelete;
+            if (se === 'update') return isUpdate;
+            return false;
+        });
+    },
     selectedEvents,
     selectedTags,
     reducer: (filteredLogs) => {
@@ -72,8 +85,9 @@ const ServerLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedT
 
                     let icon = <Edit size={16} color="#3b82f6" />;
                     let actionStr = "Değiştirildi";
-                    if (ev.event_type.includes('create') || ev.event_type.includes('add')) { icon = <PlusCircle size={16} color="#10b981" />; actionStr = "Oluşturuldu"; }
-                    if (ev.event_type.includes('delete') || ev.event_type.includes('remove')) { icon = <Trash2 size={16} color="#ef4444" />; actionStr = "Silindi"; }
+                    const detailStr = String(ev.details || "").toLowerCase();
+                    if (ev.event_type.includes('create') || ev.event_type.includes('add') || detailStr.includes('oluşturuldu') || detailStr.includes('eklendi')) { icon = <PlusCircle size={16} color="#10b981" />; actionStr = "Oluşturuldu"; }
+                    if (ev.event_type.includes('delete') || ev.event_type.includes('remove') || detailStr.includes('silindi')) { icon = <Trash2 size={16} color="#ef4444" />; actionStr = "Silindi"; }
                     
                     return (
                       <div key={i} className="msg-dot" style={{ position: 'absolute', left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)', cursor: 'pointer', zIndex: 10 }}>
@@ -88,7 +102,7 @@ const ServerLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedT
                             </div>
                             <div style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '4px' }}>Saat: {formatTime(ev.ts)}</div>
                             <div style={{ color: '#eee', fontSize: '0.9rem' }}>
-                              {ev.details || "Ayar değişti."}
+                              <DiscordMention text={ev.details || "Ayar değişti."} />
                             </div>
                         </div>
                       </div>

@@ -14,6 +14,8 @@ aiohttp>=3.9.0
 Pillow>=10.0.0
 
 # System metrics (uptime, CPU/RAM in f.about)
+# System metrics (uptime, CPU/RAM in f.about)
 psutil>=5.9.0
 
-# Removed music streaming requirements
+# Security (OAuth2 / JWT)
+PyJWT>=2.8.0

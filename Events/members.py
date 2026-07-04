@@ -42,6 +42,25 @@ class Members(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_remove(self, member: discord.Member) -> None:
+        # Denetim kaydını kontrol et (Manuel Kick tespiti)
+        if member.guild.me.guild_permissions.view_audit_log:
+            try:
+                async for entry in member.guild.audit_logs(action=discord.AuditLogAction.kick, limit=5):
+                    if entry.target.id == member.id:
+                        # Eğer botumuz yapmamışsa (Manuel yapılmışsa)
+                        if entry.user.id != self.bot.user.id:
+                            await self.bot.db.log_admin_event(
+                                str(member.guild.id),
+                                str(entry.user.id),
+                                "KICK",
+                                str(member.id),
+                                entry.reason or "Sebep belirtilmedi (Discord UI Manuel İşlem)"
+                            )
+                        break
+            except Exception:
+                pass
+                
+
         roles = [
             role.id
             for role in member.roles
@@ -139,12 +158,14 @@ class Members(commands.Cog):
             return
 
         # Denetim kaydını (Audit Log) kontrol et
-        mod_user = "Bilinmiyor / Kendi Seçimi"
+        mod_user_str = "Bilinmiyor / Kendi Seçimi"
+        mod_user_obj = None
         if before.guild.me.guild_permissions.view_audit_log:
             try:
                 async for entry in before.guild.audit_logs(action=discord.AuditLogAction.member_role_update, limit=5):
                     if entry.target.id == after.id:
-                        mod_user = f"{entry.user.mention} (`{entry.user.id}`)"
+                        mod_user_obj = entry.user
+                        mod_user_str = f"{entry.user.mention} (`{entry.user.id}`)"
                         break
             except Exception:
                 pass
@@ -164,6 +185,20 @@ class Members(commands.Cog):
                     "text": f"Rol Eklendi: {role.name}"
                 },
             )
+            
+            # Eğer işlemi yapan bot değilse, bunu Mod Log'a (ADMIN-EVENTS) da kaydet
+            if mod_user_obj and mod_user_obj.id != self.bot.user.id:
+                await self.bot.db.log_admin_event(
+                    str(before.guild.id),
+                    str(mod_user_obj.id),
+                    "ROLE_ADD",
+                    str(after.id),
+                    f"{role.name} rolü eklendi."
+                )
+            
+            # Anlık rol tablosunu güncelle
+            if hasattr(self.bot, "db"):
+                await self.bot.db.add_user_role(str(before.guild.id), str(after.id), str(role.id), role.name)
 
             # Discord embed logu
             if discord_on:
@@ -173,7 +208,7 @@ class Members(commands.Cog):
                     timestamp=discord.utils.utcnow()
                 )
                 embed.add_field(name="Üye", value=f"{after.mention} ({after.id})", inline=True)
-                embed.add_field(name="Yetkili", value=mod_user, inline=True)
+                embed.add_field(name="Yetkili", value=mod_user_str, inline=True)
                 embed.add_field(name="Eklenen Rol", value=role.mention, inline=False)
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
@@ -193,6 +228,20 @@ class Members(commands.Cog):
                     "text": f"Rol Alındı: {role.name}"
                 },
             )
+            
+            # Eğer işlemi yapan bot değilse, bunu Mod Log'a (ADMIN-EVENTS) da kaydet
+            if mod_user_obj and mod_user_obj.id != self.bot.user.id:
+                await self.bot.db.log_admin_event(
+                    str(before.guild.id),
+                    str(mod_user_obj.id),
+                    "ROLE_REMOVE",
+                    str(after.id),
+                    f"{role.name} rolü alındı."
+                )
+            
+            # Anlık rol tablosunu güncelle
+            if hasattr(self.bot, "db"):
+                await self.bot.db.remove_user_role(str(before.guild.id), str(after.id), str(role.id))
 
             # Discord embed logu
             if discord_on:
@@ -202,10 +251,46 @@ class Members(commands.Cog):
                     timestamp=discord.utils.utcnow()
                 )
                 embed.add_field(name="Üye", value=f"{after.mention} ({after.id})", inline=True)
-                embed.add_field(name="Yetkili", value=mod_user, inline=True)
+                embed.add_field(name="Yetkili", value=mod_user_str, inline=True)
                 embed.add_field(name="Alınan Rol", value=role.mention, inline=False)
                 try: await log_channel.send(embed=embed)
                 except discord.Forbidden: pass
+
+    @commands.Cog.listener()
+    async def on_member_ban(self, guild: discord.Guild, user: discord.abc.User) -> None:
+        if guild.me.guild_permissions.view_audit_log:
+            try:
+                async for entry in guild.audit_logs(action=discord.AuditLogAction.ban, limit=5):
+                    if entry.target.id == user.id:
+                        if entry.user.id != self.bot.user.id:
+                            await self.bot.db.log_admin_event(
+                                str(guild.id),
+                                str(entry.user.id),
+                                "BAN",
+                                str(user.id),
+                                entry.reason or "Sebep belirtilmedi (Discord UI Manuel İşlem)"
+                            )
+                        break
+            except Exception:
+                pass
+
+    @commands.Cog.listener()
+    async def on_member_unban(self, guild: discord.Guild, user: discord.abc.User) -> None:
+        if guild.me.guild_permissions.view_audit_log:
+            try:
+                async for entry in guild.audit_logs(action=discord.AuditLogAction.unban, limit=5):
+                    if entry.target.id == user.id:
+                        if entry.user.id != self.bot.user.id:
+                            await self.bot.db.log_admin_event(
+                                str(guild.id),
+                                str(entry.user.id),
+                                "UNBAN",
+                                str(user.id),
+                                entry.reason or "Sebep belirtilmedi (Discord UI Manuel İşlem)"
+                            )
+                        break
+            except Exception:
+                pass
 
 
 async def setup(bot: commands.Bot) -> None:

@@ -3,12 +3,13 @@ import { Tag } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
+import DiscordMention from '../components/DiscordMention';
 
 const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags, onUserClick }) => {
   const [activeTab, setActiveTab] = useState('user'); // user, role, global
 
   const { parsed } = useLogFilter(logs, {
-    typeFilter: (log, type) => type.includes('role'),
+    typeFilter: (log, type) => type.includes('role') && log.source !== 'admin',
     selectedTags,
     reducer: (filteredLogs) => {
       const users = {};
@@ -112,7 +113,7 @@ const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
              {Object.values(user.roles).map(role => (
                <div key={role.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', height: '30px' }}>
                  <div style={{ width: '150px', fontSize: '0.85rem', color: '#ccc', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }} title={role.id}>
-                    {role.id.startsWith('<@&') ? `Rol ${role.id}` : role.id}
+                    <DiscordMention text={role.id.startsWith('<@&') ? `Rol ${role.id}` : role.id} />
                  </div>
                  <div style={{ flex: 1, position: 'relative', height: '24px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px' }}>
                     {role.sessions.map((sess, idx) => {
@@ -149,7 +150,9 @@ const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
           <div key={role.id} style={{ marginBottom: '30px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
               <Tag size={20} color="#06b6d4" />
-              <h4 style={{ color: '#06b6d4', fontSize: '1.1rem', margin: 0 }}>{role.id.startsWith('<@&') ? `Rol ${role.id}` : role.id}</h4>
+              <h4 style={{ color: '#06b6d4', fontSize: '1.1rem', margin: 0 }}>
+                <DiscordMention text={role.id.startsWith('<@&') ? `Rol ${role.id}` : role.id} />
+              </h4>
             </div>
             
             {Object.values(role.users).map(user => (

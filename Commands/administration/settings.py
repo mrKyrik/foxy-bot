@@ -7,6 +7,7 @@ from core.embed import EmbedBuilder
 log = logging.getLogger(__name__)
 
 class Settings(commands.Cog):
+    category = "Yönetim ve Ayarlar"
     """Sunucu ayarları ve sistem yapılandırmaları."""
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -19,7 +20,7 @@ class Settings(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def log(self, ctx: commands.Context) -> None:
-        """Discord kanalı log sistemi paneli. Embed logların kanal ve şalter durumlarını gösterir."""
+        """log işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket log <#channel>`"""
         row_db = await self.get_log_settings(ctx.guild.id)
         row = dict(row_db) if row_db else {}
 
@@ -140,7 +141,7 @@ class Settings(commands.Cog):
 
     @log.command(name="set")
     async def log_set(self, ctx: commands.Context, log_type: str, channel: discord.TextChannel) -> None:
-        """Log kanalını ayarlar. (mesaj, ses, uyari, ticket, mod, basvuru, davet, sunucu, rol)"""
+        """Sistemdeki set ayarını yapılandırır. Kullanım: `f.set <parametre>`"""
         types = {
             "mesaj": "msg_channel", "ses": "ses_channel", "uyari": "uyari_channel",
             "ticket": "ticket_channel", "mod": "mod_channel", "basvuru": "basvuru_channel",

@@ -9,10 +9,11 @@ Komutlar:
     Mesaj:        purge
     Uyarı:        warn, warns, clearwarn
     Ses:          vmute, vunmute, vdeafen, vundeafen, vdisconnect, vmove
-    Kanal:        create_channel, delete_channel
+    Kanal:        create_channel, delete_channel, nuke
     Geçmiş:       modlogs
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import logging
 from datetime import timedelta
 
@@ -25,6 +26,7 @@ log = logging.getLogger(__name__)
 
 
 class Moderation(commands.Cog):
+    category = "Moderasyon"
     """
     Sunucu moderasyon komutları. Tüm eylemler veritabanına loglanır.
     """
@@ -54,11 +56,43 @@ class Moderation(commands.Cog):
             reason=reason,
         )
 
+    async def can_moderate(self, ctx: commands.Context, user: discord.Member) -> bool:
+        """Hiyerarşi ve bot yetkisi kontrolleri"""
+        # Sunucu sahibi kontrolleri (Owner Bypass)
+        if ctx.author.id == ctx.guild.owner_id:
+            pass # Yapan sunucu sahibi ise her zaman geç
+        elif user.id == ctx.guild.owner_id:
+            await ctx.send(embed=EmbedBuilder(
+                title="⚠️ Hiyerarşi Hatası",
+                description="Sunucu sahibine işlem yapamazsınız.",
+                color=discord.Color.orange(),
+            ).build())
+            return False
+        elif user.top_role.position >= ctx.author.top_role.position:
+            await ctx.send(embed=EmbedBuilder(
+                title="⚠️ Hiyerarşi Hatası",
+                description="Bu kullanıcının rolü sizinkiyle eşit ya da daha yüksek.",
+                color=discord.Color.orange(),
+            ).build())
+            return False
+
+        # Bot hiyerarşisi kontrolü
+        if ctx.guild.me.top_role.position <= user.top_role.position and user.id != ctx.guild.owner_id:
+            await ctx.send(embed=EmbedBuilder(
+                title="❌ Bot Yetkisi Yetersiz",
+                description="Benim rolüm bu kullanıcıdan daha düşük veya eşit olduğu için işlem yapamam.",
+                color=discord.Color.red(),
+            ).build())
+            return False
+            
+        return True
+
     # ==================================================================
     # Üye komutları
     # ==================================================================
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(kick_members=True)
     async def kick(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -74,12 +108,8 @@ class Moderation(commands.Cog):
                 color=discord.Color.red(),
             ).build())
 
-        if user.top_role.position >= ctx.author.top_role.position:
-            return await ctx.send(embed=EmbedBuilder(
-                title="⚠️ Hiyerarşi Hatası",
-                description="Bu kullanıcının rolü sizinkiyle eşit ya da daha yüksek.",
-                color=discord.Color.orange(),
-            ).build())
+        if not await self.can_moderate(ctx, user):
+            return
 
         await user.kick(reason=reason)
         await self._log(ctx, "KICK", user.id, reason)
@@ -92,6 +122,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(ban_members=True)
     async def ban(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -107,12 +138,8 @@ class Moderation(commands.Cog):
                 color=discord.Color.red(),
             ).build())
 
-        if user.top_role.position >= ctx.author.top_role.position:
-            return await ctx.send(embed=EmbedBuilder(
-                title="⚠️ Hiyerarşi Hatası",
-                description="Bu kullanıcının rolü sizinkiyle eşit ya da daha yüksek.",
-                color=discord.Color.orange(),
-            ).build())
+        if not await self.can_moderate(ctx, user):
+            return
 
         await user.ban(reason=reason)
         await self._log(ctx, "BAN", user.id, reason)
@@ -125,6 +152,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(ban_members=True)
     async def unban(
         self, ctx: commands.Context, user_id: int, *, reason: str = "Belirtilmedi"
@@ -152,6 +180,7 @@ class Moderation(commands.Cog):
             ).build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(moderate_members=True)
     async def timeout(
         self,
@@ -165,11 +194,17 @@ class Moderation(commands.Cog):
         Kullanıcıyı belirtilen süre boyunca susturur.
         Kullanım: `f.timeout @kullanıcı <dakika> [sebep]`
         """
-        if user.top_role.position >= ctx.author.top_role.position:
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+
+        if not await self.can_moderate(ctx, user):
+            return
+
+        if minutes > 40320:
             return await ctx.send(embed=EmbedBuilder(
-                title="⚠️ Hiyerarşi Hatası",
-                description="Bu kullanıcıyı susturamazsınız.",
-                color=discord.Color.orange(),
+                title="❌ Sınır Aşıldı",
+                description="Maksimum 28 gün (40320 dakika) susturabilirsiniz.",
+                color=discord.Color.red()
             ).build())
 
         duration = timedelta(minutes=minutes)
@@ -184,6 +219,7 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(moderate_members=True)
     async def untimeout(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
@@ -192,12 +228,11 @@ class Moderation(commands.Cog):
         Kullanıcının susturmasını kaldırır.
         Kullanım: `f.untimeout @kullanıcı [sebep]`
         """
-        if user.top_role.position >= ctx.author.top_role.position:
-            return await ctx.send(embed=EmbedBuilder(
-                title="⚠️ Hiyerarşi Hatası",
-                description="Bu kullanıcının susturmasını kaldıramazsınız.",
-                color=discord.Color.orange(),
-            ).build())
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+
+        if not await self.can_moderate(ctx, user):
+            return
 
         await user.timeout(None, reason=reason)
         await self._log(ctx, "UNTIMEOUT", user.id, reason)
@@ -214,31 +249,37 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(manage_messages=True)
     async def purge(self, ctx: commands.Context, amount: int) -> None:
-        """
-        Kanaldan belirtilen sayıda mesajı siler (komut mesajı dahil).
-        Kullanım: `f.purge <miktar>`
-        """
+        """purge işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.purge [parametreler]`"""
         if amount < 1 or amount > 500:
             return await ctx.send("❌ Miktar 1-500 arasında olmalıdır.")
 
-        deleted = await ctx.channel.purge(limit=amount + 1)
-        await self._log(ctx, "PURGE", ctx.channel.id, f"{len(deleted)-1} mesaj silindi")
+        try:
+            deleted = await ctx.channel.purge(limit=amount + 1)
+            await self._log(ctx, "PURGE", ctx.channel.id, f"{len(deleted)-1} mesaj silindi")
 
-        embed = EmbedBuilder(
-            title="🗑️ Mesajlar Silindi",
-            description=f"`{len(deleted)-1}` mesaj başarıyla silindi.",
-            color=discord.Color.green(),
-        ).set_timestamp().build()
-        msg = await ctx.send(embed=embed)
-        await msg.delete(delay=5)
+            embed = EmbedBuilder(
+                title="🗑️ Mesajlar Silindi",
+                description=f"`{len(deleted)-1}` mesaj başarıyla silindi.",
+                color=discord.Color.green(),
+            ).set_timestamp().build()
+            msg = await ctx.send(embed=embed)
+            await msg.delete(delay=5)
+        except discord.HTTPException as e:
+            await ctx.send(embed=EmbedBuilder(
+                title="❌ İşlem Başarısız",
+                description=f"Discord API Hatası (Muhtemelen 14 günden eski mesajları silmeye çalıştınız):\n`{e}`",
+                color=discord.Color.red(),
+            ).build())
 
     # ==================================================================
     # Uyarı sistemi
     # ==================================================================
 
     @commands.command()
+    @kumiho_check("owner")
     async def warn(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
@@ -249,15 +290,18 @@ class Moderation(commands.Cog):
         if user == ctx.author:
             return await ctx.send("❌ Kendinizi uyaramazsınız.")
 
+        if not await self.can_moderate(ctx, user):
+            return
+
         db = self.bot.db
         await db.execute(
             """
             INSERT INTO warns (guild_id, user_id, mod_id, reason)
             VALUES (?, ?, ?, ?)
             """,
-            str(ctx.guild.id), str(user.id), str(ctx.author.id), reason,
+            str(ctx.guild.id), str(user.id), str(ctx.author.id), reason[:1000],
         )
-        await self._log(ctx, "WARN", user.id, reason)
+        await self._log(ctx, "WARN", user.id, reason[:1000])
 
         # Toplam uyarı sayısını al
         rows = await db.fetchall(
@@ -274,11 +318,9 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["warnlist"])
+    @kumiho_check("owner")
     async def warns(self, ctx: commands.Context, user: discord.Member) -> None:
-        """
-        Kullanıcının uyarı geçmişini gösterir.
-        Kullanım: `f.warns @kullanıcı`
-        """
+        """warns işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.warns [parametreler]`"""
         rows = await self.bot.db.fetchall(
             """
             SELECT warn_id, reason, mod_id, timestamp
@@ -312,11 +354,9 @@ class Moderation(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
+    @kumiho_check("owner")
     async def clearwarn(self, ctx: commands.Context, warn_id: int) -> None:
-        """
-        Belirtilen ID'li uyarıyı siler.
-        Kullanım: `f.clearwarn <uyarı_id>`
-        """
+        """Sistemdeki clearwarn kayıtlarını tamamen temizler. Kullanım: `f.clearwarn`"""
         row = await self.bot.db.fetchone(
             "SELECT user_id FROM warns WHERE warn_id=? AND guild_id=?",
             warn_id, str(ctx.guild.id),
@@ -348,11 +388,16 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(mute_members=True)
     async def vmute(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
         """Kullanıcıyı ses kanalında susturur. Kullanım: `f.vmute @kullanıcı [sebep]`"""
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
         if not user.voice:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
@@ -367,11 +412,16 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(mute_members=True)
     async def vunmute(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
         """Kullanıcının ses susturmasını kaldırır. Kullanım: `f.vunmute @kullanıcı [sebep]`"""
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
         if not user.voice:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
@@ -386,11 +436,16 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(deafen_members=True)
     async def vdeafen(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
         """Kullanıcıyı ses kanalında sağırlaştırır. Kullanım: `f.vdeafen @kullanıcı [sebep]`"""
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
         if not user.voice:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
@@ -405,11 +460,16 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(deafen_members=True)
     async def vundeafen(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
         """Kullanıcının sağırlaştırmasını kaldırır. Kullanım: `f.vundeafen @kullanıcı [sebep]`"""
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
         if not user.voice:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
@@ -424,16 +484,23 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(move_members=True)
     async def vdisconnect(
         self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
     ) -> None:
         """Kullanıcıyı ses kanalından atar. Kullanım: `f.vdisconnect @kullanıcı [sebep]`"""
-        if not user.voice:
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
+        if not user.voice or not user.voice.channel:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
                 color=discord.Color.red(),
             ).build())
+        if not user.voice.channel.permissions_for(ctx.author).move_members:
+            return await ctx.send(embed=EmbedBuilder(title="❌ Yetki Hatası", description="Kullanıcının bulunduğu ses kanalında üyeleri taşıma yetkiniz yok.", color=discord.Color.red()).build())
         await user.move_to(None, reason=reason)
         await self._log(ctx, "VOICE_DISCONNECT", user.id, reason)
         await ctx.send(embed=EmbedBuilder(
@@ -443,6 +510,7 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(move_members=True)
     async def vmove(
         self,
@@ -453,11 +521,19 @@ class Moderation(commands.Cog):
         reason: str = "Belirtilmedi",
     ) -> None:
         """Kullanıcıyı başka bir ses kanalına taşır. Kullanım: `f.vmove @kullanıcı #kanal [sebep]`"""
-        if not user.voice:
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(title="❌ İşlem Başarısız", description="Kendinize veya bota işlem yapamazsınız.", color=discord.Color.red()).build())
+        if not await self.can_moderate(ctx, user):
+            return
+        if not user.voice or not user.voice.channel:
             return await ctx.send(embed=EmbedBuilder(
                 title="❌ Ses Kanalında Değil", description="Kullanıcı bir ses kanalında yok.",
                 color=discord.Color.red(),
             ).build())
+        if not user.voice.channel.permissions_for(ctx.author).move_members:
+            return await ctx.send(embed=EmbedBuilder(title="❌ Yetki Hatası", description="Kullanıcının bulunduğu ses kanalında üyeleri taşıma yetkiniz yok.", color=discord.Color.red()).build())
+        if not channel.permissions_for(ctx.author).connect:
+            return await ctx.send(embed=EmbedBuilder(title="❌ Yetki Hatası", description="Hedef ses kanalına bağlanma yetkiniz yok.", color=discord.Color.red()).build())
         await user.move_to(channel, reason=reason)
         await self._log(ctx, "VOICE_MOVE", user.id, f"→ #{channel.name} | {reason}")
         await ctx.send(embed=EmbedBuilder(
@@ -471,9 +547,10 @@ class Moderation(commands.Cog):
     # ==================================================================
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(manage_channels=True)
     async def create_channel(self, ctx: commands.Context, *, channel_name: str) -> None:
-        """Yeni bir metin kanalı oluşturur. Kullanım: `f.create_channel <isim>`"""
+        """create_channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.create_channel [parametreler]`"""
         channel = await ctx.guild.create_text_channel(name=channel_name)
         await self._log(ctx, "CREATE_CHANNEL", channel.id, channel_name)
         await ctx.send(embed=EmbedBuilder(
@@ -483,11 +560,14 @@ class Moderation(commands.Cog):
         ).set_timestamp().build())
 
     @commands.command()
+    @kumiho_check("owner")
     @commands.bot_has_permissions(manage_channels=True)
     async def delete_channel(
         self, ctx: commands.Context, channel: discord.TextChannel
     ) -> None:
         """Bir metin kanalını siler. Kullanım: `f.delete_channel #kanal`"""
+        if not channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.send(embed=EmbedBuilder(title="❌ Yetki Hatası", description="Bu kanalı silme yetkiniz yok.", color=discord.Color.red()).build())
         channel_id = channel.id
         channel_name = channel.name
         await channel.delete()
@@ -498,12 +578,34 @@ class Moderation(commands.Cog):
             color=discord.Color.green(),
         ).set_timestamp().build())
 
+    @commands.command()
+    @kumiho_check("owner")
+    @commands.bot_has_permissions(manage_channels=True)
+    async def nuke(self, ctx: commands.Context, channel: discord.TextChannel = None):
+        """nuke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nuke [parametreler]`"""
+        target_channel = channel or ctx.channel
+        if not target_channel.permissions_for(ctx.author).manage_channels:
+            return await ctx.send(embed=EmbedBuilder(title="❌ Yetki Hatası", description="Bu kanalı sıfırlama (nuke) yetkiniz yok.", color=discord.Color.red()).build())
+        pos = target_channel.position
+
+        new_channel = await target_channel.clone(reason=f"Nuke by {ctx.author}")
+        await target_channel.delete(reason=f"Nuke by {ctx.author}")
+        await new_channel.edit(position=pos)
+
+        embed = EmbedBuilder(
+            title="☢️ Kanal Sıfırlandı",
+            description=f"Kanal **{ctx.author}** tarafından nukelendi.",
+            color=discord.Color.red(),
+        ).set_timestamp().build()
+        await new_channel.send(embed=embed)
+        await self._log(ctx, "NUKE", new_channel.id, f"Kanal sıfırlandı: {new_channel.name}")
+
     # ==================================================================
     # Mod log geçmişi
     # ==================================================================
 
     @commands.command(aliases=["history"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def modlogs(
         self,
         ctx: commands.Context,

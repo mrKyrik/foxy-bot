@@ -7,17 +7,18 @@ Veri katmanı:
   • levels tablosu → user_id, guild_id, xp, level, message_count
   • level_rewards tablosu → guild_id, level, role_id     (USER-DB.db)
   • level_ignores tablosu → guild_id, channel_id         (USER-DB.db)
+  • level_settings tablosu → guild_id, level_channel_id, min_xp, max_xp
 
 Pillow yüklenmediyse rank komutu text embed döndürür.
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import io
 import logging
 import platform
 import random
 import time
 
-import aiohttp
 import discord
 from discord.ext import commands, tasks
 
@@ -35,18 +36,27 @@ def _get_xp_needed(level: int) -> int:
 
 
 class Leveling(commands.Cog):
+    category = "Gelişim ve Ekonomi"
     """
     State-of-the-art server-scoped leveling cog with Pillow rank card rendering.
-    All data is stored in SQLite via bot.db.
+    Optimized with RAM caching and O(log N) rank counting.
     """
 
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
         # In-memory cooldown: user_id_str -> last_xp_time
         self._xp_cd: dict[str, float] = {}
+        
+        # RAM Caches
+        self.ignored_channels: set[str] = set() # "guild_id:channel_id"
+        self.level_rewards: dict[str, dict[int, int]] = {} # guild_id -> {level: role_id}
+        self.level_settings: dict[str, dict] = {} # guild_id -> {"channel_id": int, "min_xp": int, "max_xp": int}
 
     async def cog_load(self):
         self.cleanup_xp_cd.start()
+        # Initial Cache Load
+        await self._ensure_level_tables()
+        await self._load_caches()
 
     async def cog_unload(self):
         self.cleanup_xp_cd.cancel()
@@ -62,10 +72,9 @@ class Leveling(commands.Cog):
     def db(self):
         return self.bot.db
 
-    # ── DB Helpers ────────────────────────────────────────────────────────────
+    # ── DB & Cache Helpers ────────────────────────────────────────────────────────────
 
     async def _ensure_level_tables(self) -> None:
-        """Create level_rewards and level_ignores tables if absent."""
         await self.db.user_db.executescript("""
         CREATE TABLE IF NOT EXISTS level_rewards (
             guild_id TEXT,
@@ -78,116 +87,166 @@ class Leveling(commands.Cog):
             channel_id TEXT,
             PRIMARY KEY (guild_id, channel_id)
         );
+        CREATE TABLE IF NOT EXISTS level_settings (
+            guild_id TEXT PRIMARY KEY,
+            level_channel_id TEXT,
+            min_xp INTEGER DEFAULT 15,
+            max_xp INTEGER DEFAULT 25
+        );
         """)
         await self.db.user_db.commit()
 
-    async def get_profile(self, guild_id: int, user_id: int) -> dict:
-        await self.db.execute(
-            "INSERT OR IGNORE INTO levels (user_id, guild_id) VALUES (?, ?)",
-            str(user_id), str(guild_id),
-        )
-        row = await self.db.fetchone(
-            "SELECT xp, level, message_count FROM levels WHERE user_id=? AND guild_id=?",
-            str(user_id), str(guild_id),
-        )
-        return dict(row) if row else {"xp": 0, "level": 0, "message_count": 0}
+    async def _load_caches(self):
+        # Ignores
+        ignores = await self.db.fetchall("SELECT guild_id, channel_id FROM level_ignores")
+        self.ignored_channels = {f"{r['guild_id']}:{r['channel_id']}" for r in ignores}
+        
+        # Rewards
+        rewards = await self.db.fetchall("SELECT guild_id, level, role_id FROM level_rewards")
+        self.level_rewards.clear()
+        for r in rewards:
+            gid = r["guild_id"]
+            if gid not in self.level_rewards:
+                self.level_rewards[gid] = {}
+            self.level_rewards[gid][r["level"]] = int(r["role_id"])
+            
+        # Settings
+        settings = await self.db.fetchall("SELECT guild_id, level_channel_id, min_xp, max_xp FROM level_settings")
+        self.level_settings.clear()
+        for r in settings:
+            self.level_settings[r["guild_id"]] = {
+                "channel_id": int(r["level_channel_id"]) if r["level_channel_id"] else None,
+                "min_xp": r["min_xp"],
+                "max_xp": r["max_xp"]
+            }
+
+    def _get_setting(self, guild_id: str, key: str, default):
+        if guild_id in self.level_settings and key in self.level_settings[guild_id]:
+            val = self.level_settings[guild_id][key]
+            if val is not None:
+                return val
+        return default
 
     # ── XP Listener ───────────────────────────────────────────────────────────
-
-    @commands.Cog.listener()
-    async def on_ready(self) -> None:
-        await self._ensure_level_tables()
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or not message.guild:
             return
 
-        # Channel ignore check
-        ignored = await self.db.fetchone(
-            "SELECT 1 FROM level_ignores WHERE guild_id=? AND channel_id=?",
-            str(message.guild.id), str(message.channel.id),
-        )
-        if ignored:
+        guild_id_str = str(message.guild.id)
+        
+        # O(1) Cache Ignore Check
+        if f"{guild_id_str}:{message.channel.id}" in self.ignored_channels:
             return
 
-        # 60-second per-user cooldown (in-memory)
-        u_key = f"{message.guild.id}:{message.author.id}"
+        # 60-second cooldown
+        u_key = f"{guild_id_str}:{message.author.id}"
         now = time.time()
         if now - self._xp_cd.get(u_key, 0.0) < 60:
             return
         self._xp_cd[u_key] = now
 
-        profile = await self.get_profile(message.guild.id, message.author.id)
-        xp_gain = random.randint(15, 25)
-        new_xp = profile["xp"] + xp_gain
+        # Custom XP Rate
+        min_xp = self._get_setting(guild_id_str, "min_xp", 15)
+        max_xp = self._get_setting(guild_id_str, "max_xp", 25)
+        # Ensure max >= min
+        if max_xp < min_xp: max_xp = min_xp
+        xp_gain = random.randint(min_xp, max_xp)
+
+        # UPSERT and return new state
+        user_id_str = str(message.author.id)
+        
+        # To avoid extra queries, first insert if not exists
+        await self.db.execute(
+            "INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)",
+            user_id_str, guild_id_str
+        )
+        
+        # Update and read in one go
+        await self.db.execute(
+            "UPDATE levels SET xp = xp + ?, message_count = message_count + 1 WHERE user_id = ? AND guild_id = ?",
+            xp_gain, user_id_str, guild_id_str
+        )
+        
+        profile = await self.db.fetchone(
+            "SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?",
+            user_id_str, guild_id_str
+        )
+        
+        if not profile: return
+        
+        new_xp = profile["xp"]
         level = profile["level"]
-        msg_count = profile["message_count"] + 1
         needed = _get_xp_needed(level)
 
         if new_xp >= needed:
-            # Level up
+            # Level up!
             new_level = level + 1
-            new_xp = new_xp - needed
+            leftover_xp = new_xp - needed
+            
             await self.db.execute(
-                """UPDATE levels SET xp=?, level=?, message_count=?
-                   WHERE user_id=? AND guild_id=?""",
-                new_xp, new_level, msg_count,
-                str(message.author.id), str(message.guild.id),
+                "UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?",
+                leftover_xp, new_level, user_id_str, guild_id_str
             )
+            
+            # Message
+            embed = discord.Embed(
+                title="🎉 Level Up!",
+                description=f"Tebrikler {message.author.mention}, **{new_level}** seviyesine ulaştın!",
+                color=discord.Color.green(),
+            )
+            
+            # Specific Channel Check
+            channel_id = self._get_setting(guild_id_str, "channel_id", None)
+            target_channel = message.channel
+            if channel_id:
+                ch = message.guild.get_channel(channel_id)
+                if ch: target_channel = ch
+                
             try:
-                embed = discord.Embed(
-                    title="🎉 Level Up!",
-                    description=f"Congratulations {message.author.mention}, you reached level **{new_level}**!",
-                    color=discord.Color.green(),
-                )
-                await message.channel.send(embed=embed)
+                await target_channel.send(embed=embed)
             except Exception:
                 pass
 
-            # Reward role
-            reward = await self.db.fetchone(
-                "SELECT role_id FROM level_rewards WHERE guild_id=? AND level=?",
-                str(message.guild.id), new_level,
-            )
-            if reward:
-                role = message.guild.get_role(int(reward["role_id"]))
+            # O(1) Cache Role Reward
+            if guild_id_str in self.level_rewards and new_level in self.level_rewards[guild_id_str]:
+                role_id = self.level_rewards[guild_id_str][new_level]
+                role = message.guild.get_role(role_id)
                 if role:
                     try:
                         await message.author.add_roles(role, reason="Level role reward")
                     except Exception:
                         pass
-        else:
-            await self.db.execute(
-                """UPDATE levels SET xp=?, message_count=?
-                   WHERE user_id=? AND guild_id=?""",
-                new_xp, msg_count,
-                str(message.author.id), str(message.guild.id),
-            )
 
     # ── Rank Card ─────────────────────────────────────────────────────────────
 
     @commands.command(name="rank")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def rank(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Displays your rank card. Usage: `f.rank [@user]`"""
+        """rank işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rank [@user]`"""
         member = member or ctx.author
         if member.bot:
             return await ctx.send("❌ Bots do not earn XP!")
 
-        profile = await self.get_profile(ctx.guild.id, member.id)
+        # UPSERT
+        await self.db.execute(
+            "INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)",
+            str(member.id), str(ctx.guild.id)
+        )
+        profile = await self.db.fetchone(
+            "SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?",
+            str(member.id), str(ctx.guild.id)
+        )
         xp, level = profile["xp"], profile["level"]
         needed = _get_xp_needed(level)
 
-        # Rank position
-        rows = await self.db.fetchall(
-            "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC",
-            str(ctx.guild.id),
+        # O(log N) Rank Query
+        rank_row = await self.db.fetchone(
+            "SELECT COUNT(*) as rank FROM levels WHERE guild_id = ? AND (level > ? OR (level = ? AND xp > ?))",
+            str(ctx.guild.id), level, level, xp
         )
-        rank_pos = next(
-            (idx for idx, r in enumerate(rows, 1) if r["user_id"] == str(member.id)),
-            len(rows),
-        )
+        rank_pos = rank_row["rank"] + 1
 
         if not _PILLOW:
             embed = discord.Embed(
@@ -200,13 +259,9 @@ class Leveling(commands.Cog):
             return await ctx.send(embed=embed)
 
         async with ctx.typing():
-            # Fetch avatar bytes
             avatar_bytes = None
             try:
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(str(member.display_avatar.url)) as resp:
-                        if resp.status == 200:
-                            avatar_bytes = await resp.read()
+                avatar_bytes = await member.display_avatar.replace(size=256, static_format="png").read()
             except Exception:
                 pass
 
@@ -272,41 +327,42 @@ class Leveling(commands.Cog):
             f"• `{ctx.prefix}level reward_remove <lvl>` — Remove a reward role\n"
             f"• `{ctx.prefix}level reward_list` — List reward roles\n"
             f"• `{ctx.prefix}level ignore_add [#channel]` — Block XP in channel\n"
-            f"• `{ctx.prefix}level ignore_remove [#channel]` — Unblock XP in channel"
+            f"• `{ctx.prefix}level ignore_remove [#channel]` — Unblock XP in channel\n"
+            f"• `{ctx.prefix}level channel set [#channel]` — Set a specific channel for level up messages\n"
+            f"• `{ctx.prefix}level channel remove` — Send level up messages to current channel\n"
+            f"• `{ctx.prefix}level xp_rate set <min> <max>` — Configure XP gained per message"
         )
 
+    # REWARDS
     @level_group.command(name="reward_add", aliases=["add_reward", "reward"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def level_reward_add(
         self, ctx: commands.Context, level: int = None, role: discord.Role = None
     ) -> None:
-        """Creates a level reward role. Usage: `f.level reward_add <level> <@role>`"""
         if level is None or not role:
             return await ctx.send(f"Usage: `{ctx.prefix}level reward_add <level> <@role>`")
-        await self._ensure_level_tables()
         await self.db.execute(
             "INSERT OR REPLACE INTO level_rewards (guild_id, level, role_id) VALUES (?, ?, ?)",
             str(ctx.guild.id), level, str(role.id),
         )
+        await self._load_caches()
         await ctx.send(f"✅ Level **{level}** reward set to {role.mention}.")
 
     @level_group.command(name="reward_remove", aliases=["remove_reward"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def level_reward_remove(self, ctx: commands.Context, level: int = None) -> None:
-        """Removes a level reward role. Usage: `f.level reward_remove <level>`"""
         if level is None:
             return await ctx.send(f"Usage: `{ctx.prefix}level reward_remove <level>`")
-        await self._ensure_level_tables()
         await self.db.execute(
             "DELETE FROM level_rewards WHERE guild_id=? AND level=?",
             str(ctx.guild.id), level,
         )
+        await self._load_caches()
         await ctx.send(f"✅ Cleared role reward for Level **{level}**.")
 
     @level_group.command(name="reward_list", aliases=["rewards"])
+    @kumiho_check("owner")
     async def level_reward_list(self, ctx: commands.Context) -> None:
-        """Lists all level reward roles. Usage: `f.level reward_list`"""
-        await self._ensure_level_tables()
         rows = await self.db.fetchall(
             "SELECT level, role_id FROM level_rewards WHERE guild_id=? ORDER BY level ASC",
             str(ctx.guild.id),
@@ -322,40 +378,81 @@ class Leveling(commands.Cog):
         embed.description = desc
         await ctx.send(embed=embed)
 
+    # IGNORES
     @level_group.command(name="ignore_add", aliases=["ignore"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def level_ignore_add(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
-        """Blocks XP in a channel. Usage: `f.level ignore_add [#channel]`"""
         channel = channel or ctx.channel
-        await self._ensure_level_tables()
         await self.db.execute(
             "INSERT OR IGNORE INTO level_ignores (guild_id, channel_id) VALUES (?, ?)",
             str(ctx.guild.id), str(channel.id),
         )
+        await self._load_caches()
         await ctx.send(f"✅ XP gain blocked in {channel.mention}.")
 
     @level_group.command(name="ignore_remove", aliases=["unignore"])
-    @commands.has_permissions(administrator=True)
+    @kumiho_check("owner")
     async def level_ignore_remove(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
-        """Unblocks XP in a channel. Usage: `f.level ignore_remove [#channel]`"""
         channel = channel or ctx.channel
-        await self._ensure_level_tables()
         await self.db.execute(
             "DELETE FROM level_ignores WHERE guild_id=? AND channel_id=?",
             str(ctx.guild.id), str(channel.id),
         )
+        await self._load_caches()
         await ctx.send(f"✅ Restored XP gain in {channel.mention}.")
+
+    # CHANNEL & XP RATE SETTINGS
+    @level_group.group(name="channel", invoke_without_command=True)
+    async def level_channel_group(self, ctx: commands.Context):
+        await ctx.send(f"Usage: `{ctx.prefix}level channel set #kanal` veya `{ctx.prefix}level channel remove`")
+
+    @level_channel_group.command(name="set")
+    @kumiho_check("owner")
+    async def level_channel_set(self, ctx: commands.Context, channel: discord.TextChannel):
+        await self.db.execute(
+            "INSERT INTO level_settings (guild_id, level_channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET level_channel_id=excluded.level_channel_id",
+            str(ctx.guild.id), str(channel.id)
+        )
+        await self._load_caches()
+        await ctx.send(f"✅ Seviye atlama mesajları artık {channel.mention} kanalına gönderilecek.")
+
+    @level_channel_group.command(name="remove")
+    @kumiho_check("owner")
+    async def level_channel_remove(self, ctx: commands.Context):
+        await self.db.execute(
+            "UPDATE level_settings SET level_channel_id = NULL WHERE guild_id = ?",
+            str(ctx.guild.id)
+        )
+        await self._load_caches()
+        await ctx.send("✅ Özel seviye kanalı kaldırıldı. Mesajlar kazanıldığı kanala gönderilecek.")
+
+    @level_group.group(name="xp_rate", invoke_without_command=True)
+    async def level_xp_rate_group(self, ctx: commands.Context):
+        await ctx.send(f"Usage: `{ctx.prefix}level xp_rate set <min> <max>`")
+
+    @level_xp_rate_group.command(name="set")
+    @kumiho_check("owner")
+    async def level_xp_rate_set(self, ctx: commands.Context, min_xp: int, max_xp: int):
+        if min_xp < 0 or max_xp < min_xp:
+            return await ctx.send("❌ Geçersiz XP değerleri. (min >= 0, max >= min olmalı)")
+            
+        await self.db.execute(
+            "INSERT INTO level_settings (guild_id, min_xp, max_xp) VALUES (?, ?, ?) ON CONFLICT(guild_id) DO UPDATE SET min_xp=excluded.min_xp, max_xp=excluded.max_xp",
+            str(ctx.guild.id), min_xp, max_xp
+        )
+        await self._load_caches()
+        await ctx.send(f"✅ Bu sunucu için mesaj başına kazanılacak XP limiti **{min_xp} - {max_xp}** olarak güncellendi.")
 
     # ── XP Leaderboard ────────────────────────────────────────────────────────
 
     @commands.command(name="leaderboard_xp", aliases=["lb_xp", "xplb"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def lb_xp(self, ctx: commands.Context) -> None:
-        """Shows the XP leaderboard. Usage: `f.leaderboard_xp`"""
+        """leaderboard_xp işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.leaderboard_xp`"""
         rows = await self.db.fetchall(
             "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC LIMIT 10",
             str(ctx.guild.id),

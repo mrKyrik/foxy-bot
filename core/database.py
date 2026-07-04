@@ -48,6 +48,15 @@ CREATE TABLE IF NOT EXISTS roles (
     PRIMARY KEY (guild_id, role_id)
 );
 
+-- Kullanıcıların anlık (current) rollerini saklar
+CREATE TABLE IF NOT EXISTS user_current_roles (
+    guild_id  TEXT,
+    user_id   TEXT,
+    role_id   TEXT,
+    role_name TEXT,
+    PRIMARY KEY (guild_id, user_id, role_id)
+);
+
 -- Rol bazlı komut izinleri
 CREATE TABLE IF NOT EXISTS role_permissions (
     guild_id        TEXT,
@@ -155,26 +164,29 @@ CREATE TABLE IF NOT EXISTS level_ignores (
 
 -- Özel Formlar
 CREATE TABLE IF NOT EXISTS custom_forms (
-    form_id     TEXT PRIMARY KEY,
+    form_id     TEXT,
     guild_id    TEXT NOT NULL,
     title       TEXT NOT NULL,
     channel_id  TEXT NOT NULL,
     form_type   INTEGER DEFAULT 1,
-    action_target TEXT
+    action_target TEXT,
+    PRIMARY KEY (guild_id, form_id)
 );
 
 CREATE TABLE IF NOT EXISTS form_questions (
     question_id INTEGER PRIMARY KEY AUTOINCREMENT,
     form_id     TEXT NOT NULL,
+    guild_id    TEXT NOT NULL,
     question_text TEXT NOT NULL,
-    FOREIGN KEY (form_id) REFERENCES custom_forms(form_id) ON DELETE CASCADE
+    FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS form_roles (
     action_id   INTEGER PRIMARY KEY AUTOINCREMENT,
     form_id     TEXT NOT NULL,
+    guild_id    TEXT NOT NULL,
     role_id     TEXT NOT NULL,
-    FOREIGN KEY (form_id) REFERENCES custom_forms(form_id) ON DELETE CASCADE
+    FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
 );
 
 -- Geçiçi Yasaklamalar
@@ -291,6 +303,30 @@ CREATE TABLE IF NOT EXISTS channel_cache (
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Private Voice Channels
+CREATE TABLE IF NOT EXISTS private_voice_hubs (
+    guild_id    TEXT PRIMARY KEY,
+    hub_id      TEXT,
+    category_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS private_voice_rooms (
+    channel_id  TEXT PRIMARY KEY,
+    owner_id    TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS private_voice_settings (
+    user_id     TEXT PRIMARY KEY,
+    room_name   TEXT,
+    user_limit  INTEGER DEFAULT 0,
+    bitrate     INTEGER DEFAULT 64000,
+    is_locked   INTEGER DEFAULT 0,
+    is_hidden   INTEGER DEFAULT 0,
+    whitelist   TEXT DEFAULT '[]',
+    banlist     TEXT DEFAULT '[]'
+);
+
 -- Index Optimizasyonları
 CREATE INDEX IF NOT EXISTS idx_warns_guild_user ON warns(guild_id, user_id);
 CREATE INDEX IF NOT EXISTS idx_economy_guild ON economy(guild_id);
@@ -392,14 +428,52 @@ class Database:
                 try:
                     q_list = json.loads(f["questions"])
                     for q in q_list:
-                        await self.user_db.execute("INSERT INTO form_questions (form_id, question_text) VALUES (?, ?)", (f["form_id"], q["label"]))
+                        await self.user_db.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (f["form_id"], f["guild_id"], q["label"]))
                 except Exception: pass
                 try:
                     for rid in a_data.get("role_ids", []):
-                        await self.user_db.execute("INSERT INTO form_roles (form_id, role_id) VALUES (?, ?)", (f["form_id"], str(rid)))
+                        await self.user_db.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (f["form_id"], f["guild_id"], str(rid)))
                 except Exception: pass
         else:
-            await self.user_db.executescript(USER_DB_SCHEMA)
+            # Check if we need the new multi-guild primary key migration
+            cursor2 = await self.user_db.execute("PRAGMA table_info(form_questions)")
+            columns2 = [row["name"] for row in await cursor2.fetchall()]
+            if "guild_id" not in columns2:
+                log.info("Migrating custom_forms for multi-guild primary keys...")
+                old_f = await self.user_db.execute("SELECT * FROM custom_forms")
+                f_data = await old_f.fetchall()
+                old_q = await self.user_db.execute("SELECT * FROM form_questions")
+                q_data = await old_q.fetchall()
+                old_r = await self.user_db.execute("SELECT * FROM form_roles")
+                r_data = await old_r.fetchall()
+                
+                await self.user_db.execute("DROP TABLE form_questions")
+                await self.user_db.execute("DROP TABLE form_roles")
+                await self.user_db.execute("DROP TABLE custom_forms")
+                await self.user_db.executescript(USER_DB_SCHEMA)
+                
+                for f in f_data:
+                    fd = dict(f)
+                    await self.user_db.execute(
+                        "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target) VALUES (?, ?, ?, ?, ?, ?)",
+                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"))
+                    )
+                for q in q_data:
+                    qd = dict(q)
+                    f_guild = next((dict(f)["guild_id"] for f in f_data if dict(f)["form_id"] == qd["form_id"]), "GLOBAL")
+                    await self.user_db.execute(
+                        "INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)",
+                        (qd["form_id"], f_guild, qd["question_text"])
+                    )
+                for r in r_data:
+                    rd = dict(r)
+                    f_guild = next((dict(f)["guild_id"] for f in f_data if dict(f)["form_id"] == rd["form_id"]), "GLOBAL")
+                    await self.user_db.execute(
+                        "INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)",
+                        (rd["form_id"], f_guild, rd["role_id"])
+                    )
+            else:
+                await self.user_db.executescript(USER_DB_SCHEMA)
 
         await self.user_db.commit()
 
@@ -631,6 +705,52 @@ class Database:
             await self.user_db.commit()
         except Exception as e:
             log.error(f"update_role_cache hatası: {e}")
+
+    async def sync_user_roles_bulk(self, guild_id: str, data: list) -> None:
+        """
+        Kullanıcıların anlık rollerini toplu olarak günceller.
+        Mevcut sunucudaki tabloyu temizler ve yeni listeyi ekler.
+        data = [(guild_id, user_id, role_id, role_name), ...]
+        """
+        try:
+            await self.user_db.execute("DELETE FROM user_current_roles WHERE guild_id=?", (str(guild_id),))
+            await self.user_db.executemany(
+                "INSERT INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                data
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"sync_user_roles_bulk hatası: {e}")
+
+    async def add_user_role(self, guild_id: str, user_id: str, role_id: str, role_name: str) -> None:
+        try:
+            await self.user_db.execute(
+                "INSERT OR IGNORE INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                (str(guild_id), str(user_id), str(role_id), role_name)
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"add_user_role hatası: {e}")
+
+    async def remove_user_role(self, guild_id: str, user_id: str, role_id: str) -> None:
+        try:
+            await self.user_db.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=? AND role_id=?",
+                (str(guild_id), str(user_id), str(role_id))
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"remove_user_role hatası: {e}")
+
+    async def clear_user_roles(self, guild_id: str, user_id: str) -> None:
+        try:
+            await self.user_db.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=?",
+                (str(guild_id), str(user_id))
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"clear_user_roles hatası: {e}")
 
     async def fetch_admin_events(
         self, guild_id: int, target_id: int | None = None, limit: int = 10

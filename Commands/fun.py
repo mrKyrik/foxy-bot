@@ -6,6 +6,7 @@ Eğlence komutları: tepki GIF'leri, oyunlar, istatistikler, anket vs.
 Trivia ödülü ekonomi sistemine SQL üzerinden bağlanır.
 """
 
+from core.checks import kumiho_check
 import asyncio
 import html
 import logging
@@ -23,13 +24,14 @@ from core.utils import json_load, json_save
 
 log = logging.getLogger(__name__)
 
-OWNER_IDS: list[str] = [x.strip() for x in (os.getenv("OWNER_ID") or "").split(",") if x.strip()]
+
 
 ANSWERS_FILE = Path("Data/answers.json")
 RAGE_FILE = Path("Data/ragepoints.json")
 
 
 class Fun(commands.Cog):
+    category = "Eğlence ve Araçlar"
     """
     Fun commands for the bot.
     """
@@ -107,11 +109,12 @@ class Fun(commands.Cog):
     # ──────────────────────────────────────────────────────────────────────
     # Text Commands
     # ──────────────────────────────────────────────────────────────────────
-
     @commands.command(name="8ball")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def _8ball(self, ctx: commands.Context, *, question: str = None) -> None:
-        """Ask the magic 8-ball a yes/no question. Usage: `f.8ball <question>`"""
+        """8ball işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.8ball [parametreler]`"""
         if question is None:
             return await ctx.send(f"Usage: `{ctx.prefix}8ball <question>`")
         answer = random.choice(self.answers)
@@ -120,14 +123,12 @@ class Fun(commands.Cog):
         embed.add_field(name="Answer", value=answer, inline=False)
         embed.set_footer(text=f"Asked by {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command()
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def say(self, ctx: commands.Context, target: str = None, *, message: str = None) -> None:
-        """
-        Make the bot say something.
-        Usage: `f.say <message>` or `f.say @user <message>` (owner only for impersonation)
-        """
+        """say işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.say [parametreler]`"""
         if target is None:
             return await ctx.send(f"Usage: `{ctx.prefix}say <message>`")
 
@@ -137,8 +138,7 @@ class Fun(commands.Cog):
         except commands.MemberNotFound:
             pass
 
-        is_owner = str(ctx.author.id) in OWNER_IDS
-
+        is_owner = await ctx.bot.is_owner(ctx.author)
         if user is not None and is_owner:
             if message is None:
                 return await ctx.send(f"Usage: `{ctx.prefix}say @user <message>`")
@@ -155,11 +155,12 @@ class Fun(commands.Cog):
             full_msg = f"{target} {message or ''}".strip()
             await ctx.message.delete()
             await ctx.send(full_msg)
-
     @commands.command()
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def joke(self, ctx: commands.Context) -> None:
-        """Tells a random safe joke. Usage: `f.joke`"""
+        """joke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.joke [parametreler]`"""
         url = "https://v2.jokeapi.dev/joke/Any?safe-mode"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
@@ -169,14 +170,12 @@ class Fun(commands.Cog):
                     await ctx.send(data["joke"])
                 else:
                     await ctx.send(f"{data['setup']}\n\n*...{data['delivery']}*")
-
     @commands.command()
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def mock(self, ctx: commands.Context, *, message: str = None) -> None:
-        """
-        Mocks a message in SpOnGeBoB CaSe.
-        Usage: `f.mock <message>` or reply to a message with `f.mock`
-        """
+        """mock işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.mock [parametreler]`"""
         if message is None and not ctx.message.reference:
             return await ctx.send(f"Usage: `{ctx.prefix}mock <message>` or reply to mock")
         if ctx.message.reference:
@@ -184,8 +183,9 @@ class Fun(commands.Cog):
             message = ref.content
         mocked = "".join(c.upper() if i % 2 == 0 else c.lower() for i, c in enumerate(message))
         await ctx.reply(mocked, mention_author=False)
-
     @commands.command()
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def love(
         self,
@@ -286,7 +286,7 @@ class Fun(commands.Cog):
 
     @rage_group.command(name="list")
     async def rage_list(self, ctx: commands.Context) -> None:
-        """Lists the server's ragebait leaderboard. Usage: `f.rage list`"""
+        """list hakkında detaylı bilgi gösterir. Kullanım: `f.list`"""
         g_id = str(ctx.guild.id)
         rows = await self.bot.db.fetchall("SELECT user_id, points FROM ragepoints WHERE guild_id=? ORDER BY points DESC LIMIT 10", g_id)
         
@@ -348,11 +348,12 @@ class Fun(commands.Cog):
         await ctx.send(f"Set {member.mention}'s rage points to **{amount}**.")
 
     # ── Fun Meters ─────────────────────────────────────────────────────────
-
     @commands.command(name="howgay")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def howgay(self, ctx: commands.Context, user: discord.Member = None) -> None:
-        """Measures how gay a user is. Usage: `f.howgay [user]`"""
+        """howgay işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.howgay [user]`"""
         user = user or ctx.author
         pct = random.randint(0, 100)
         embed = discord.Embed(
@@ -372,11 +373,12 @@ class Fun(commands.Cog):
         embed.add_field(name="**Verdict**", value=verdict, inline=False)
         embed.set_footer(text=f"Measured by {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="howaustic", aliases=["howautistic"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def howaustic(self, ctx: commands.Context, user: discord.Member = None) -> None:
-        """Measures how autistic a user is. Usage: `f.howaustic [user]`"""
+        """howaustic işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.howaustic [user]`"""
         user = user or ctx.author
         pct = random.randint(0, 100)
         embed = discord.Embed(
@@ -396,11 +398,12 @@ class Fun(commands.Cog):
         embed.add_field(name="**Verdict**", value=verdict, inline=False)
         embed.set_footer(text=f"Measured by {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="iq")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def iq(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Measures IQ (consistent per user per day). Usage: `f.iq [user]`"""
+        """iq işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.iq [user]`"""
         member = member or ctx.author
         random.seed(member.id + int(time.time() // 86400))
         iq_val = random.randint(50, 150)
@@ -423,11 +426,12 @@ class Fun(commands.Cog):
         await ctx.send(embed=embed)
 
     # ── Games ──────────────────────────────────────────────────────────────
-
     @commands.command(name="meme")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def meme(self, ctx: commands.Context) -> None:
-        """Fetches a random meme from Reddit. Usage: `f.meme`"""
+        """meme işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.meme`"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://meme-api.com/gimme") as resp:
@@ -446,11 +450,12 @@ class Fun(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"❌ Failed to fetch meme: {e}")
-
     @commands.command(name="cat", aliases=["meow"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def cat(self, ctx: commands.Context) -> None:
-        """Fetches a random cat image. Usage: `f.cat`"""
+        """cat işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cat`"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://api.thecatapi.com/v1/images/search") as resp:
@@ -468,11 +473,12 @@ class Fun(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"❌ Failed to fetch cat: {e}")
-
     @commands.command(name="dog", aliases=["woof"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def dog(self, ctx: commands.Context) -> None:
-        """Fetches a random dog image. Usage: `f.dog`"""
+        """dog işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dog`"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get("https://dog.ceo/api/breeds/image/random") as resp:
@@ -490,11 +496,12 @@ class Fun(commands.Cog):
             await ctx.send(embed=embed)
         except Exception as e:
             await ctx.send(f"❌ Failed to fetch dog: {e}")
-
     @commands.command(name="coinflip", aliases=["cf"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def coinflip(self, ctx: commands.Context) -> None:
-        """Flips a coin. Usage: `f.coinflip`"""
+        """coinflip işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.coinflip`"""
         result = random.choice(["Heads 🪙", "Tails 🪙"])
         embed = discord.Embed(
             title="Coin Flip",
@@ -503,11 +510,12 @@ class Fun(commands.Cog):
         )
         embed.set_footer(text=f"Flipped by {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="roll", aliases=["dice"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def roll(self, ctx: commands.Context, sides: int = 6) -> None:
-        """Rolls a dice. Usage: `f.roll [sides]`"""
+        """roll işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.roll [sides]`"""
         if sides < 2:
             return await ctx.send("❌ A dice must have at least 2 sides.")
         result = random.randint(1, sides)
@@ -518,11 +526,12 @@ class Fun(commands.Cog):
         )
         embed.set_footer(text=f"Rolled by {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="rps")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def rps(self, ctx: commands.Context, choice: str = None) -> None:
-        """Rock-paper-scissors. Usage: `f.rps <rock|paper|scissors>`"""
+        """rps işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rps <rock|paper|scissors>`"""
         if not choice:
             return await ctx.send(f"Usage: `{ctx.prefix}rps <rock|paper|scissors>`")
         options = ["rock", "paper", "scissors"]
@@ -550,22 +559,24 @@ class Fun(commands.Cog):
         )
         embed.set_footer(text=f"Played with {ctx.author.display_name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="choose", aliases=["choice"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 3.0, commands.BucketType.user)
     async def choose(self, ctx: commands.Context, *, choices: str = None) -> None:
-        """Picks a random item from comma-separated choices. Usage: `f.choose opt1, opt2, ...`"""
+        """choose işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.choose opt1, opt2, ...`"""
         if not choices:
             return await ctx.send(f"Usage: `{ctx.prefix}choose <opt1>, <opt2>, ...`")
         options = [c.strip() for c in choices.split(",") if c.strip()]
         if len(options) < 2:
             return await ctx.send("❌ Please provide at least 2 comma-separated options.")
         await ctx.send(f"🎯 I choose: **{random.choice(options)}**")
-
     @commands.command(name="fact")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def fact(self, ctx: commands.Context) -> None:
-        """Fetches a random interesting fact. Usage: `f.fact`"""
+        """fact işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.fact`"""
         fallbacks = [
             "Banging your head against a wall for one hour burns 150 calories.",
             "In Switzerland it is illegal to own just one guinea pig.",
@@ -591,14 +602,12 @@ class Fun(commands.Cog):
             color=discord.Color.from_rgb(0, 200, 255),
         )
         await ctx.send(embed=embed)
-
     @commands.command(name="trivia")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 10.0, commands.BucketType.user)
     async def trivia(self, ctx: commands.Context) -> None:
-        """
-        Play a quick trivia game. Correct answers reward 100 coins (via Economy cog).
-        Usage: `f.trivia`
-        """
+        """trivia işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.trivia [parametreler]`"""
         fallback_questions = [
             {"question": "What is the capital of France?", "correct_answer": "Paris",
              "incorrect_answers": ["London", "Berlin", "Rome"]},
@@ -689,11 +698,12 @@ class Fun(commands.Cog):
         return discord.Embed(
             description=desc, color=discord.Color.from_rgb(*color)
         )
-
     @commands.command(name="slap")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def slap(self, ctx: commands.Context, member: discord.Member = None, *, reason: str = None) -> None:
-        """Slaps another user. Usage: `f.slap @user [reason]`"""
+        """slap işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.slap @user [reason]`"""
         if not member:
             return await ctx.send(f"Usage: `{ctx.prefix}slap @user [reason]`")
         msgs = [
@@ -719,119 +729,132 @@ class Fun(commands.Cog):
         embed = self._reaction_embed(msg, color)
         embed.set_image(url=gif)
         await ctx.send(embed=embed)
-
     @commands.command(name="hug")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def hug(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Hugs another user. Usage: `f.hug @user`"""
+        """hug işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hug @user`"""
         await self._send_reaction(ctx, "hug", member,
             f"**{ctx.author.display_name}** hugged themselves... 🤗",
             f"**{ctx.author.display_name}** gave **{member.mention if member else ''}** a super warm hug! ❤️",
             (255, 100, 203))
-
     @commands.command(name="pat")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def pat(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Pats another user. Usage: `f.pat @user`"""
+        """pat işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.pat @user`"""
         await self._send_reaction(ctx, "pat", member,
             f"**{ctx.author.display_name}** patted their own head. 🥺",
             f"**{ctx.author.display_name}** gently patted **{member.mention if member else ''}**! ✨",
             (255, 203, 100))
-
     @commands.command(name="kiss")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def kiss(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Kisses another user. Usage: `f.kiss @user`"""
+        """kiss işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.kiss @user`"""
         await self._send_reaction(ctx, "kiss", member,
             f"**{ctx.author.display_name}** kissed the mirror... how lonely. 💙",
             f"**{ctx.author.display_name}** kissed **{member.mention if member else ''}** lovingly! 💙",
             (255, 100, 203))
-
     @commands.command(name="cuddle")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def cuddle(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Cuddles another user. Usage: `f.cuddle @user`"""
+        """cuddle işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cuddle @user`"""
         await self._send_reaction(ctx, "cuddle", member,
             f"**{ctx.author.display_name}** cuddles a soft teddy bear. 🧸",
             f"**{ctx.author.display_name}** cuddles **{member.mention if member else ''}** tightly! 🧸",
             (255, 150, 150))
-
     @commands.command(name="bite")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def bite(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Bites another user. Usage: `f.bite @user`"""
+        """bite işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.bite @user`"""
         await self._send_reaction(ctx, "bite", member,
             f"**{ctx.author.display_name}** bit their own tongue! 😬",
             f"**{ctx.author.display_name}** bit **{member.mention if member else ''}**! Ouch! 😬",
             (200, 50, 50))
-
     @commands.command(name="punch")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def punch(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Punches another user. Usage: `f.punch @user`"""
+        """punch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.punch @user`"""
         await self._send_reaction(ctx, "punch", member,
             f"**{ctx.author.display_name}** punched the air with excitement! 👊",
             f"**{ctx.author.display_name}** punched **{member.mention if member else ''}**! 👊",
             (180, 50, 50))
-
     @commands.command(name="poke")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def poke(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Pokes another user. Usage: `f.poke @user`"""
+        """poke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.poke @user`"""
         await self._send_reaction(ctx, "poke", member,
             f"**{ctx.author.display_name}** poked their own cheek. 👈",
             f"**{ctx.author.display_name}** poked **{member.mention if member else ''}**! Pay attention! 👈",
             (150, 200, 255))
-
     @commands.command(name="lick")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def lick(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Licks another user. Usage: `f.lick @user`"""
+        """lick işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.lick @user`"""
         await self._send_reaction(ctx, "lick", member,
             f"**{ctx.author.display_name}** licks a strawberry ice cream. 🍓",
             f"**{ctx.author.display_name}** licked **{member.mention if member else ''}**! 😛",
             (255, 100, 150))
-
     @commands.command(name="boop")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def boop(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Boops another user's nose. Usage: `f.boop @user`"""
+        """boop işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.boop @user`"""
         await self._send_reaction(ctx, "boop", member,
             f"**{ctx.author.display_name}** booped their own nose. 👃",
             f"**{ctx.author.display_name}** booped **{member.mention if member else ''}**'s nose! Boop! 👃",
             (255, 180, 180))
-
     @commands.command(name="tickle")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def tickle(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Tickles another user. Usage: `f.tickle @user`"""
+        """tickle işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.tickle @user`"""
         await self._send_reaction(ctx, "tickle", member,
             f"**{ctx.author.display_name}** tried to tickle themselves... nope. 😅",
             f"**{ctx.author.display_name}** tickled **{member.mention if member else ''}**! 😂",
             (255, 220, 100))
-
     @commands.command(name="wave")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def wave(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Waves to another user. Usage: `f.wave @user`"""
+        """wave işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.wave @user`"""
         await self._send_reaction(ctx, "wave", member,
             f"**{ctx.author.display_name}** waved to the crowd! 👋",
             f"**{ctx.author.display_name}** waved at **{member.mention if member else ''}**! 👋",
             (100, 255, 150))
-
     @commands.command(name="highfive")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def highfive(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """High-fives another user. Usage: `f.highfive @user`"""
+        """highfive işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.highfive @user`"""
         await self._send_reaction(ctx, "highfive", member,
             f"**{ctx.author.display_name}** high-fived the wall! 🖐️",
             f"**{ctx.author.display_name}** high-fived **{member.mention if member else ''}**! 🖐️",
             (255, 200, 100))
-
     @commands.command(name="cry")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def cry(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Cries, optionally because of another user. Usage: `f.cry [@user]`"""
+        """cry işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cry [@user]`"""
         gif = await self.get_reaction_gif("cry")
         if not member or member.id == ctx.author.id:
             desc = f"**{ctx.author.display_name}** is crying in the corner... 😭"
@@ -840,11 +863,12 @@ class Fun(commands.Cog):
         embed = self._reaction_embed(desc, (100, 180, 255))
         embed.set_image(url=gif)
         await ctx.send(embed=embed)
-
     @commands.command(name="laugh")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def laugh(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Laughs, optionally at another user. Usage: `f.laugh [@user]`"""
+        """laugh işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.laugh [@user]`"""
         gif = await self.get_reaction_gif("laugh")
         if not member or member.id == ctx.author.id:
             desc = f"**{ctx.author.display_name}** burst into laughter! 😂"
@@ -853,11 +877,12 @@ class Fun(commands.Cog):
         embed = self._reaction_embed(desc, (255, 230, 100))
         embed.set_image(url=gif)
         await ctx.send(embed=embed)
-
     @commands.command(name="blush")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def blush(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Blushes, optionally because of another user. Usage: `f.blush [@user]`"""
+        """blush işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.blush [@user]`"""
         gif = await self.get_reaction_gif("blush")
         if not member or member.id == ctx.author.id:
             desc = f"**{ctx.author.display_name}** blushed warmly! 😳"
@@ -866,11 +891,12 @@ class Fun(commands.Cog):
         embed = self._reaction_embed(desc, (255, 100, 150))
         embed.set_image(url=gif)
         await ctx.send(embed=embed)
-
     @commands.command(name="yeet")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def yeet(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Yeets another user into orbit. Usage: `f.yeet @user`"""
+        """yeet işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.yeet @user`"""
         if not member:
             return await ctx.send(f"Usage: `{ctx.prefix}yeet @user`")
         gif = await self.get_reaction_gif("yeet")
@@ -881,11 +907,12 @@ class Fun(commands.Cog):
         embed = self._reaction_embed(desc, (255, 80, 80))
         embed.set_image(url=gif)
         await ctx.send(embed=embed)
-
     @commands.command(name="dance")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def dance(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Dances, optionally with another user. Usage: `f.dance [@user]`"""
+        """dance işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dance [@user]`"""
         gif = await self.get_reaction_gif("dance")
         if not member or member.id == ctx.author.id:
             desc = f"**{ctx.author.display_name}** is dancing solo and loving it! 🎶"

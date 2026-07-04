@@ -7,6 +7,7 @@ Veri depolama: Data/giveaways.json
 (çekiliş verileri JSON'da kalır — anlık, geçici veridir)
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import logging
 import random
 import time
@@ -30,6 +31,7 @@ def _load() -> dict:
 
 
 class Giveaways(commands.Cog):
+    category = "Topluluk ve Etkileşim"
     """
     State-of-the-art server-scoped background task-loop automated giveaways system.
     """
@@ -120,7 +122,7 @@ class Giveaways(commands.Cog):
     # ── Commands ─────────────────────────────────────────────────────────
 
     @commands.group(name="giveaway", aliases=["gway"], invoke_without_command=True)
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def giveaway_group(self, ctx: commands.Context) -> None:
         """Setup and manage guild giveaways."""
         p = ctx.prefix
@@ -133,7 +135,7 @@ class Giveaways(commands.Cog):
         )
 
     @giveaway_group.command(name="start")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def giveaway_start(
         self, ctx: commands.Context, duration: str = None, *, prize: str = None
     ) -> None:
@@ -189,7 +191,7 @@ class Giveaways(commands.Cog):
             pass
 
     @giveaway_group.command(name="end")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def giveaway_end(
         self, ctx: commands.Context, message_id: int = None
     ) -> None:
@@ -212,7 +214,7 @@ class Giveaways(commands.Cog):
         await ctx.send("✅ Giveaway ended early.")
 
     @giveaway_group.command(name="reroll")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def giveaway_reroll(
         self, ctx: commands.Context, message_id: int = None
     ) -> None:
@@ -258,7 +260,7 @@ class Giveaways(commands.Cog):
 
     @giveaway_group.command(name="list")
     async def giveaway_list(self, ctx: commands.Context) -> None:
-        """Lists all active giveaways in the server."""
+        """list hakkında detaylı bilgi gösterir. Kullanım: `f.list`"""
         data = _load()
         guild_active = [
             gw for gw in data["active"] if gw["guild_id"] == ctx.guild.id

@@ -22,6 +22,7 @@ HORNY_DONKEY_QUOTES = [
 
 
 class Nsfw(commands.Cog):
+    category = "Eğlence ve Araçlar"
     """
     Access premium uncensored 18+ adult content and mature feeds.
     """
@@ -47,37 +48,25 @@ class Nsfw(commands.Cog):
     @nsfw_group.command(name="bdsm")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_bdsm(self, ctx: commands.Context) -> None:
-        """
-        Queries premium BDSM networks for uncensored media.
-        Usage: `f.nsfw bdsm`
-        """
+        """bdsm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.bdsm [parametreler]`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="hentai")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_hentai(self, ctx: commands.Context) -> None:
-        """
-        Returns high-resolution uncensored Japanese hentai and anime art.
-        Usage: `f.nsfw hentai`
-        """
+        """hentai işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hentai [parametreler]`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="feet")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_feet(self, ctx: commands.Context) -> None:
-        """
-        Displays ultra high-definition foot fetish gallery uploads.
-        Usage: `f.nsfw feet`
-        """
+        """feet işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.feet [parametreler]`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="rule34")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_rule34(self, ctx: commands.Context) -> None:
-        """
-        Connects directly to the rule34 API to fetch the latest artwork.
-        Usage: `f.nsfw rule34`
-        """
+        """rule34 işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rule34 [parametreler]`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
 

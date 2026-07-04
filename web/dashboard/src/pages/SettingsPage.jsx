@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { motion } from 'framer-motion';
-import { Settings, MessageSquare, Mic, Shield, Server, AlertTriangle, Ticket, UserCheck, UserPlus, Users, Hash, Loader } from 'lucide-react';
-import { GUILD_ID, API_BASE_URL } from '../config';
+import { Settings, MessageSquare, Mic, Shield, Server, AlertTriangle, Ticket, UserCheck, UserPlus, Users, Hash, Loader, Headphones, Trash2 } from 'lucide-react';
+import { API_BASE_URL } from '../config';
+import { GuildContext } from '../GuildContext';
 
 // ─── Kategori listesi ───────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -15,6 +16,7 @@ const CATEGORIES = [
   { id: 'basvuru', label: 'Başvuru Şalterleri',     icon: <UserCheck size={18} />,    channelKey: 'basvuru_channel'  },
   { id: 'davet',   label: 'Davet Şalterleri',       icon: <UserPlus size={18} />,     channelKey: 'davet_channel'    },
   { id: 'rol',     label: 'Rol Geçmişi',            icon: <Users size={18} />,        channelKey: 'rol_channel'      },
+  { id: 'oda',     label: 'Özel Oda Sistemi',       icon: <Headphones size={18} />,   channelKey: null               },
 ];
 
 // ─── ON/OFF şalterler ───────────────────────────────────────────────────────
@@ -85,36 +87,103 @@ const MotionToggle = ({ isOn, toggle }) => (
 );
 
 const SettingsPage = () => {
+  const { activeGuildId } = useContext(GuildContext);
   const [activeCategory, setActiveCategory] = useState('mesaj');
   const [settings, setSettings] = useState({});
   const [channelSettings, setChannelSettings] = useState({});
   const [availableChannels, setAvailableChannels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [channelLoading, setChannelLoading] = useState(false);
+  const [privateVoice, setPrivateVoice] = useState(null);
+  const [pvLoading, setPvLoading] = useState(false);
+  
+  // Discord Channels for Manual Private Voice Setup
+  const [discordCats, setDiscordCats] = useState([]);
+  const [discordVoices, setDiscordVoices] = useState([]);
+  const [selectedCat, setSelectedCat] = useState("");
+  const [selectedVoice, setSelectedVoice] = useState("");
+
 
   useEffect(() => {
     setLoading(true);
 
-    const fetchSettings = axios.get(`${API_BASE_URL}/settings/${GUILD_ID}`)
+    if (!activeGuildId) return;
+    const fetchSettings = axios.get(`${API_BASE_URL}/settings/${activeGuildId}`)
       .then(res => {
         setSettings(res.data.settings || {});
         setChannelSettings(res.data.channels || {});
+        setPrivateVoice(res.data.private_voice || null);
       });
 
-    const fetchChannels = axios.get(`${API_BASE_URL}/channels/${GUILD_ID}`)
+    const fetchChannels = axios.get(`${API_BASE_URL}/channels/${activeGuildId}`)
       .then(res => setAvailableChannels(res.data.channels || []));
 
-    Promise.all([fetchSettings, fetchChannels])
+    const fetchDiscordChannels = axios.get(`${API_BASE_URL}/discord-channels/${activeGuildId}`)
+      .then(res => {
+        if(res.data.categories) setDiscordCats(res.data.categories);
+        if(res.data.voice_channels) setDiscordVoices(res.data.voice_channels);
+      })
+      .catch(err => console.error("Discord kanalları çekilemedi:", err));
+
+    Promise.all([fetchSettings, fetchChannels, fetchDiscordChannels])
       .catch(err => console.error('Ayarlar yüklenemedi:', err))
       .finally(() => setLoading(false));
-  }, []);
+  }, [activeGuildId]);
+
+
+  const handleSetupPrivateVoice = async () => {
+    setPvLoading(true);
+    try {
+      const res = await axios.post(`${API_BASE_URL}/settings/oda-kurulum/${activeGuildId}`);
+      setPrivateVoice({ hub_id: res.data.hub_id, category_id: res.data.category_id });
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.detail || "Kurulum sırasında bir hata oluştu.");
+    } finally {
+      setPvLoading(false);
+    }
+  };
+
+  const handleManualSetupPrivateVoice = async () => {
+    if (!selectedCat || !selectedVoice) {
+      alert("Lütfen hem kategori hem de oluşturma kanalı seçin.");
+      return;
+    }
+    setPvLoading(true);
+    try {
+      await axios.post(`${API_BASE_URL}/settings/oda-kurulum/manual/${activeGuildId}`, {
+        category_id: selectedCat,
+        hub_id: selectedVoice
+      });
+      setPrivateVoice({ hub_id: selectedVoice, category_id: selectedCat });
+      alert("Manuel oda sistemi başarıyla yapılandırıldı.");
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.error || "Kurulum sırasında bir hata oluştu.");
+    } finally {
+      setPvLoading(false);
+    }
+  };
+
+  const handleDeletePrivateVoice = async () => {
+    setPvLoading(true);
+    try {
+      await axios.delete(`${API_BASE_URL}/settings/oda-kurulum/${activeGuildId}`);
+      setPrivateVoice(null);
+    } catch (err) {
+      console.error(err);
+      alert("Silme sırasında bir hata oluştu.");
+    } finally {
+      setPvLoading(false);
+    }
+  };
 
   const toggleSetting = async (settingName) => {
     const current  = settings[settingName] || 'off';
     const newState = current === 'on' ? 'off' : 'on';
     setSettings(prev => ({ ...prev, [settingName]: newState }));
     try {
-      await axios.post(`${API_BASE_URL}/settings/${GUILD_ID}`, {
+      await axios.post(`${API_BASE_URL}/settings/${activeGuildId}`, {
         setting_name: settingName,
         state: newState,
       });
@@ -130,7 +199,7 @@ const SettingsPage = () => {
     setChannelSettings(p => ({ ...p, [columnKey]: newVal }));
     setChannelLoading(true);
     try {
-      await axios.post(`${API_BASE_URL}/channel-setting/${GUILD_ID}`, {
+      await axios.post(`${API_BASE_URL}/channel-setting/${activeGuildId}`, {
         column: columnKey,
         channel_id: newVal,
       });
@@ -187,6 +256,71 @@ const SettingsPage = () => {
             <div style={{ color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> Ayarlar Yükleniyor...
             </div>
+          ) : activeCategory === 'oda' ? (
+            <motion.div key="oda" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <Headphones size={28} color="var(--accent-green)" />
+                Özel Oda Sistemi
+              </h2>
+              
+              <div style={{ background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+                {(!privateVoice || !privateVoice.hub_id) ? (
+                  <div>
+                    <div style={{ fontSize: '1.1rem', color: 'var(--text-secondary)', marginBottom: '16px' }}>
+                      Özel oda sistemi şu anda bu sunucuda kurulu değil. 
+                      Kullanıcıların kendilerine özel geçici ses kanalları açabilmesi için sistemi aktif edebilirsiniz.
+                    </div>
+                    <button 
+                      onClick={handleSetupPrivateVoice}
+                      disabled={pvLoading}
+                      style={{
+                        padding: '12px 24px', background: 'var(--accent-green)', color: '#fff', fontWeight: 600,
+                        border: 'none', borderRadius: '8px', cursor: pvLoading ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px', opacity: pvLoading ? 0.7 : 1
+                      }}
+                    >
+                      {pvLoading ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Headphones size={18} />}
+                      ✨ Otomatik Kurulum Yap
+                    </button>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '12px' }}>
+                      Not: Bu butona bastığınızda sunucunuzda otomatik olarak <strong>🎙️ Özel Odalar</strong> kategorisi ve <strong>➕ Oda Oluştur</strong> ses kanalı oluşturulacaktır.
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{ fontSize: '1.1rem', color: 'var(--accent-green)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '1.3rem' }}>✅</span> Sistem Aktif ve Çalışıyor
+                    </div>
+                    <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Kategori ID:</span> 
+                        <code style={{ background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px', color: '#fff' }}>{privateVoice.category_id}</code>
+                        </div>
+                        <div style={{ color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Hub (Oluşturma) Kanalı ID:</span> 
+                        <code style={{ background: 'rgba(0,0,0,0.3)', padding: '4px 8px', borderRadius: '6px', color: '#fff' }}>{privateVoice.hub_id}</code>
+                        </div>
+                    </div>
+                    
+                    <button 
+                      onClick={handleDeletePrivateVoice}
+                      disabled={pvLoading}
+                      style={{
+                        padding: '10px 20px', background: 'rgba(244, 63, 94, 0.1)', color: 'var(--accent-red)', fontWeight: 600,
+                        border: '1px solid var(--accent-red)', borderRadius: '8px', cursor: pvLoading ? 'not-allowed' : 'pointer',
+                        display: 'flex', alignItems: 'center', gap: '8px', opacity: pvLoading ? 0.7 : 1
+                      }}
+                    >
+                      {pvLoading ? <Loader size={18} style={{ animation: 'spin 1s linear infinite' }} /> : <Trash2 size={18} />}
+                      Sistemi Kapat / Sıfırla
+                    </button>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px' }}>
+                      Not: Bu işlem sadece sistem kaydını siler. Kanalları Discord üzerinden manuel silebilirsiniz.
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           ) : (
             <motion.div key={activeCategory} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>

@@ -8,6 +8,7 @@ Veri depolama: Data/automod.json (sunucu ayarları JSON'da kalır —
 Spam geçmişi bellekte tutulur (self.spam_history), bot restart'ta sıfırlanır.
 """
 
+from core.checks import kumiho_check, kumiho_app_check
 import datetime
 import logging
 import re
@@ -33,6 +34,7 @@ def _load() -> dict:
 
 
 class AutoMod(commands.Cog):
+    category = "Moderasyon"
     """
     State-of-the-art server-scoped auto-moderation spam, link, and profanity filtering.
     """
@@ -175,7 +177,7 @@ class AutoMod(commands.Cog):
     # ── Admin commands ────────────────────────────────────────────────
 
     @commands.group(name="automod", invoke_without_command=True)
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def automod_group(self, ctx: commands.Context) -> None:
         """Configure server auto-moderation shielding layers."""
         p = ctx.prefix
@@ -199,39 +201,39 @@ class AutoMod(commands.Cog):
         await ctx.send(f"✅ AutoMod **{key}** has been **{state_text}**.")
 
     @automod_group.command(name="antilink")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def automod_antilink(self, ctx: commands.Context, action: str = None) -> None:
-        """Toggles link/invite filter. Usage: `f.automod antilink <enable|disable>`"""
+        """antilink korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antilink <enable|disable>`"""
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antilink <enable|disable>`")
         await self._toggle(ctx, "antilink", action)
 
     @automod_group.command(name="antispam")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def automod_antispam(self, ctx: commands.Context, action: str = None) -> None:
-        """Toggles spam mute. Usage: `f.automod antispam <enable|disable>`"""
+        """antispam korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antispam <enable|disable>`"""
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antispam <enable|disable>`")
         await self._toggle(ctx, "antispam", action)
 
     @automod_group.command(name="antiprofanity")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def automod_antiprofanity(self, ctx: commands.Context, action: str = None) -> None:
-        """Toggles profanity filter. Usage: `f.automod antiprofanity <enable|disable>`"""
+        """antiprofanity korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antiprofanity <enable|disable>`"""
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antiprofanity <enable|disable>`")
         await self._toggle(ctx, "antiprofanity", action)
 
     @automod_group.command(name="antizalgo")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def automod_antizalgo(self, ctx: commands.Context, action: str = None) -> None:
-        """Toggles zalgo text filter. Usage: `f.automod antizalgo <enable|disable>`"""
+        """antizalgo korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antizalgo <enable|disable>`"""
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antizalgo <enable|disable>`")
         await self._toggle(ctx, "antizalgo", action)
 
     @automod_group.group(name="whitelist", invoke_without_command=True)
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def whitelist_group(self, ctx: commands.Context) -> None:
         """Configure link whitelist. Usage: `f.automod whitelist <add|remove> <domain>`"""
         await ctx.send(
@@ -239,9 +241,9 @@ class AutoMod(commands.Cog):
         )
 
     @whitelist_group.command(name="add")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def whitelist_add(self, ctx: commands.Context, domain: str = None) -> None:
-        """Adds a domain to the antilink whitelist."""
+        """Sisteme yeni bir add verisi ekler. Kullanım: `f.add <değer>`"""
         if not domain:
             return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist add <domain>`")
         data = _load()
@@ -256,9 +258,9 @@ class AutoMod(commands.Cog):
             await ctx.send(f"❌ `{domain}` is already whitelisted.")
 
     @whitelist_group.command(name="remove")
-    @commands.has_permissions(manage_guild=True)
+    @kumiho_check("owner")
     async def whitelist_remove(self, ctx: commands.Context, domain: str = None) -> None:
-        """Removes a domain from the whitelist."""
+        """Sistemden belirtilen remove verisini siler. Kullanım: `f.remove <hedef>`"""
         if not domain:
             return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist remove <domain>`")
         data = _load()

@@ -86,25 +86,38 @@ class HelpPagesView(discord.ui.View):
         self.build_dropdown()
 
     def build_dropdown(self):
-        options = []
+        self.category_mapping = {}
         for cog, command_list in self.mapping.items():
             if not command_list:
                 continue
+            cat_name = getattr(cog, 'category', cog.qualified_name if cog else "General")
+            if cat_name not in self.category_mapping:
+                self.category_mapping[cat_name] = []
+            
+            all_commands = []
+            if cog:
+                all_commands = list(cog.walk_commands())
+            else:
+                for cmd in command_list:
+                    from discord.ext import commands
+                    if isinstance(cmd, commands.Group):
+                        all_commands.append(cmd)
+                        all_commands.extend(list(cmd.walk_commands()))
+                    else:
+                        all_commands.append(cmd)
+            
+            for cmd in all_commands:
+                if cmd not in self.category_mapping[cat_name]:
+                    self.category_mapping[cat_name].append(cmd)
 
-            cog_name = cog.qualified_name if cog else "General"
-            cog_desc = (
-                cog.description[:100]
-                if cog and cog.description
-                else "Commands without a specific category."
-            )
-
-            emoji = self.emoji_mapping.get(cog_name, None)
-
+        options = []
+        for cat_name, commands in self.category_mapping.items():
+            emoji = self.emoji_mapping.get(cat_name, "📜")
             options.append(
                 discord.SelectOption(
-                    label=cog_name,
-                    description=cog_desc,
-                    value=cog_name,
+                    label=cat_name,
+                    description=f"{len(commands)} commands in {cat_name}.",
+                    value=cat_name,
                     emoji=emoji,
                 )
             )
@@ -149,50 +162,39 @@ class HelpPagesView(discord.ui.View):
         # Discord'a hemen "geldim" deği gönder — 3 sn timeout'u engeller
         await interaction.response.defer()
 
-        selected_cog_name = interaction.data["values"][0]
-        selected_cog = None
-        selected_commands = []
+        selected_cat_name = interaction.data["values"][0]
+        command_list = self.category_mapping.get(selected_cat_name, [])
 
-        for cog, command_list in self.mapping.items():
-            name = cog.qualified_name if cog else "General"
-            if name == selected_cog_name:
-                selected_cog = cog
-                try:
-                    selected_commands = await self.help_command.filter_commands(
-                        command_list, sort=True
-                    )
-                except Exception:
-                    selected_commands = list(command_list)
-                break
+        try:
+            selected_commands = await self.help_command.filter_commands(
+                command_list, sort=True
+            )
+        except Exception:
+            selected_commands = list(command_list)
 
-        embed_desc = (
-            selected_cog.description
-            if selected_cog and selected_cog.description
-            else "General utility commands."
-        )
+        embed_desc = f"{selected_cat_name} commands."
 
         self.current_embeds = []
         self.index = 0
 
         if not selected_commands:
-            emoji = self.emoji_mapping.get(selected_cog_name, None)
+            emoji = self.emoji_mapping.get(selected_cat_name, "📜")
             embed = discord.Embed(
-                title=f"{emoji} {selected_cog_name} {emoji}",
-                description=f"**{embed_desc}**\n\n*No accessible commands found.*",
-                color=discord.Color.blue(),
+                title=f"{emoji} {selected_cat_name} {emoji}",
+                description="Bu kategoride komut bulunmuyor.",
+                color=discord.Color.red(),
             )
-            embed.set_footer(text="Use f.help [command] for precise argument rules.")
             self.current_embeds.append(embed)
         else:
             chunks = [
-                selected_commands[i : i + 5]
-                for i in range(0, len(selected_commands), 5)
+                selected_commands[i : i + 6]
+                for i in range(0, len(selected_commands), 6)
             ]
 
             for idx, chunk in enumerate(chunks):
-                emoji = self.emoji_mapping.get(selected_cog_name, None)
+                emoji = self.emoji_mapping.get(selected_cat_name, "📜")
                 embed = discord.Embed(
-                    title=f"{emoji} {selected_cog_name} {emoji}",
+                    title=f"{emoji} {selected_cat_name} {emoji}",
                     description=f"**{embed_desc}**\n\n**Command List:**",
                     color=discord.Color.blue(),
                 )
@@ -258,20 +260,11 @@ class MyHelp(commands.DefaultHelpCommand):
         )
         self.emoji_mapping = {
             "Help": "❓",
-            "Moderation": "🛡️",
-            "Fun": "🎉",
-            "General": "📜",
-            "Utils": "🛠️",
-            "Economy": "🪙",
-            "Owner": "👑",
-            "Nsfw": "🔞",
-            "Leveling": "📈",
-            "Giveaways": "🎁",
-            "Tickets": "🎫",
-            "Suggestions": "💡",
-            "Automod": "🤖",
-            "Permissions": "🔐",
-            "Settings": "⚙️",
+            "Moderasyon": "🛡️",
+            "Topluluk ve Etkileşim": "👥",
+            "Eğlence ve Araçlar": "🛠️",
+            "Gelişim ve Ekonomi": "🪙",
+            "Yönetim ve Ayarlar": "⚙️",
         }
 
     async def command_callback(self, ctx, *, command=None):
@@ -557,57 +550,9 @@ async def on_ready():
             log.warning("Owner DM gönderilemedi (%s): %s", owner_id_str, e)
 
 
-class CommandDisabled(commands.CheckFailure):
-    pass
+from core.checks import CommandDisabled, CommandNotAllowed
 
-class CommandNotAllowed(commands.CheckFailure):
-    pass
 
-@bot.check
-async def global_command_check(ctx):
-    if not ctx.guild:
-        return True # DM commands are okay
-    
-    # Owners and Admins bypass permissions
-    if (ctx.author.id == ctx.guild.owner_id
-        or ctx.author.guild_permissions.administrator
-        or str(ctx.author.id) in [o.strip() for o in OWNER_IDS_RAW.split(",")]):
-        return True
-
-    cmd_name = ctx.command.name if ctx.command else None
-    if not cmd_name:
-        return True
-
-    import aiosqlite
-    import json
-    
-    try:
-        async with aiosqlite.connect("kumiho.db") as db:
-            async with db.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (str(ctx.guild.id), cmd_name)) as cursor:
-                row = await cursor.fetchone()
-                
-        if row:
-            is_enabled = row[0]
-            allowed_roles_str = row[1]
-            
-            if is_enabled == 0:
-                raise CommandDisabled()
-                
-            if allowed_roles_str and allowed_roles_str != '[]':
-                try:
-                    allowed_roles = json.loads(allowed_roles_str)
-                    user_role_ids = [str(r.id) for r in ctx.author.roles]
-                    has_role = any(r in user_role_ids for r in allowed_roles)
-                    if not has_role:
-                        raise CommandNotAllowed()
-                except json.JSONDecodeError:
-                    pass
-    except Exception as e:
-        if isinstance(e, commands.CheckFailure):
-            raise e
-        log.error(f"Global check error: {e}")
-        
-    return True
 
 
 @bot.event
@@ -662,11 +607,38 @@ async def on_command_error(ctx, error):
         ).build()
         await ctx.send(embed=embed)
         return
+    if isinstance(error, CommandDisabled):
+        await ctx.send(f"❌ {error}")
+        return
+    if isinstance(error, CommandNotAllowed):
+        await ctx.send(f"❌ {error}")
+        return
+    if isinstance(error, commands.MissingPermissions):
+        missing = ", ".join(error.missing_permissions)
+        await ctx.send(f"❌ Bu komutu kullanabilmek için şu yetkilere sahip olmalısınız: **{missing}**")
+        return
     if isinstance(error, commands.CheckFailure):
         log.warning("Komut yetki hatası [%s]: %s", ctx.command, error)
         return
 
     log.error("Komut hatası [%s]: %s", ctx.command, error, exc_info=error)
+
+
+@bot.tree.error
+async def on_app_command_error(interaction: discord.Interaction, error: discord.app_commands.AppCommandError):
+    if isinstance(error, CommandDisabled):
+        if not interaction.response.is_done():
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+        return
+    if isinstance(error, CommandNotAllowed):
+        if not interaction.response.is_done():
+            await interaction.response.send_message(f"❌ {error}", ephemeral=True)
+        return
+    if isinstance(error, discord.app_commands.CheckFailure):
+        if not interaction.response.is_done():
+            await interaction.response.send_message("❌ Bu komutu kullanmak için yetkiniz yok.", ephemeral=True)
+        return
+    log.error("Slash komut hatası [%s]: %s", interaction.command.name if interaction.command else "unknown", error, exc_info=error)
 
 
 @bot.event

@@ -11,6 +11,7 @@ Veri katmanı:
 Hiçbir JSON dosyası kullanılmaz; tüm erişim bot.db üzerinden yapılır.
 """
 
+from core.checks import kumiho_check
 import asyncio
 import logging
 import random
@@ -98,6 +99,7 @@ def _fmt_cd(seconds: float) -> str:
 
 
 class Economy(commands.Cog):
+    category = "Gelişim ve Ekonomi"
     """
     Comprehensive persistent Discord Economy Game with premium perks.
     All data is stored in SQLite via bot.db.
@@ -175,6 +177,15 @@ class Economy(commands.Cog):
                 str(user_id), str(guild_id), item_id, quantity,
             )
 
+    async def add_inventory_item(self, guild_id: int, user_id: int, item_id: str, amount: int = 1) -> None:
+        if amount <= 0: return
+        await self.db.execute(
+            """INSERT INTO inventory (user_id, guild_id, item_id, quantity)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(user_id, guild_id, item_id) DO UPDATE SET quantity=quantity + excluded.quantity""",
+            str(user_id), str(guild_id), item_id, amount
+        )
+
     async def add_wallet(self, guild_id: int, user_id: int, amount: int) -> None:
         """Public helper so other cogs (e.g. Fun.trivia) can award coins."""
         await self._ensure_economy(guild_id, user_id)
@@ -250,7 +261,7 @@ class Economy(commands.Cog):
 
     @perk_group.command(name="color")
     async def perk_color(self, ctx: commands.Context, color_hex: str = None) -> None:
-        """Changes your top role color if you own the Custom Color Perk."""
+        """color işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.color [parametreler]`"""
         if not color_hex:
             return await ctx.send(f"Usage: `{ctx.prefix}perk color <hex>` e.g. `#ff0000`")
 
@@ -280,7 +291,7 @@ class Economy(commands.Cog):
 
     @perk_group.command(name="title")
     async def perk_title(self, ctx: commands.Context, *, text: str = None) -> None:
-        """Sets your custom profile title if you own the Custom Title Perk."""
+        """title işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.title [parametreler]`"""
         if not text:
             return await ctx.send(f"Usage: `{ctx.prefix}perk title <text>`")
 
@@ -296,10 +307,11 @@ class Economy(commands.Cog):
         await ctx.send(f"🏷️ Custom title set to: `{text[:50]}`!")
 
     # ── Balance / Deposit / Withdraw ──────────────────────────────────────────
-
     @commands.command(name="balance", aliases=["bal", "wallet"])
+
+    @kumiho_check("public")
     async def balance(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Shows wallet and bank balances. Usage: `f.balance [@user]`"""
+        """balance işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.balance [@user]`"""
         member = member or ctx.author
         eco = await self.get_economy(ctx.guild.id, member.id)
         extras = await self.get_extras(ctx.guild.id, member.id)
@@ -315,10 +327,11 @@ class Economy(commands.Cog):
         embed.add_field(name="Total", value=f"{wallet + bank:,} coins", inline=False)
         embed.set_footer(text=f"Requested by {ctx.author.name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="deposit", aliases=["dep"])
+
+    @kumiho_check("public")
     async def deposit(self, ctx: commands.Context, amount: str = None) -> None:
-        """Deposits coins to your bank. Usage: `f.deposit <amount | all>`"""
+        """deposit işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.deposit <amount | all>`"""
         if not amount:
             return await ctx.send(f"Usage: `{ctx.prefix}deposit <amount | all>`")
 
@@ -330,18 +343,20 @@ class Economy(commands.Cog):
             return await ctx.send("❌ Please provide a valid number or `all`.")
         if dep <= 0:
             return await ctx.send("❌ Deposit amount must be positive.")
-        if wallet < dep:
+
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-?, bank=bank+? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            dep, dep, str(ctx.author.id), str(ctx.guild.id), dep,
+        )
+        if res.rowcount == 0:
             return await ctx.send("❌ Not enough coins in your wallet.")
 
-        await self.db.execute(
-            "UPDATE economy SET wallet=wallet-?, bank=bank+? WHERE user_id=? AND guild_id=?",
-            dep, dep, str(ctx.author.id), str(ctx.guild.id),
-        )
         await ctx.send(f"🏦 Deposited **{dep:,} coins** to your bank.")
-
     @commands.command(name="withdraw", aliases=["with"])
+
+    @kumiho_check("public")
     async def withdraw(self, ctx: commands.Context, amount: str = None) -> None:
-        """Withdraws coins from your bank. Usage: `f.withdraw <amount | all>`"""
+        """withdraw işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.withdraw <amount | all>`"""
         if not amount:
             return await ctx.send(f"Usage: `{ctx.prefix}withdraw <amount | all>`")
 
@@ -353,20 +368,22 @@ class Economy(commands.Cog):
             return await ctx.send("❌ Please provide a valid number or `all`.")
         if amt <= 0:
             return await ctx.send("❌ Withdrawal amount must be positive.")
-        if bank < amt:
+
+        res = await self.db.execute(
+            "UPDATE economy SET bank=bank-?, wallet=wallet+? WHERE user_id=? AND guild_id=? AND bank >= ?",
+            amt, amt, str(ctx.author.id), str(ctx.guild.id), amt,
+        )
+        if res.rowcount == 0:
             return await ctx.send("❌ Not enough coins in your bank.")
 
-        await self.db.execute(
-            "UPDATE economy SET bank=bank-?, wallet=wallet+? WHERE user_id=? AND guild_id=?",
-            amt, amt, str(ctx.author.id), str(ctx.guild.id),
-        )
         await ctx.send(f"💰 Withdrew **{amt:,} coins** to your wallet.")
 
     # ── Income Commands ───────────────────────────────────────────────────────
-
     @commands.command(name="daily")
+
+    @kumiho_check("public")
     async def daily(self, ctx: commands.Context) -> None:
-        """Claims your daily coins. Usage: `f.daily`"""
+        """daily işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.daily`"""
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         now = time.time()
         cd = eco["daily_cooldown"] or 0.0
@@ -385,10 +402,11 @@ class Economy(commands.Cog):
             color=discord.Color.green(),
         )
         await ctx.send(embed=embed)
-
     @commands.command(name="work")
+
+    @kumiho_check("public")
     async def work(self, ctx: commands.Context) -> None:
-        """Works a shift to earn coins. Usage: `f.work`"""
+        """work işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.work`"""
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         now = time.time()
         cd = eco["work_cooldown"] or 0.0
@@ -427,11 +445,12 @@ class Economy(commands.Cog):
             color=discord.Color.blue(),
         )
         await ctx.send(embed=embed)
-
     @commands.command(name="beg")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 30.0, commands.BucketType.user)
     async def beg(self, ctx: commands.Context) -> None:
-        """Begs for loose coins. Usage: `f.beg`"""
+        """beg işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.beg`"""
         if random.random() < 0.60:
             coins = random.randint(15, 80)
             await self.add_wallet(ctx.guild.id, ctx.author.id, coins)
@@ -452,10 +471,11 @@ class Economy(commands.Cog):
             await ctx.send(random.choice(responses))
 
     # ── Gathering ─────────────────────────────────────────────────────────────
-
     @commands.command(name="fish")
+
+    @kumiho_check("public")
     async def fish(self, ctx: commands.Context) -> None:
-        """Goes fishing. Usage: `f.fish` (requires Fishing Rod)"""
+        """fish işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.fish (requires Fishing Rod)`"""
         inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
         if inv.get("fishing_rod", 0) <= 0:
             return await ctx.send(f"❌ You need a **Fishing Rod**! Buy one from `{ctx.prefix}shop`.")
@@ -485,10 +505,11 @@ class Economy(commands.Cog):
             color=discord.Color.teal(),
         )
         await ctx.send(embed=embed)
-
     @commands.command(name="hunt")
+
+    @kumiho_check("public")
     async def hunt(self, ctx: commands.Context) -> None:
-        """Goes hunting. Usage: `f.hunt` (requires Hunting Rifle)"""
+        """hunt işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hunt (requires Hunting Rifle)`"""
         inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
         if inv.get("hunting_rifle", 0) <= 0:
             return await ctx.send(f"❌ You need a **Hunting Rifle**! Buy one from `{ctx.prefix}shop`.")
@@ -518,10 +539,11 @@ class Economy(commands.Cog):
             color=discord.Color.dark_green(),
         )
         await ctx.send(embed=embed)
-
     @commands.command(name="mine")
+
+    @kumiho_check("public")
     async def mine(self, ctx: commands.Context) -> None:
-        """Mines for ores. Usage: `f.mine` (requires Steel Pickaxe)"""
+        """mine işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.mine (requires Steel Pickaxe)`"""
         inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
         if inv.get("pickaxe", 0) <= 0:
             return await ctx.send(f"❌ You need a **Steel Pickaxe**! Buy one from `{ctx.prefix}shop`.")
@@ -554,10 +576,11 @@ class Economy(commands.Cog):
         await ctx.send(embed=embed)
 
     # ── Shop / Inventory ──────────────────────────────────────────────────────
-
     @commands.command(name="shop", aliases=["store"])
+
+    @kumiho_check("public")
     async def shop(self, ctx: commands.Context) -> None:
-        """Shows the item shop. Usage: `f.shop`"""
+        """shop işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.shop`"""
         embed = discord.Embed(
             title="🏪 Server Item Shop",
             description="Buy equipment, shields, perks, and more!",
@@ -571,10 +594,11 @@ class Economy(commands.Cog):
             )
         embed.set_footer(text=f"Buy with: {ctx.prefix}buy <item_id>")
         await ctx.send(embed=embed)
-
     @commands.command(name="buy")
+
+    @kumiho_check("public")
     async def buy(self, ctx: commands.Context, item_id: str = None) -> None:
-        """Buys an item from the shop. Usage: `f.buy <item_id>`"""
+        """buy işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.buy <item_id>`"""
         if not item_id or item_id not in SHOP_ITEMS:
             return await ctx.send(f"❌ Invalid item! Check `{ctx.prefix}shop` for IDs.")
 
@@ -582,24 +606,28 @@ class Economy(commands.Cog):
         item = SHOP_ITEMS[item_id]
         price = item["price"]
 
-        if eco["wallet"] < price:
-            return await ctx.send(f"❌ You need **{price:,} coins** in your wallet.")
-
         inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
         if item_id in NON_STACKABLE and inv.get(item_id, 0) > 0:
             return await ctx.send("❌ You already own this item!")
 
-        qty = inv.get(item_id, 0) + 1
-        await self.set_inventory_item(ctx.guild.id, ctx.author.id, item_id, qty)
-        await self.db.execute(
-            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-            price, str(ctx.author.id), str(ctx.guild.id),
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            price, str(ctx.author.id), str(ctx.guild.id), price,
         )
-        await ctx.send(f"🎉 Purchased **{item['name']}** for **{price:,} coins**!")
+        if res.rowcount == 0:
+            return await ctx.send(f"❌ You need **{price:,} coins** in your wallet.")
 
+        if item_id in NON_STACKABLE:
+            await self.set_inventory_item(ctx.guild.id, ctx.author.id, item_id, 1)
+        else:
+            await self.add_inventory_item(ctx.guild.id, ctx.author.id, item_id, 1)
+            
+        await ctx.send(f"🎉 Purchased **{item['name']}** for **{price:,} coins**!")
     @commands.command(name="sell")
+
+    @kumiho_check("public")
     async def sell(self, ctx: commands.Context, item_id: str = None, amount: str = "1") -> None:
-        """Sells items for coins. Usage: `f.sell <item_id> [amount | all]`"""
+        """sell işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sell <item_id> [amount | all]`"""
         if not item_id or item_id not in SELLABLE_ITEMS:
             return await ctx.send(f"Usage: `{ctx.prefix}sell <item_id> [amount | all]`")
 
@@ -615,13 +643,21 @@ class Economy(commands.Cog):
 
         item = SELLABLE_ITEMS[item_id]
         earnings = item["value"] * qty
-        await self.set_inventory_item(ctx.guild.id, ctx.author.id, item_id, owned - qty)
+        
+        res = await self.db.execute(
+            "UPDATE inventory SET quantity=quantity-? WHERE user_id=? AND guild_id=? AND item_id=? AND quantity >= ?",
+            qty, str(ctx.author.id), str(ctx.guild.id), item_id, qty
+        )
+        if res.rowcount == 0:
+            return await ctx.send(f"❌ Yetersiz miktar. O kadar **{item['name']}** eşyasına sahip değilsiniz.")
+            
         await self.add_wallet(ctx.guild.id, ctx.author.id, earnings)
         await ctx.send(f"💰 Sold **{qty}x {item['name']}** for **{earnings:,} coins**!")
-
     @commands.command(name="inventory", aliases=["inv"])
+
+    @kumiho_check("public")
     async def inventory(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Shows your inventory. Usage: `f.inventory [@user]`"""
+        """inventory işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.inventory [@user]`"""
         member = member or ctx.author
         inv = await self.get_inventory(ctx.guild.id, member.id)
 
@@ -638,10 +674,11 @@ class Economy(commands.Cog):
         embed.description = desc or "*Backpack is empty!*"
         embed.set_footer(text=f"Requested by {ctx.author.name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="use")
+
+    @kumiho_check("public")
     async def use(self, ctx: commands.Context, item_id: str = None) -> None:
-        """Uses a consumable item. Usage: `f.use <item_id>`"""
+        """use işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.use [parametreler]`"""
         if not item_id:
             return await ctx.send(f"Usage: `{ctx.prefix}use <item_id>`")
 
@@ -669,11 +706,12 @@ class Economy(commands.Cog):
             await ctx.send(f"❌ `{item_id}` is not directly usable here. Try `padlock` or `scratch_card`.")
 
     # ── Gambling ──────────────────────────────────────────────────────────────
-
     @commands.command(name="slots")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def slots(self, ctx: commands.Context, bet: str = None) -> None:
-        """Spin the slot machine. Usage: `f.slots <bet | all>`"""
+        """slots işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.slots <bet | all>`"""
         if not bet:
             return await ctx.send(f"Usage: `{ctx.prefix}slots <bet | all>`")
 
@@ -682,7 +720,12 @@ class Economy(commands.Cog):
         bet_amount = wallet if bet.lower() == "all" else self._parse_int(bet)
         if bet_amount is None or bet_amount <= 0:
             return await ctx.send("❌ Invalid bet amount.")
-        if wallet < bet_amount:
+
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            bet_amount, str(ctx.author.id), str(ctx.guild.id), bet_amount
+        )
+        if res.rowcount == 0:
             return await ctx.send("❌ Not enough coins in your wallet.")
 
         embed = discord.Embed(
@@ -717,21 +760,22 @@ class Economy(commands.Cog):
         if winnings > 0 and inv.get("clover", 0) > 0:
             winnings = int(winnings * 1.10)
 
-        net = winnings - bet_amount
-        await self.db.execute(
-            "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-            net, str(ctx.author.id), str(ctx.guild.id),
-        )
+        if winnings > 0:
+            await self.db.execute(
+                "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
+                winnings, str(ctx.author.id), str(ctx.guild.id),
+            )
 
         result = f"🎉 **YOU WON {winnings:,} coins**!" if winnings > 0 else "😢 **YOU LOST!** Better luck next spin."
         embed.description = f"```\n[ {s1} | {s2} | {s3} ]\n```\n{result}"
         embed.color = discord.Color.green() if winnings > 0 else discord.Color.red()
         await msg.edit(embed=embed)
-
     @commands.command(name="gamble", aliases=["cfg"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def gamble(self, ctx: commands.Context, choice: str = None, bet: str = None) -> None:
-        """High-stakes coin flip. Usage: `f.gamble <heads|tails> <bet | all>`"""
+        """gamble işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.gamble <heads|tails> <bet | all>`"""
         if not choice or not bet:
             return await ctx.send(f"Usage: `{ctx.prefix}gamble <heads|tails> <bet | all>`")
         user_choice = choice.strip().lower()
@@ -741,8 +785,15 @@ class Economy(commands.Cog):
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         wallet = eco["wallet"]
         bet_amount = wallet if bet.lower() == "all" else self._parse_int(bet)
-        if bet_amount is None or bet_amount <= 0 or wallet < bet_amount:
+        if bet_amount is None or bet_amount <= 0:
             return await ctx.send("❌ Invalid bet or not enough coins.")
+
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            bet_amount, str(ctx.author.id), str(ctx.guild.id), bet_amount
+        )
+        if res.rowcount == 0:
+            return await ctx.send("❌ Not enough coins in your wallet.")
 
         embed = discord.Embed(
             title="🪙 High-Stakes Coin Flip",
@@ -757,31 +808,35 @@ class Economy(commands.Cog):
             winnings = bet_amount * 2
             await self.db.execute(
                 "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-                bet_amount, str(ctx.author.id), str(ctx.guild.id),
+                winnings, str(ctx.author.id), str(ctx.guild.id),
             )
             embed.description = f"🎉 **YOU WON!** Coin: **{flipped}**. You earned **{winnings:,} coins**!"
             embed.color = discord.Color.green()
         else:
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-                bet_amount, str(ctx.author.id), str(ctx.guild.id),
-            )
             embed.description = f"😢 **YOU LOST!** Coin: **{flipped}**. You lost **{bet_amount:,} coins**."
             embed.color = discord.Color.red()
         await msg.edit(embed=embed)
-
     @commands.command(name="roulette")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def roulette(self, ctx: commands.Context, bet_on: str = None, bet: str = None) -> None:
-        """French Roulette. Usage: `f.roulette <red|black|green|0-36> <bet | all>`"""
+        """roulette işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.roulette <red|black|green|0-36> <bet | all>`"""
         if not bet_on or not bet:
             return await ctx.send(f"Usage: `{ctx.prefix}roulette <red|black|green|0-36> <bet | all>`")
 
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         wallet = eco["wallet"]
         bet_amount = wallet if bet.lower() == "all" else self._parse_int(bet)
-        if bet_amount is None or bet_amount <= 0 or wallet < bet_amount:
+        if bet_amount is None or bet_amount <= 0:
             return await ctx.send("❌ Invalid bet or not enough coins.")
+
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            bet_amount, str(ctx.author.id), str(ctx.guild.id), bet_amount
+        )
+        if res.rowcount == 0:
+            return await ctx.send("❌ Not enough coins in your wallet.")
 
         embed = discord.Embed(
             title="🎰 French Roulette",
@@ -805,36 +860,35 @@ class Economy(commands.Cog):
             winnings = bet_amount * mult
             await self.db.execute(
                 "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-                winnings - bet_amount, str(ctx.author.id), str(ctx.guild.id),
+                winnings, str(ctx.author.id), str(ctx.guild.id),
             )
             embed.description = f"🎉 **YOU WON!** Ball landed on **{roll_color.upper()} {roll}**. You won **{winnings:,} coins**!"
             embed.color = discord.Color.green()
         else:
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-                bet_amount, str(ctx.author.id), str(ctx.guild.id),
-            )
             embed.description = f"😢 **YOU LOST!** Ball landed on **{roll_color.upper()} {roll}**."
             embed.color = discord.Color.red()
         await msg.edit(embed=embed)
-
     @commands.command(name="blackjack", aliases=["bj"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def blackjack(self, ctx: commands.Context, bet: str = None) -> None:
-        """Play Blackjack. Usage: `f.blackjack <bet | all>`"""
+        """blackjack işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.blackjack <bet | all>`"""
         if not bet:
             return await ctx.send(f"Usage: `{ctx.prefix}blackjack <bet | all>`")
 
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         wallet = eco["wallet"]
         bet_amount = wallet if bet.lower() == "all" else self._parse_int(bet)
-        if bet_amount is None or bet_amount <= 0 or wallet < bet_amount:
+        if bet_amount is None or bet_amount <= 0:
             return await ctx.send("❌ Invalid bet or not enough coins.")
 
-        await self.db.execute(
-            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-            bet_amount, str(ctx.author.id), str(ctx.guild.id),
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            bet_amount, str(ctx.author.id), str(ctx.guild.id), bet_amount
         )
+        if res.rowcount == 0:
+            return await ctx.send("❌ Not enough coins in your wallet.")
 
         suits = ["♠️", "♥️", "♦️", "♣️"]
         values = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
@@ -932,11 +986,12 @@ class Economy(commands.Cog):
         embed.set_field_at(1, name="Dealer Hand", value=f"{fmt(dh)} (Value: {dv})", inline=False)
         embed.set_footer(text="Game Over")
         await msg.edit(embed=embed)
-
     @commands.command(name="highlow", aliases=["hl"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def highlow(self, ctx: commands.Context, bet: str = None) -> None:
-        """Guess higher or lower. Usage: `f.highlow <bet | all>`"""
+        """highlow işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.highlow <bet | all>`"""
         if not bet:
             return await ctx.send(f"Usage: `{ctx.prefix}highlow <bet | all>`")
 
@@ -983,11 +1038,12 @@ class Economy(commands.Cog):
             embed.color = discord.Color.red()
 
         await msg.edit(embed=embed)
-
     @commands.command(name="crime")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 2700, commands.BucketType.user)
     async def crime(self, ctx: commands.Context) -> None:
-        """Commit a risky crime. Usage: `f.crime` (45min cooldown)"""
+        """crime işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.crime (45min cooldown)`"""
         crimes = [
             ("robbed a local bakery",            400,  700),
             ("hacked a minor server",            500,  800),
@@ -1022,31 +1078,32 @@ class Economy(commands.Cog):
                 color=discord.Color.red(),
             )
         await ctx.send(embed=embed)
-
     @commands.command(name="scratch")
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def scratch(self, ctx: commands.Context) -> None:
-        """Scratch a lottery card. Usage: `f.scratch`"""
+        """scratch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.scratch`"""
         inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
         if inv.get("scratch_card", 0) <= 0:
-            eco = await self.get_economy(ctx.guild.id, ctx.author.id)
-            if eco["wallet"] < 200:
-                return await ctx.send("❌ You need a scratch card or **200 coins** to buy one!")
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-200 WHERE user_id=? AND guild_id=?",
+            res = await self.db.execute(
+                "UPDATE economy SET wallet=wallet-200 WHERE user_id=? AND guild_id=? AND wallet >= 200",
                 str(ctx.author.id), str(ctx.guild.id),
             )
+            if res.rowcount == 0:
+                return await ctx.send("❌ You need a scratch card or **200 coins** to buy one!")
 
         payout, msg_text = self._scratch_roll()
         await self.add_wallet(ctx.guild.id, ctx.author.id, payout)
         await ctx.send(msg_text)
 
     # ── Rob / Pay ─────────────────────────────────────────────────────────────
-
     @commands.command(name="rob", aliases=["steal"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 10.0, commands.BucketType.user)
     async def rob(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Steals coins from another user. Usage: `f.rob @user`"""
+        """rob işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rob @user`"""
         if not member:
             return await ctx.send(f"Usage: `{ctx.prefix}rob @user`")
         if member.id == ctx.author.id:
@@ -1076,14 +1133,12 @@ class Economy(commands.Cog):
                 str(member.id), str(ctx.guild.id),
             )
             fine = min(author_eco["wallet"], random.randint(100, 500))
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-                fine, str(ctx.author.id), str(ctx.guild.id),
+            res = await self.db.execute(
+                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+                fine, str(ctx.author.id), str(ctx.guild.id), fine
             )
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-                fine, str(member.id), str(ctx.guild.id),
-            )
+            if res.rowcount > 0:
+                await self.add_wallet(ctx.guild.id, member.id, fine)
             return await ctx.send(
                 f"🔒 **{member.display_name}** had a Shield Padlock! "
                 f"Rob failed; you were fined **{fine:,} coins** paid to them."
@@ -1092,31 +1147,30 @@ class Economy(commands.Cog):
         if random.random() < 0.50:
             pct = random.randint(10, 40)
             stolen = max(50, int(target_eco["wallet"] * pct / 100))
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-                stolen, str(ctx.author.id), str(ctx.guild.id),
+            res = await self.db.execute(
+                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+                stolen, str(member.id), str(ctx.guild.id), stolen
             )
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-                stolen, str(member.id), str(ctx.guild.id),
-            )
-            await ctx.send(f"🎉 **SUCCESS!** You robbed {member.mention} and stole **{stolen:,} coins**!")
+            if res.rowcount > 0:
+                await self.add_wallet(ctx.guild.id, ctx.author.id, stolen)
+                await ctx.send(f"🎉 **SUCCESS!** You robbed {member.mention} and stole **{stolen:,} coins**!")
+            else:
+                await ctx.send(f"😕 You tried to rob {member.mention}, but their pockets were empty by the time you reached them!")
         else:
             fine = max(100, int(author_eco["wallet"] * 0.10))
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-                fine, str(ctx.author.id), str(ctx.guild.id),
+            res = await self.db.execute(
+                "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+                fine, str(ctx.author.id), str(ctx.guild.id), fine
             )
-            await self.db.execute(
-                "UPDATE economy SET wallet=wallet+? WHERE user_id=? AND guild_id=?",
-                fine, str(member.id), str(ctx.guild.id),
-            )
+            if res.rowcount > 0:
+                await self.add_wallet(ctx.guild.id, member.id, fine)
             await ctx.send(f"👮 **CAUGHT!** Fined **{fine:,} coins** paid to {member.mention}.")
-
     @commands.command(name="pay", aliases=["give"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def pay(self, ctx: commands.Context, member: discord.Member = None, amount: int = None) -> None:
-        """Transfer coins to another user. Usage: `f.pay @user <amount>`"""
+        """pay işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.pay @user <amount>`"""
         if not member or amount is None or amount <= 0:
             return await ctx.send(f"Usage: `{ctx.prefix}pay @user <amount>`")
         if member.id == ctx.author.id:
@@ -1124,22 +1178,22 @@ class Economy(commands.Cog):
         if member.bot:
             return await ctx.send("❌ You cannot pay bots!")
 
-        eco = await self.get_economy(ctx.guild.id, ctx.author.id)
-        if eco["wallet"] < amount:
+        res = await self.db.execute(
+            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=? AND wallet >= ?",
+            amount, str(ctx.author.id), str(ctx.guild.id), amount
+        )
+        if res.rowcount == 0:
             return await ctx.send("❌ Not enough coins in your wallet!")
 
-        await self.db.execute(
-            "UPDATE economy SET wallet=wallet-? WHERE user_id=? AND guild_id=?",
-            amount, str(ctx.author.id), str(ctx.guild.id),
-        )
         await self.add_wallet(ctx.guild.id, member.id, amount)
         await ctx.send(f"💰 Transferred **{amount:,} coins** to {member.mention}!")
 
     # ── Marriage ──────────────────────────────────────────────────────────────
-
     @commands.command(name="marry")
+
+    @kumiho_check("public")
     async def marry(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Proposes marriage. Usage: `f.marry @user` (requires Engagement Ring)"""
+        """marry işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.marry @user (requires Engagement Ring)`"""
         if not member:
             return await ctx.send(f"Usage: `{ctx.prefix}marry @user`")
         if member.id == ctx.author.id or member.bot:
@@ -1183,10 +1237,11 @@ class Economy(commands.Cog):
                 await ctx.send(f"💔 {member.mention} declined the proposal.")
         except asyncio.TimeoutError:
             await ctx.send("⏱️ The proposal expired.")
-
     @commands.command(name="divorce")
+
+    @kumiho_check("public")
     async def divorce(self, ctx: commands.Context) -> None:
-        """Divorces your current partner. Usage: `f.divorce`"""
+        """divorce işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.divorce`"""
         extras = await self.get_extras(ctx.guild.id, ctx.author.id)
         partner_id = extras["married_to"]
         if not partner_id:
@@ -1204,10 +1259,11 @@ class Economy(commands.Cog):
         await ctx.send(f"💔 You divorced {partner.mention if partner else f'ID: {partner_id}'}. You are now single.")
 
     # ── Profile / Leaderboard / Cooldowns ────────────────────────────────────
-
     @commands.command(name="profile", aliases=["prof"])
+
+    @kumiho_check("public")
     async def profile(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """Shows economy stats. Usage: `f.profile [@user]`"""
+        """profile işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.profile [@user]`"""
         member = member or ctx.author
         eco = await self.get_economy(ctx.guild.id, member.id)
         extras = await self.get_extras(ctx.guild.id, member.id)
@@ -1236,11 +1292,12 @@ class Economy(commands.Cog):
         embed.add_field(name="Backpack", value=inv_desc or "*Empty*", inline=False)
         embed.set_footer(text=f"Requested by {ctx.author.name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="leaderboard", aliases=["lb", "richest"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def leaderboard(self, ctx: commands.Context) -> None:
-        """Shows the richest players. Usage: `f.leaderboard`"""
+        """leaderboard işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.leaderboard`"""
         rows = await self.db.fetchall(
             "SELECT user_id, wallet, bank FROM economy WHERE guild_id=? ORDER BY (wallet+bank) DESC LIMIT 10",
             str(ctx.guild.id),
@@ -1258,11 +1315,12 @@ class Economy(commands.Cog):
         embed.description = desc
         embed.set_footer(text=f"Requested by {ctx.author.name}")
         await ctx.send(embed=embed)
-
     @commands.command(name="cooldowns", aliases=["cd"])
+
+    @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def cooldowns(self, ctx: commands.Context) -> None:
-        """Shows all active economy cooldowns. Usage: `f.cooldowns`"""
+        """cooldowns işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cooldowns`"""
         eco = await self.get_economy(ctx.guild.id, ctx.author.id)
         now = time.time()
         timers = {
@@ -1300,7 +1358,7 @@ class Economy(commands.Cog):
 
     @farm_group.command(name="plant")
     async def farm_plant(self, ctx: commands.Context, crop: str = None) -> None:
-        """Plants a seed from inventory."""
+        """plant işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.plant [parametreler]`"""
         if not crop or crop.lower() not in CROP_GROW_TIMES:
             return await ctx.send(f"Usage: `{ctx.prefix}farm plant <wheat|carrot|melon>`")
         crop = crop.lower()
@@ -1325,7 +1383,7 @@ class Economy(commands.Cog):
 
     @farm_group.command(name="water")
     async def farm_water(self, ctx: commands.Context) -> None:
-        """Waters crops to cut remaining time by 50%."""
+        """water işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.water [parametreler]`"""
         extras = await self.get_extras(ctx.guild.id, ctx.author.id)
         if not extras["farm_crop"]:
             return await ctx.send("❌ No crops growing in your plot!")
@@ -1342,7 +1400,7 @@ class Economy(commands.Cog):
 
     @farm_group.command(name="status")
     async def farm_status(self, ctx: commands.Context) -> None:
-        """Checks crop growth progress."""
+        """status işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.status [parametreler]`"""
         extras = await self.get_extras(ctx.guild.id, ctx.author.id)
         if not extras["farm_crop"]:
             return await ctx.send(f"🌾 Farm plot empty. Plant seeds with `{ctx.prefix}farm plant <crop>`!")
@@ -1365,7 +1423,7 @@ class Economy(commands.Cog):
 
     @farm_group.command(name="harvest")
     async def farm_harvest(self, ctx: commands.Context) -> None:
-        """Harvests fully grown crops."""
+        """harvest işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.harvest [parametreler]`"""
         extras = await self.get_extras(ctx.guild.id, ctx.author.id)
         if not extras["farm_crop"]:
             return await ctx.send("❌ No crops growing!")
