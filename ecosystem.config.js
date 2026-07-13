@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "Kumiho-Bot",
       script: "main.py",
-      interpreter: "python",
+      interpreter: "python3",
       watch: false,
       cwd: ".",
       env: {
@@ -12,9 +12,8 @@ module.exports = {
     },
     {
       name: "Kumiho-API",
-      script: "uvicorn",
-      args: "main:app --host 0.0.0.0 --port 3001",
-      interpreter: "python",
+      script: "main.py",
+      interpreter: "python3",
       watch: false,
       cwd: "./web/api",
       env: {
