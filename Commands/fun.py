@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Commands/fun.py
 ---------------
@@ -161,7 +162,7 @@ class Fun(commands.Cog):
     @kumiho_check("public")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def joke(self, ctx: commands.Context) -> None:
-    """Get a random joke.\n\n**Usage:** `{prefix}joke`"""
+        """Get a random joke.\n\n**Usage:** `{prefix}joke`"""
         url = "https://v2.jokeapi.dev/joke/Any?safe-mode"
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:

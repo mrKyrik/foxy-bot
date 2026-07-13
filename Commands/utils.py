@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import os
 import platform
@@ -84,7 +85,7 @@ class Utils(commands.Cog):
     )
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def avatar(self, ctx, member: discord.Member = None):
-    """View a user's avatar.\n\n**Usage:** `{prefix}avatar`"""
+        """View a user's avatar.\n\n**Usage:** `{prefix}avatar`"""
         member = member or ctx.author
 
         dAvatar = member.display_avatar

@@ -1,3 +1,4 @@
+from __future__ import annotations
 """
 Commands/owner.py
 -----------------
@@ -128,7 +129,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecoban", aliases=["economyban"])
     async def ecoban(self, ctx: commands.Context, *, target: str = None) -> None:
-    """Ban a user from the economy system.\n\n**Usage:** `{prefix}ecoban`"""
+        """Ban a user from the economy system.\n\n**Usage:** `{prefix}ecoban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecoban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
