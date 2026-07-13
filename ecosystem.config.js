@@ -23,6 +23,7 @@ module.exports = {
     {
       name: "Kumiho-Dashboard",
       script: "./node_modules/vite/bin/vite.js",
+      args: "--host 0.0.0.0",
       watch: false,
       cwd: "./web/dashboard",
       env: {
