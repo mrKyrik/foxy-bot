@@ -145,7 +145,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecounban", aliases=["economyunban"])
     async def ecounban(self, ctx: commands.Context, *, target: str = None) -> None:
-    """Unban a user from the economy system.\n\n**Usage:** `{prefix}ecounban`"""
+        """Unban a user from the economy system.\n\n**Usage:** `{prefix}ecounban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecounban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -159,7 +159,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botban", aliases=["banbot"])
     async def botban(self, ctx: commands.Context, *, target: str = None) -> None:
-    """Ban a user from using the bot.\n\n**Usage:** `{prefix}botban`"""
+        """Ban a user from using the bot.\n\n**Usage:** `{prefix}botban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -175,7 +175,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botunban", aliases=["unbanbot"])
     async def botunban(self, ctx: commands.Context, *, target: str = None) -> None:
-    """Unban a user from using the bot.\n\n**Usage:** `{prefix}botunban`"""
+        """Unban a user from using the bot.\n\n**Usage:** `{prefix}botunban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botunban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -191,7 +191,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="sync")
     async def sync_tree(self, ctx: commands.Context) -> None:
-    """Sync slash commands to the current guild or globally.\n\n**Usage:** `{prefix}sync`"""
+        """Sync slash commands to the current guild or globally.\n\n**Usage:** `{prefix}sync`"""
         try:
             # Sadece bu sunucuya anında senkronize et (hemen çalışması için)
             ctx.bot.tree.copy_global_to(guild=ctx.guild)

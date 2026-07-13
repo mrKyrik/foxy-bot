@@ -16,6 +16,7 @@ Komutlar:
 
 from core.checks import kumiho_check, kumiho_app_check
 import logging
+import typing
 from datetime import timedelta
 
 import discord
@@ -610,7 +611,7 @@ class Moderation(commands.Cog):
     async def modlogs(
         self,
         ctx: commands.Context,
-        user: discord.Member | None = None,
+        user: typing.Optional[discord.Member] = None,
         limit: int = 10,
     ) -> None:
         """

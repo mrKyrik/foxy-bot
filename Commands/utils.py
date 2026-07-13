@@ -108,7 +108,7 @@ class Utils(commands.Cog):
     @commands.command(name="about", aliases=["botinfo", "stats"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def about(self, ctx):
-    """Get information about the bot.\n\n**Usage:** `{prefix}about`"""
+        """Get information about the bot.\n\n**Usage:** `{prefix}about`"""
 
         uptime = round(time.time() - self.bot_start_time)
 
@@ -223,7 +223,7 @@ class Utils(commands.Cog):
     @commands.command(aliases=["ui", "whois"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def userinfo(self, ctx, member: discord.Member = None):
-    """View detailed information about a user.\n\n**Usage:** `{prefix}userinfo`"""
+        """View detailed information about a user.\n\n**Usage:** `{prefix}userinfo`"""
         member = member or ctx.author
 
         profile = member.display_avatar.url
