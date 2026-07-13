@@ -20,6 +20,7 @@ import os
 import sys
 import threading
 
+import aiosqlite
 import discord
 from discord.ext import commands
 from dotenv import load_dotenv
@@ -61,14 +62,13 @@ intents.invites = True
 # ---------------------------------------------------------------------------
 
 class HelpPagesView(discord.ui.View):
-    def __init__(self, help_command, mapping, emoji_mapping):
+    def __init__(self, help_command, mapping):
         super().__init__(timeout=120)
         self.help_command = help_command
         self.mapping = mapping
         self.message = None
         self.current_embeds = []
         self.index = 0
-        self.emoji_mapping = emoji_mapping
 
         self.prev_btn = discord.ui.Button(
             label="⬅️ Prev", style=discord.ButtonStyle.gray, disabled=True
@@ -87,26 +87,18 @@ class HelpPagesView(discord.ui.View):
 
     def build_dropdown(self):
         self.category_mapping = {}
+        self.emoji_mapping = {}
         for cog, command_list in self.mapping.items():
             if not command_list:
                 continue
             cat_name = getattr(cog, 'category', cog.qualified_name if cog else "General")
+            cat_emoji = getattr(cog, 'category_emoji', "📜")
+            
             if cat_name not in self.category_mapping:
                 self.category_mapping[cat_name] = []
+                self.emoji_mapping[cat_name] = cat_emoji
             
-            all_commands = []
-            if cog:
-                all_commands = list(cog.walk_commands())
-            else:
-                for cmd in command_list:
-                    from discord.ext import commands
-                    if isinstance(cmd, commands.Group):
-                        all_commands.append(cmd)
-                        all_commands.extend(list(cmd.walk_commands()))
-                    else:
-                        all_commands.append(cmd)
-            
-            for cmd in all_commands:
+            for cmd in command_list:
                 if cmd not in self.category_mapping[cat_name]:
                     self.category_mapping[cat_name].append(cmd)
 
@@ -258,14 +250,6 @@ class MyHelp(commands.DefaultHelpCommand):
                 "aliases": ["h"],
             }
         )
-        self.emoji_mapping = {
-            "Help": "❓",
-            "Moderasyon": "🛡️",
-            "Topluluk ve Etkileşim": "👥",
-            "Eğlence ve Araçlar": "🛠️",
-            "Gelişim ve Ekonomi": "🪙",
-            "Yönetim ve Ayarlar": "⚙️",
-        }
 
     async def command_callback(self, ctx, *, command=None):
         if command:
@@ -324,7 +308,7 @@ class MyHelp(commands.DefaultHelpCommand):
                     continue
                 valid_mapping[cog] = cmd_list
 
-        emoji = self.emoji_mapping.get("Help", None)
+        emoji = "❓"
         embed_landing = discord.Embed(
             title=f"{emoji} Interactive Help Center {emoji}",
             description=(
@@ -336,7 +320,7 @@ class MyHelp(commands.DefaultHelpCommand):
             color=discord.Color.blurple(),
         )
 
-        view = HelpPagesView(self, valid_mapping, self.emoji_mapping)
+        view = HelpPagesView(self, valid_mapping)
         destination = self.get_destination()
         view.message = await destination.send(embed=embed_landing, view=view)
 
@@ -363,7 +347,7 @@ class MyHelp(commands.DefaultHelpCommand):
 
         filtered = await self.filter_commands(cog.get_commands(), sort=True)
 
-        emoji = self.emoji_mapping.get(cog.qualified_name, None)
+        emoji = getattr(cog, 'category_emoji', "📜")
         embed = discord.Embed(
             title=f"{emoji} {cog.qualified_name} {emoji}",
             description=f"**{cog.description}**" or "*No category description specified.*",
@@ -383,7 +367,7 @@ class MyHelp(commands.DefaultHelpCommand):
         filtered = await self.filter_commands(group.commands, sort=True)
         description = group.help or "No comprehensive description provided."
 
-        emoji = self.emoji_mapping.get(group.cog_name, None)
+        emoji = getattr(group.cog, 'category_emoji', "📜") if group.cog else "📜"
         embed = discord.Embed(
             title=f"{emoji} {group.name.upper()} {emoji}",
             description=description,
@@ -421,7 +405,7 @@ class MyHelp(commands.DefaultHelpCommand):
     async def send_command_help(self, command):
         description = command.help or "No comprehensive description provided."
 
-        emoji = self.emoji_mapping.get(command.cog_name, None)
+        emoji = getattr(command.cog, 'category_emoji', "📜") if command.cog else "📜"
         embed = discord.Embed(
             title=f"{emoji} {command.name} {emoji}",
             description=description,
@@ -449,7 +433,36 @@ class MyHelp(commands.DefaultHelpCommand):
 # ---------------------------------------------------------------------------
 # Bot instance
 # ---------------------------------------------------------------------------
-bot = commands.Bot(
+class KumihoBot(commands.Bot):
+    async def setup_hook(self) -> None:
+        log.info("Running setup_hook to register persistent views...")
+        try:
+            from Commands.tickets import TicketOpenView, TicketCloseView, TicketConfirmCloseView
+            self.add_view(TicketOpenView(None))
+            self.add_view(TicketCloseView(None))
+            self.add_view(TicketConfirmCloseView(None))
+            log.info("Registered Ticket Views.")
+        except Exception as e:
+            log.error("Failed to register ticket views: %s", e)
+
+        try:
+            from Commands.private_voice import PrivateVoiceView, AdminVoicePanelView
+            self.add_view(PrivateVoiceView())
+            self.add_view(AdminVoicePanelView())
+            log.info("Registered Private Voice Views.")
+        except Exception as e:
+            log.error("Failed to register private voice views: %s", e)
+            
+        try:
+            from Commands.forms import AdminReviewView, DynamicFormTriggerButton, DynamicFormRoleSelect
+            self.add_view(AdminReviewView(self))
+            self.add_dynamic_items(DynamicFormTriggerButton)
+            self.add_dynamic_items(DynamicFormRoleSelect)
+            log.info("Registered Form Views & Dynamic Items.")
+        except Exception as e:
+            log.error("Failed to register form views: %s", e)
+
+bot = KumihoBot(
     command_prefix="f.",
     intents=intents,
     help_command=MyHelp(),
@@ -520,8 +533,9 @@ async def on_ready():
     for guild in bot.guilds:
         for role in guild.roles:
             await bot.db.update_role_cache(str(guild.id), str(role.id), role.name)
-        for channel in guild.channels:
-            await bot.db.update_channel_cache(str(channel.id), channel.name)
+        # Kanalları toplu ve guild_id ile senkronize et
+        channel_list = [(str(ch.id), ch.name) for ch in guild.channels]
+        await bot.db.bulk_sync_channel_cache(str(guild.id), channel_list)
         for member in guild.members:
             avatar = member.display_avatar.url if member.display_avatar else None
             await bot.db.update_user_cache(str(member.id), member.name, avatar)
@@ -548,9 +562,73 @@ async def on_ready():
             log.info("Owner DM gönderildi: %s", owner_id_str)
         except Exception as e:
             log.warning("Owner DM gönderilemedi (%s): %s", owner_id_str, e)
+            
+    # Web API için Komut Registry Güncellemesi
+    log.info("Web API komut registry güncelleniyor...")
+    try:
+        await bot.db.execute('''CREATE TABLE IF NOT EXISTS bot_commands_registry (
+            command_name TEXT PRIMARY KEY,
+            category TEXT,
+            description TEXT,
+            default_access TEXT
+        )''')
+        
+        # Geriye dönük uyumluluk için tabloya kolon eklenebilir
+        try:
+            await bot.db.execute("ALTER TABLE bot_commands_registry ADD COLUMN default_access TEXT DEFAULT 'public'")
+        except Exception:
+            pass
+            
+        await bot.db.execute("DELETE FROM bot_commands_registry")
+        
+        for cmd in bot.walk_commands():
+            if cmd.hidden: continue
+            category = getattr(cmd.cog, 'category', 'Diğer') if cmd.cog else 'Diğer'
+            desc = cmd.short_doc or "Açıklama yok."
+            default_access = getattr(cmd.callback, '__kumiho_default_access__', 'public')
+            await bot.db.execute(
+                "INSERT INTO bot_commands_registry (command_name, category, description, default_access) VALUES (?, ?, ?, ?)",
+                cmd.qualified_name, category, desc, default_access
+            )
+        log.info("Web API komut registry güncellendi.")
+    except Exception as e:
+        log.error("Komut registry güncellenirken hata oluştu: %s", e)
 
 
 from core.checks import CommandDisabled, CommandNotAllowed
+
+
+@bot.event
+async def on_guild_join(guild: discord.Guild):
+    """Bot yeni bir sunucuya eklendiğinde tüm kanalları hemen önbelleğe al."""
+    log.info("Yeni sunucuya katıldı: %s (%s)", guild.name, guild.id)
+    channel_list = [(str(ch.id), ch.name) for ch in guild.channels]
+    await bot.db.bulk_sync_channel_cache(str(guild.id), channel_list)
+    log.info("Sunucu %s için %d kanal senkronize edildi.", guild.id, len(channel_list))
+
+
+@bot.event
+async def on_guild_channel_create(channel: discord.abc.GuildChannel):
+    """Yeni kanal oluşturulduğunda önbelleğe ekle."""
+    await bot.db.update_channel_cache(str(channel.guild.id), str(channel.id), channel.name)
+
+
+@bot.event
+async def on_guild_channel_delete(channel: discord.abc.GuildChannel):
+    """Kanal silindiğinde önbellekten kaldır."""
+    try:
+        await bot.db.execute(
+            "DELETE FROM channel_cache WHERE channel_id = ?", str(channel.id)
+        )
+    except Exception as e:
+        log.warning("on_guild_channel_delete önbellek temizleme hatası: %s", e)
+
+
+@bot.event
+async def on_guild_channel_update(before: discord.abc.GuildChannel, after: discord.abc.GuildChannel):
+    """Kanal yeniden adlandırıldığında önbelleği güncelle."""
+    if before.name != after.name:
+        await bot.db.update_channel_cache(str(after.guild.id), str(after.id), after.name)
 
 
 
@@ -691,10 +769,57 @@ threading.excepthook = handle_thread_crash
 # ---------------------------------------------------------------------------
 # Giriş noktası
 # ---------------------------------------------------------------------------
+def apply_sync_migrations():
+    import sqlite3
+    db_path = "kumiho.db"
+    if not os.path.exists(db_path) and os.path.exists("Data/USER-DB.db"):
+        db_path = "Data/USER-DB.db" # Fallback if someone uses old name
+    
+    if os.path.exists(db_path):
+        try:
+            with sqlite3.connect(db_path) as conn:
+                # guild_id migration
+                try:
+                    conn.execute("ALTER TABLE channel_cache ADD COLUMN guild_id TEXT")
+                    conn.commit()
+                    log.info("SYNC MIGRATION: Added guild_id to channel_cache")
+                except sqlite3.OperationalError:
+                    pass # Column likely already exists
+                
+                # index migration
+                try:
+                    conn.execute("CREATE INDEX IF NOT EXISTS idx_channel_cache_guild ON channel_cache(guild_id)")
+                    conn.commit()
+                except sqlite3.OperationalError:
+                    pass
+                
+                # oda_ log_settings migrations
+                columns_to_add = [
+                    ("log_settings", "oda_channel", "TEXT"),
+                    ("log_settings", "oda_create_on", "INTEGER DEFAULT 1"),
+                    ("log_settings", "oda_delete_on", "INTEGER DEFAULT 1"),
+                    ("log_settings", "oda_update_on", "INTEGER DEFAULT 1"),
+                    ("db_log_settings", "oda_create_on", "INTEGER DEFAULT 1"),
+                    ("db_log_settings", "oda_delete_on", "INTEGER DEFAULT 1"),
+                    ("db_log_settings", "oda_update_on", "INTEGER DEFAULT 1"),
+                ]
+                for table, col, dtype in columns_to_add:
+                    try:
+                        conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {dtype}")
+                        conn.commit()
+                        log.info(f"SYNC MIGRATION: Added {col} to {table}")
+                    except sqlite3.OperationalError:
+                        pass
+        except Exception as e:
+            log.error(f"SYNC MIGRATION ERROR: {e}")
+
 async def main():
     
     loop = asyncio.get_running_loop()
     loop.set_exception_handler(handle_crash)
+
+    # Sync migration'ları çalıştır
+    apply_sync_migrations()
 
     # Veritabanını başlat ve bot'a bağla
     bot.db = Database()

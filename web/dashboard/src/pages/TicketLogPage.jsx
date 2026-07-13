@@ -6,11 +6,12 @@ import { getPercent, formatTime } from '../utils/time';
 
 const EVENT_OPTIONS = [
   { value: 'ticket_create', label: 'Ticket Oluşturuldu', color: '#10b981' },
+  { value: 'ticket_claim', label: 'Sahiplenildi', color: '#f59e0b' },
   { value: 'ticket_close', label: 'Ticket Kapatıldı', color: '#ef4444' }
 ];
 
 const TicketLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags }) => {
-  const [selectedEvents, setSelectedEvents] = useState(['ticket_create', 'ticket_close']);
+  const [selectedEvents, setSelectedEvents] = useState(['ticket_create', 'ticket_claim', 'ticket_close']);
 
   const { parsed } = useLogFilter(logs, {
     typeFilter: (log, type) => type.includes('ticket'),
@@ -48,6 +49,7 @@ const TicketLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedT
              let actionStr = "İşlem";
              if (ev.event_type.includes('close')) { icon = "🔴"; actionStr = "Kapatıldı"; }
              if (ev.event_type.includes('create') || ev.event_type.includes('open')) { icon = "🟢"; actionStr = "Açıldı"; }
+             if (ev.event_type.includes('claim')) { icon = "🤝"; actionStr = "Sahiplenildi"; }
              if (ev.event_type.includes('msg')) { icon = "🔵"; actionStr = "Mesaj"; }
              
              return (

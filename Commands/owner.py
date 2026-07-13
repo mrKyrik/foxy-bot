@@ -24,6 +24,7 @@ _ALLOWED_IDS: frozenset[int] = frozenset(int(i.strip()) for i in _EXTRA_ADMINS.s
 
 class Owner(commands.Cog):
     category = "Yönetim ve Ayarlar"
+    category_emoji = "⚙️"
     """
     Premium developer and server owner command suite.
     """
@@ -78,7 +79,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="givemoney", aliases=["ecogive", "mint"])
     async def givemoney(self, ctx: commands.Context, target: str = None, amount: int = None) -> None:
-        """givemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.givemoney [parametreler]`"""
+        """Give economy money to a user (Admin).\n\n**Usage:** `{prefix}givemoney`"""
         if not target or amount is None or amount <= 0:
             return await ctx.send(f"Usage: `{ctx.prefix}givemoney <@user/ID/username> <amount>`")
 
@@ -104,7 +105,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="takemoney", aliases=["ecotake"])
     async def takemoney(self, ctx: commands.Context, target: str = None, amount: int = None) -> None:
-        """takemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.takemoney [parametreler]`"""
+        """Take economy money from a user (Admin).\n\n**Usage:** `{prefix}takemoney`"""
         if not target or amount is None or amount <= 0:
             return await ctx.send(f"Usage: `{ctx.prefix}takemoney <@user/ID/username> <amount>`")
 
@@ -127,7 +128,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecoban", aliases=["economyban"])
     async def ecoban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """ecoban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecoban [parametreler]`"""
+    """Ban a user from the economy system.\n\n**Usage:** `{prefix}ecoban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecoban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -143,7 +144,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="ecounban", aliases=["economyunban"])
     async def ecounban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """ecounban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecounban [parametreler]`"""
+    """Unban a user from the economy system.\n\n**Usage:** `{prefix}ecounban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}ecounban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -157,7 +158,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botban", aliases=["banbot"])
     async def botban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """botban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botban [parametreler]`"""
+    """Ban a user from using the bot.\n\n**Usage:** `{prefix}botban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -173,7 +174,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="botunban", aliases=["unbanbot"])
     async def botunban(self, ctx: commands.Context, *, target: str = None) -> None:
-        """botunban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botunban [parametreler]`"""
+    """Unban a user from using the bot.\n\n**Usage:** `{prefix}botunban`"""
         if not target:
             return await ctx.send(f"Usage: `{ctx.prefix}botunban <@user/ID/username>`")
         user_id, mention = await self._resolve_user(ctx, target)
@@ -189,7 +190,7 @@ class Owner(commands.Cog):
 
     @commands.command(name="sync")
     async def sync_tree(self, ctx: commands.Context) -> None:
-        """sync işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync [parametreler]`"""
+    """Sync slash commands to the current guild or globally.\n\n**Usage:** `{prefix}sync`"""
         try:
             # Sadece bu sunucuya anında senkronize et (hemen çalışması için)
             ctx.bot.tree.copy_global_to(guild=ctx.guild)

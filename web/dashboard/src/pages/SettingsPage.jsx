@@ -1,9 +1,76 @@
 import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { motion } from 'framer-motion';
-import { Settings, MessageSquare, Mic, Shield, Server, AlertTriangle, Ticket, UserCheck, UserPlus, Users, Hash, Loader, Headphones, Trash2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Settings, MessageSquare, Mic, Shield, Server, AlertTriangle, Ticket, UserCheck, UserPlus, Users, Hash, Loader, Headphones, Trash2, CheckCircle, FileText } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 import { GuildContext } from '../GuildContext';
+
+const MultiSelectDropdown = ({ options, selected, onChange, placeholder }) => {
+  const [open, setOpen] = React.useState(false);
+  const dropdownRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggle = (val) => {
+    if (selected.includes(val)) {
+      onChange(selected.filter(i => i !== val));
+    } else {
+      onChange([...selected, val]);
+    }
+  };
+
+  return (
+    <div style={{ position: 'relative' }} ref={dropdownRef}>
+      <div 
+        onClick={() => setOpen(!open)}
+        style={{ width: '100%', minHeight: '52px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '10px 16px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}
+      >
+        {selected.length === 0 && <span style={{color: 'var(--text-muted)'}}>{placeholder}</span>}
+        {selected.map(val => {
+           const opt = options.find(o => o.value === val);
+           return (
+             <span key={val} style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '4px 10px', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+               {opt ? opt.label : val}
+               <span 
+                 onClick={(e) => { e.stopPropagation(); toggle(val); }} 
+                 style={{ cursor: 'pointer', color: '#ff4444', fontWeight: 'bold' }}
+               >×</span>
+             </span>
+           );
+        })}
+      </div>
+      {open && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#1e1e2e', border: '1px solid var(--panel-border)', borderRadius: '12px', marginTop: '8px', zIndex: 50, maxHeight: '250px', overflowY: 'auto', boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+          {options.length === 0 ? (
+            <div style={{ padding: '12px 16px', color: 'var(--text-muted)' }}>Bulunamadı veya yükleniyor...</div>
+          ) : (
+            options.map(opt => (
+              <div 
+                key={opt.value}
+                onClick={() => toggle(opt.value)}
+                style={{ padding: '12px 16px', cursor: 'pointer', background: selected.includes(opt.value) ? 'rgba(255,255,255,0.08)' : 'transparent', color: opt.color || '#fff', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                onMouseOut={(e) => e.currentTarget.style.background = selected.includes(opt.value) ? 'rgba(255,255,255,0.08)' : 'transparent'}
+              >
+                <span>{opt.label}</span>
+                {selected.includes(opt.value) && <CheckCircle size={16} color="var(--accent-green)" />}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── Kategori listesi ───────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -16,7 +83,7 @@ const CATEGORIES = [
   { id: 'basvuru', label: 'Başvuru Şalterleri',     icon: <UserCheck size={18} />,    channelKey: 'basvuru_channel'  },
   { id: 'davet',   label: 'Davet Şalterleri',       icon: <UserPlus size={18} />,     channelKey: 'davet_channel'    },
   { id: 'rol',     label: 'Rol Geçmişi',            icon: <Users size={18} />,        channelKey: 'rol_channel'      },
-  { id: 'oda',     label: 'Özel Oda Sistemi',       icon: <Headphones size={18} />,   channelKey: null               },
+  { id: 'oda',     label: 'Özel Oda Sistemi',       icon: <Headphones size={18} />,   channelKey: 'oda_channel'      },
 ];
 
 // ─── ON/OFF şalterler ───────────────────────────────────────────────────────
@@ -63,6 +130,11 @@ const SETTINGS_MAP = {
     { id: 'role_add_on',    label: 'Rol Verildi',           desc: 'Kullanıcılara yeni rol eklendiğinde kaydeder.' },
     { id: 'role_remove_on', label: 'Rol Alındı',            desc: 'Kullanıcılardan rol çıkarıldığında kaydeder.' },
   ],
+  'oda': [
+    { id: 'oda_create_on',  label: 'Oda Oluşturma',         desc: 'Özel ses odası oluşturulma olaylarını kaydeder.' },
+    { id: 'oda_delete_on',  label: 'Oda Silinme',           desc: 'Özel ses odalarının silinme/kapanma olaylarını kaydeder.' },
+    { id: 'oda_update_on',  label: 'Oda Güncelleme',        desc: 'Oda kilitleme, limit/isim değiştirme gibi eylemleri kaydeder.' },
+  ],
 };
 
 const MotionToggle = ({ isOn, toggle }) => (
@@ -88,6 +160,7 @@ const MotionToggle = ({ isOn, toggle }) => (
 
 const SettingsPage = () => {
   const { activeGuildId } = useContext(GuildContext);
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState('mesaj');
   const [settings, setSettings] = useState({});
   const [channelSettings, setChannelSettings] = useState({});
@@ -96,10 +169,14 @@ const SettingsPage = () => {
   const [channelLoading, setChannelLoading] = useState(false);
   const [privateVoice, setPrivateVoice] = useState(null);
   const [pvLoading, setPvLoading] = useState(false);
+  const [ticketSettings, setTicketSettings] = useState({});
+  const [ticketSaving, setTicketSaving] = useState(false);
   
   // Discord Channels for Manual Private Voice Setup
   const [discordCats, setDiscordCats] = useState([]);
   const [discordVoices, setDiscordVoices] = useState([]);
+  const [discordRoles, setDiscordRoles] = useState([]);
+  const [discordMembers, setDiscordMembers] = useState([]);
   const [selectedCat, setSelectedCat] = useState("");
   const [selectedVoice, setSelectedVoice] = useState("");
 
@@ -113,6 +190,11 @@ const SettingsPage = () => {
         setSettings(res.data.settings || {});
         setChannelSettings(res.data.channels || {});
         setPrivateVoice(res.data.private_voice || null);
+        setTicketSettings(res.data.ticket_settings || {});
+        if (res.data.private_voice) {
+          setSelectedCat(res.data.private_voice.category_id || "");
+          setSelectedVoice(res.data.private_voice.hub_id || "");
+        }
       });
 
     const fetchChannels = axios.get(`${API_BASE_URL}/channels/${activeGuildId}`)
@@ -125,7 +207,15 @@ const SettingsPage = () => {
       })
       .catch(err => console.error("Discord kanalları çekilemedi:", err));
 
-    Promise.all([fetchSettings, fetchChannels, fetchDiscordChannels])
+    const fetchRoles = axios.get(`${API_BASE_URL}/discord-roles/${activeGuildId}`)
+      .then(res => setDiscordRoles(res.data || []))
+      .catch(err => console.error("Roller çekilemedi:", err));
+
+    const fetchMembers = axios.get(`${API_BASE_URL}/discord-members/${activeGuildId}`)
+      .then(res => setDiscordMembers(res.data || []))
+      .catch(err => console.error("Üyeler çekilemedi:", err));
+
+    Promise.all([fetchSettings, fetchChannels, fetchDiscordChannels, fetchRoles, fetchMembers])
       .catch(err => console.error('Ayarlar yüklenemedi:', err))
       .finally(() => setLoading(false));
   }, [activeGuildId]);
@@ -175,6 +265,38 @@ const SettingsPage = () => {
       alert("Silme sırasında bir hata oluştu.");
     } finally {
       setPvLoading(false);
+    }
+  };
+
+  const handleTicketSettingChange = (field, value) => {
+    setTicketSettings(prev => ({...prev, [field]: value}));
+  };
+
+  const getParsedArray = (val) => {
+    if (!val) return [];
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [val];
+    } catch {
+      return [val];
+    }
+  };
+
+  const handleTicketMultiSelect = (key, selectedOptions) => {
+    const values = Array.from(selectedOptions, option => option.value);
+    setTicketSettings(prev => ({ ...prev, [key]: JSON.stringify(values) }));
+  };
+
+  const handleTicketSave = async () => {
+    setTicketSaving(true);
+    try {
+      await axios.post(`${API_BASE_URL}/settings/tickets/${activeGuildId}`, ticketSettings);
+      alert("Ticket ayarları başarıyla kaydedildi!");
+    } catch (err) {
+      console.error(err);
+      alert("Ticket ayarları kaydedilemedi.");
+    } finally {
+      setTicketSaving(false);
     }
   };
 
@@ -319,7 +441,120 @@ const SettingsPage = () => {
                     </div>
                   </div>
                 )}
+                
+                <div style={{ marginTop: '32px', paddingTop: '32px', borderTop: '1px solid var(--panel-border)' }}>
+                    <h3 style={{ fontSize: '1.2rem', color: '#fff', marginBottom: '16px' }}>Manuel Kurulum / Değiştirme</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                       <div>
+                         <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Özel Odalar Kategorisi</label>
+                         <select 
+                           value={selectedCat} 
+                           onChange={e => setSelectedCat(e.target.value)} 
+                           style={{
+                             width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)',
+                             color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px', appearance: 'none', outline: 'none'
+                           }}
+                         >
+                            <option value="" style={{ background: 'var(--bg-color)' }}>— Kategori Seçin —</option>
+                            {discordCats.map(c => <option key={c.id} value={c.id} style={{ background: 'var(--bg-color)' }}>{c.name}</option>)}
+                         </select>
+                       </div>
+                       <div>
+                         <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Oda Oluşturma Kanalı</label>
+                         <select 
+                           value={selectedVoice} 
+                           onChange={e => setSelectedVoice(e.target.value)} 
+                           style={{
+                             width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)',
+                             color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px', appearance: 'none', outline: 'none'
+                           }}
+                         >
+                            <option value="" style={{ background: 'var(--bg-color)' }}>— Ses Kanalı Seçin —</option>
+                            {discordVoices.map(c => <option key={c.id} value={c.id} style={{ background: 'var(--bg-color)' }}>{c.name}</option>)}
+                         </select>
+                       </div>
+                       <button 
+                         onClick={handleManualSetupPrivateVoice} 
+                         disabled={pvLoading} 
+                         style={{
+                           padding: '12px 24px', background: 'var(--accent-blue)', color: '#fff', fontWeight: 600,
+                           border: 'none', borderRadius: '8px', cursor: pvLoading ? 'not-allowed' : 'pointer',
+                           alignSelf: 'flex-start', marginTop: '8px'
+                         }}
+                       >
+                         {pvLoading ? 'Kaydediliyor...' : 'Kaydet / Güncelle'}
+                       </button>
+                    </div>
+                </div>
               </div>
+
+              {/* ── Discord Oda Log Kanalı Seçici ── */}
+              <div style={{ marginTop: '40px', background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <Hash size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'middle' }} /> Özel Oda Log Kanalı
+                </div>
+
+                {availableChannels.length === 0 ? (
+                  <div style={{ fontSize: '0.9rem', color: 'var(--accent-yellow)', padding: '12px', background: 'rgba(234, 179, 8, 0.1)', borderRadius: '8px', border: '1px solid rgba(234, 179, 8, 0.2)' }}>
+                    ⚠️ Kanal listesi boş — bot çevrimiçi değil veya henüz kanal verisi çekilemedi.
+                  </div>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <select
+                      value={channelSettings['oda_channel'] || ''}
+                      onChange={e => handleChannelChange('oda_channel', e.target.value)}
+                      style={{
+                        width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)',
+                        color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px', appearance: 'none', outline: 'none', cursor: 'pointer', transition: 'border-color 0.2s', fontFamily: 'inherit'
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = 'var(--accent-blue)'}
+                      onBlur={(e) => e.target.style.borderColor = 'var(--panel-border)'}
+                    >
+                      <option value="" style={{ background: 'var(--bg-color)' }}>— Kanal Seçilmedi (Log Gönderilmez) —</option>
+                      {availableChannels.map(ch => (
+                        <option key={ch.channel_id} value={ch.channel_id} style={{ background: 'var(--bg-color)' }}>
+                          # {ch.channel_name}
+                        </option>
+                      ))}
+                    </select>
+                    <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                       {channelLoading
+                          ? (<Loader size={16} style={{ color: 'var(--text-secondary)' }} />)
+                          : (<Hash size={16} color="var(--text-muted)" />)
+                       }
+                    </div>
+                  </div>
+                )}
+
+                {channelSettings['oda_channel'] && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-green)', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    ✓ Seçili kanal ID: {channelSettings['oda_channel']}
+                    <span style={{ color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 600, padding: '4px 8px', background: 'rgba(244, 63, 94, 0.1)', borderRadius: '6px' }} onClick={() => handleChannelChange('oda_channel', null)}>
+                      Temizle
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* ── Log Şalterleri ── */}
+              <div style={{ marginTop: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {SETTINGS_MAP['oda'].map(setting => {
+                  const isOn = settings[setting.id] === 1;
+                  return (
+                    <div key={setting.id} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: 'rgba(255,255,255,0.02)', border: '1px solid var(--panel-border)', padding: '16px 20px', borderRadius: '12px'
+                    }}>
+                      <div>
+                        <div style={{ color: '#fff', fontWeight: 600, fontSize: '1.05rem', marginBottom: '4px' }}>{setting.label}</div>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{setting.desc}</div>
+                      </div>
+                      <MotionToggle isOn={isOn} toggle={() => handleToggle(setting.id, isOn)} />
+                    </div>
+                  );
+                })}
+              </div>
+
             </motion.div>
           ) : (
             <motion.div key={activeCategory} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
@@ -358,7 +593,10 @@ const SettingsPage = () => {
                       ))}
                     </select>
                     <div style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                       {channelLoading ? <Loader size={16} style={{ animation: 'spin 1s linear infinite', color: 'var(--text-secondary)' }} /> : <Hash size={16} color="var(--text-muted)" />}
+                       {channelLoading
+                          ? (<Loader size={16} style={{ color: 'var(--text-secondary)' }} />)
+                          : (<Hash size={16} color="var(--text-muted)" />)
+                       }
                     </div>
                   </div>
                 )}
@@ -373,6 +611,7 @@ const SettingsPage = () => {
                 )}
               </div>
 
+              
               {/* ── Şalterler ── */}
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -402,7 +641,127 @@ const SettingsPage = () => {
                   })}
                 </div>
               </div>
-            </motion.div>
+
+              {activeCategory === 'ticket' && (
+                <div style={{ marginTop: '40px', background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+                  <h3 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '24px' }}>Destek Talebi (Ticket) Sistemi Kurulumu</h3>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Ticket Kategorisi</label>
+                       <select 
+                         value={ticketSettings.category_id || ''} 
+                         onChange={e => handleTicketSettingChange('category_id', e.target.value)} 
+                         style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px' }}
+                       >
+                          <option value="" style={{ background: 'var(--bg-color)' }}>— Kategori Seçin —</option>
+                          {discordCats.map(c => <option key={c.id} value={c.id} style={{ background: 'var(--bg-color)' }}>{c.name}</option>)}
+                       </select>
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Destek Rolleri (Birden fazla seçebilirsiniz)</label>
+                       <MultiSelectDropdown 
+                         options={discordRoles.map(r => ({ value: r.id, label: r.name, color: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : '#fff' }))}
+                         selected={getParsedArray(ticketSettings.support_role_id)}
+                         onChange={(selected) => setTicketSettings(prev => ({ ...prev, support_role_id: JSON.stringify(selected) }))}
+                         placeholder="— Rol Seçin —"
+                       />
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Destek Kullanıcıları (Özel izin, opsiyonel)</label>
+                       <MultiSelectDropdown 
+                         options={discordMembers.map(m => ({ value: m.id, label: m.username }))}
+                         selected={getParsedArray(ticketSettings.support_user_ids)}
+                         onChange={(selected) => setTicketSettings(prev => ({ ...prev, support_user_ids: JSON.stringify(selected) }))}
+                         placeholder="— Kullanıcı Seçin —"
+                       />
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Gözetmen/Yönetici Rolleri (Bilet sahiplenilse bile odada kalır)</label>
+                       <MultiSelectDropdown 
+                         options={discordRoles.map(r => ({ value: r.id, label: r.name, color: r.color ? `#${r.color.toString(16).padStart(6, '0')}` : '#fff' }))}
+                         selected={getParsedArray(ticketSettings.admin_role_id)}
+                         onChange={(selected) => setTicketSettings(prev => ({ ...prev, admin_role_id: JSON.stringify(selected) }))}
+                         placeholder="— Yönetici/Gözetmen Rolü Seçin —"
+                       />
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Ticket Log Kanalı</label>
+                       <select 
+                         value={ticketSettings.log_channel_id || ''} 
+                         onChange={e => handleTicketSettingChange('log_channel_id', e.target.value)} 
+                         style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px' }}
+                       >
+                          <option value="" style={{ background: 'var(--bg-color)' }}>— Metin Kanalı Seçin —</option>
+                          {availableChannels.map(c => <option key={c.channel_id} value={c.channel_id} style={{ background: 'var(--bg-color)' }}># {c.channel_name}</option>)}
+                       </select>
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Panel Başlığı</label>
+                       <input 
+                         type="text" 
+                         value={ticketSettings.panel_title || ''} 
+                         onChange={e => handleTicketSettingChange('panel_title', e.target.value)} 
+                         placeholder="🎟️ Destek Merkezi"
+                         style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px' }}
+                       />
+                     </div>
+
+                     <div>
+                       <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>Panel Açıklaması</label>
+                       <textarea 
+                         value={ticketSettings.panel_desc || ''} 
+                         onChange={e => handleTicketSettingChange('panel_desc', e.target.value)} 
+                         placeholder="Sorunuz mu var? Destek ekibimizle iletişime geçmek için butona tıklayın."
+                         style={{ width: '100%', height: '80px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px', resize: 'vertical' }}
+                       />
+                     </div>
+                     
+                     <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)'}}>
+                        Not: Ayarları kaydettikten sonra Discord'da destek kanalına giderek <code>f.ticket setup</code> komutunu kullanın. Panel oraya gönderilecektir.
+                     </div>
+
+                     <button 
+                       onClick={handleTicketSave} 
+                       disabled={ticketSaving} 
+                       style={{
+                         padding: '12px 24px', background: 'var(--accent-green)', color: '#fff', fontWeight: 600,
+                         border: 'none', borderRadius: '8px', cursor: ticketSaving ? 'not-allowed' : 'pointer',
+                         alignSelf: 'flex-start', marginTop: '8px'
+                       }}
+                     >
+                       {ticketSaving ? 'Kaydediliyor...' : 'Ticket Ayarlarını Kaydet'}
+                     </button>
+                  </div>
+                </div>
+              )}
+
+              {activeCategory === 'basvuru' && (
+                <div style={{ marginTop: '40px', background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+                  <h3 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={24} color="var(--accent-blue)" /> Başvuru (Form) Sistemi Kurulumu
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.6' }}>
+                    Başvuru formları, itiraf sistemi veya rol seçim formları oluşturmak; log kanallarını ve bu formların Discord'a düşeceği hedefleri yapılandırmak için Form Yönetimi panelini kullanabilirsiniz.
+                  </p>
+                  <button 
+                    onClick={() => navigate('/dashboard/forms')} 
+                    style={{
+                      padding: '12px 24px', background: 'var(--accent-blue)', color: '#fff', fontWeight: 600,
+                      border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
+                    }}
+                  >
+                    <FileText size={18} /> Form Yönetimine Git
+                  </button>
+                </div>
+              )}
+
+          </motion.div>
           )}
         </div>
       </div>

@@ -35,6 +35,7 @@ def _load() -> dict:
 
 class AutoMod(commands.Cog):
     category = "Moderasyon"
+    category_emoji = "🛡️"
     """
     State-of-the-art server-scoped auto-moderation spam, link, and profanity filtering.
     """
@@ -179,7 +180,13 @@ class AutoMod(commands.Cog):
     @commands.group(name="automod", invoke_without_command=True)
     @kumiho_check("owner")
     async def automod_group(self, ctx: commands.Context) -> None:
-        """Configure server auto-moderation shielding layers."""
+        """Manage auto-moderation settings.
+        
+        Use this command to configure the auto-moderator modules for your server.
+        
+        **Usage:** `{prefix}automod`
+        **Required Permission:** Server Owner or Administrator
+        """
         p = ctx.prefix
         await ctx.send(
             "🤖 **Auto-Moderation Settings**\n"
@@ -203,7 +210,14 @@ class AutoMod(commands.Cog):
     @automod_group.command(name="antilink")
     @kumiho_check("owner")
     async def automod_antilink(self, ctx: commands.Context, action: str = None) -> None:
-        """antilink korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antilink <enable|disable>`"""
+        """Enable or disable the anti-link filter.
+        
+        Prevents users from sending URLs or Discord invites. You can whitelist specific domains using the whitelist command.
+        
+        **Usage:** `{prefix}automod antilink <enable|disable>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod antilink enable`
+        """
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antilink <enable|disable>`")
         await self._toggle(ctx, "antilink", action)
@@ -211,7 +225,14 @@ class AutoMod(commands.Cog):
     @automod_group.command(name="antispam")
     @kumiho_check("owner")
     async def automod_antispam(self, ctx: commands.Context, action: str = None) -> None:
-        """antispam korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antispam <enable|disable>`"""
+        """Enable or disable the anti-spam filter.
+        
+        Automatically deletes rapid duplicate messages and handles spammers.
+        
+        **Usage:** `{prefix}automod antispam <enable|disable>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod antispam enable`
+        """
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antispam <enable|disable>`")
         await self._toggle(ctx, "antispam", action)
@@ -219,7 +240,14 @@ class AutoMod(commands.Cog):
     @automod_group.command(name="antiprofanity")
     @kumiho_check("owner")
     async def automod_antiprofanity(self, ctx: commands.Context, action: str = None) -> None:
-        """antiprofanity korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antiprofanity <enable|disable>`"""
+        """Enable or disable the anti-profanity filter.
+        
+        Detects and deletes messages containing inappropriate language or bad words.
+        
+        **Usage:** `{prefix}automod antiprofanity <enable|disable>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod antiprofanity enable`
+        """
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antiprofanity <enable|disable>`")
         await self._toggle(ctx, "antiprofanity", action)
@@ -227,7 +255,14 @@ class AutoMod(commands.Cog):
     @automod_group.command(name="antizalgo")
     @kumiho_check("owner")
     async def automod_antizalgo(self, ctx: commands.Context, action: str = None) -> None:
-        """antizalgo korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antizalgo <enable|disable>`"""
+        """Enable or disable the anti-zalgo filter.
+        
+        Prevents the use of excessive zalgo (glitchy/spooky) text formatting.
+        
+        **Usage:** `{prefix}automod antizalgo <enable|disable>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod antizalgo enable`
+        """
         if not action:
             return await ctx.send(f"Usage: `{ctx.prefix}automod antizalgo <enable|disable>`")
         await self._toggle(ctx, "antizalgo", action)
@@ -235,7 +270,13 @@ class AutoMod(commands.Cog):
     @automod_group.group(name="whitelist", invoke_without_command=True)
     @kumiho_check("owner")
     async def whitelist_group(self, ctx: commands.Context) -> None:
-        """Configure link whitelist. Usage: `f.automod whitelist <add|remove> <domain>`"""
+        """Configure the link whitelist.
+        
+        Manage the list of allowed domains that bypass the anti-link filter.
+        
+        **Usage:** `{prefix}automod whitelist <add|remove> <domain>`
+        **Required Permission:** Server Owner or Administrator
+        """
         await ctx.send(
             f"Usage: `{ctx.prefix}automod whitelist <add|remove> <domain>` (e.g. google.com)"
         )
@@ -243,7 +284,14 @@ class AutoMod(commands.Cog):
     @whitelist_group.command(name="add")
     @kumiho_check("owner")
     async def whitelist_add(self, ctx: commands.Context, domain: str = None) -> None:
-        """Sisteme yeni bir add verisi ekler. Kullanım: `f.add <değer>`"""
+        """Add a domain to the anti-link whitelist.
+        
+        Links containing this domain will not be deleted by the anti-link filter.
+        
+        **Usage:** `{prefix}automod whitelist add <domain>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod whitelist add google.com`
+        """
         if not domain:
             return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist add <domain>`")
         data = _load()
@@ -260,7 +308,14 @@ class AutoMod(commands.Cog):
     @whitelist_group.command(name="remove")
     @kumiho_check("owner")
     async def whitelist_remove(self, ctx: commands.Context, domain: str = None) -> None:
-        """Sistemden belirtilen remove verisini siler. Kullanım: `f.remove <hedef>`"""
+        """Remove a domain from the anti-link whitelist.
+        
+        Removes a previously allowed domain so that the anti-link filter will block it again.
+        
+        **Usage:** `{prefix}automod whitelist remove <domain>`
+        **Required Permission:** Server Owner or Administrator
+        **Example:** `{prefix}automod whitelist remove google.com`
+        """
         if not domain:
             return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist remove <domain>`")
         data = _load()

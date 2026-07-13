@@ -34,7 +34,7 @@ class VoiceEvents(commands.Cog):
                     
                     if hasattr(self.bot, "db"):
                         await self.bot.db.update_user_cache(str(member.id), member.name, member.display_avatar.url)
-                        await self.bot.db.update_channel_cache(str(channel.id), channel.name)
+                        await self.bot.db.update_channel_cache(str(guild.id), str(channel.id), channel.name)
 
                     details = {
                         "username": str(member.name),
@@ -80,7 +80,7 @@ class VoiceEvents(commands.Cog):
             self.sessions[member.id] = time.time()
             
             # Kanal adını önbelleğe al
-            await self.bot.db.update_channel_cache(str(after.channel.id), after.channel.name)
+            await self.bot.db.update_channel_cache(str(member.guild.id), str(after.channel.id), after.channel.name)
             
             # DB Log
             db_details = {
@@ -126,8 +126,8 @@ class VoiceEvents(commands.Cog):
         # 3. Switch (Kanal Değiştirme)
         elif before.channel and after.channel and before.channel != after.channel:
             # Kanal adlarını önbelleğe al
-            await self.bot.db.update_channel_cache(str(before.channel.id), before.channel.name)
-            await self.bot.db.update_channel_cache(str(after.channel.id), after.channel.name)
+            await self.bot.db.update_channel_cache(str(member.guild.id), str(before.channel.id), before.channel.name)
+            await self.bot.db.update_channel_cache(str(member.guild.id), str(after.channel.id), after.channel.name)
             
             # Hem eski kanaldan leave hem yeni kanala join olarak switch eventiyle logla
             db_details_leave = {

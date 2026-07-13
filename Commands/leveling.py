@@ -16,6 +16,7 @@ from core.checks import kumiho_check, kumiho_app_check
 import io
 import logging
 import platform
+import os
 import random
 import time
 
@@ -25,7 +26,7 @@ from discord.ext import commands, tasks
 log = logging.getLogger(__name__)
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont, ImageOps
     _PILLOW = True
 except ImportError:
     _PILLOW = False
@@ -37,6 +38,7 @@ def _get_xp_needed(level: int) -> int:
 
 class Leveling(commands.Cog):
     category = "Gelişim ve Ekonomi"
+    category_emoji = "🪙"
     """
     State-of-the-art server-scoped leveling cog with Pillow rank card rendering.
     Optimized with RAM caching and O(log N) rank counting.
@@ -47,19 +49,25 @@ class Leveling(commands.Cog):
         # In-memory cooldown: user_id_str -> last_xp_time
         self._xp_cd: dict[str, float] = {}
         
+        # Voice tracking: user_id -> (guild_id, join_time)
+        self.voice_sessions: dict[int, tuple[int, float]] = {}
+        
         # RAM Caches
         self.ignored_channels: set[str] = set() # "guild_id:channel_id"
         self.level_rewards: dict[str, dict[int, int]] = {} # guild_id -> {level: role_id}
         self.level_settings: dict[str, dict] = {} # guild_id -> {"channel_id": int, "min_xp": int, "max_xp": int}
+        self.level_multipliers: dict[str, dict[int, float]] = {} # guild_id -> {role_id: multiplier}
 
     async def cog_load(self):
         self.cleanup_xp_cd.start()
+        self.sync_voice_times.start()
         # Initial Cache Load
         await self._ensure_level_tables()
         await self._load_caches()
 
     async def cog_unload(self):
         self.cleanup_xp_cd.cancel()
+        self.sync_voice_times.cancel()
 
     @tasks.loop(minutes=10)
     async def cleanup_xp_cd(self):
@@ -93,7 +101,20 @@ class Leveling(commands.Cog):
             min_xp INTEGER DEFAULT 15,
             max_xp INTEGER DEFAULT 25
         );
+        CREATE TABLE IF NOT EXISTS level_multipliers (
+            guild_id TEXT,
+            role_id TEXT,
+            multiplier REAL,
+            PRIMARY KEY (guild_id, role_id)
+        );
         """)
+        
+        # Add voice_time column to levels if it doesn't exist
+        try:
+            await self.db.user_db.execute("ALTER TABLE levels ADD COLUMN voice_time INTEGER DEFAULT 0")
+        except Exception:
+            pass
+        
         await self.db.user_db.commit()
 
     async def _load_caches(self):
@@ -120,6 +141,15 @@ class Leveling(commands.Cog):
                 "max_xp": r["max_xp"]
             }
 
+        # Multipliers
+        multipliers = await self.db.fetchall("SELECT guild_id, role_id, multiplier FROM level_multipliers")
+        self.level_multipliers.clear()
+        for r in multipliers:
+            gid = r["guild_id"]
+            if gid not in self.level_multipliers:
+                self.level_multipliers[gid] = {}
+            self.level_multipliers[gid][int(r["role_id"])] = float(r["multiplier"])
+
     def _get_setting(self, guild_id: str, key: str, default):
         if guild_id in self.level_settings and key in self.level_settings[guild_id]:
             val = self.level_settings[guild_id][key]
@@ -127,53 +157,40 @@ class Leveling(commands.Cog):
                 return val
         return default
 
-    # ── XP Listener ───────────────────────────────────────────────────────────
-
-    @commands.Cog.listener()
-    async def on_message(self, message: discord.Message) -> None:
-        if message.author.bot or not message.guild:
-            return
-
-        guild_id_str = str(message.guild.id)
+    async def add_xp(self, member: discord.Member, xp_gain: int, is_voice: bool = False, voice_minutes: int = 0, fallback_channel: discord.TextChannel = None) -> None:
+        user_id_str = str(member.id)
+        guild_id_str = str(member.guild.id)
         
-        # O(1) Cache Ignore Check
-        if f"{guild_id_str}:{message.channel.id}" in self.ignored_channels:
-            return
-
-        # 60-second cooldown
-        u_key = f"{guild_id_str}:{message.author.id}"
-        now = time.time()
-        if now - self._xp_cd.get(u_key, 0.0) < 60:
-            return
-        self._xp_cd[u_key] = now
-
-        # Custom XP Rate
-        min_xp = self._get_setting(guild_id_str, "min_xp", 15)
-        max_xp = self._get_setting(guild_id_str, "max_xp", 25)
-        # Ensure max >= min
-        if max_xp < min_xp: max_xp = min_xp
-        xp_gain = random.randint(min_xp, max_xp)
-
-        # UPSERT and return new state
-        user_id_str = str(message.author.id)
+        # Apply Role Multipliers (Stacking) if not applied before
+        total_multiplier = 1.0
+        if guild_id_str in self.level_multipliers and hasattr(member, "roles"):
+            for role in member.roles:
+                if role.id in self.level_multipliers[guild_id_str]:
+                    total_multiplier *= self.level_multipliers[guild_id_str][role.id]
         
+        xp_gain = int(xp_gain * total_multiplier)
+
         # To avoid extra queries, first insert if not exists
         await self.db.execute(
             "INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)",
             user_id_str, guild_id_str
         )
         
-        # Update and read in one go
-        await self.db.execute(
-            "UPDATE levels SET xp = xp + ?, message_count = message_count + 1 WHERE user_id = ? AND guild_id = ?",
-            xp_gain, user_id_str, guild_id_str
-        )
+        if is_voice:
+            await self.db.execute(
+                "UPDATE levels SET xp = xp + ?, voice_time = voice_time + ? WHERE user_id = ? AND guild_id = ?",
+                xp_gain, voice_minutes, user_id_str, guild_id_str
+            )
+        else:
+            await self.db.execute(
+                "UPDATE levels SET xp = xp + ?, message_count = message_count + 1 WHERE user_id = ? AND guild_id = ?",
+                xp_gain, user_id_str, guild_id_str
+            )
         
         profile = await self.db.fetchone(
             "SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?",
             user_id_str, guild_id_str
         )
-        
         if not profile: return
         
         new_xp = profile["xp"]
@@ -190,41 +207,114 @@ class Leveling(commands.Cog):
                 leftover_xp, new_level, user_id_str, guild_id_str
             )
             
-            # Message
             embed = discord.Embed(
                 title="🎉 Level Up!",
-                description=f"Tebrikler {message.author.mention}, **{new_level}** seviyesine ulaştın!",
+                description=f"Tebrikler {member.mention}, **{new_level}** seviyesine ulaştın!",
                 color=discord.Color.green(),
             )
             
-            # Specific Channel Check
             channel_id = self._get_setting(guild_id_str, "channel_id", None)
-            target_channel = message.channel
+            target_channel = None
             if channel_id:
-                ch = message.guild.get_channel(channel_id)
-                if ch: target_channel = ch
-                
-            try:
-                await target_channel.send(embed=embed)
-            except Exception:
-                pass
+                target_channel = member.guild.get_channel(channel_id)
+            
+            if not target_channel and not is_voice and fallback_channel:
+                target_channel = fallback_channel
+            
+            if target_channel:
+                try:
+                    await target_channel.send(embed=embed)
+                except Exception:
+                    pass
 
-            # O(1) Cache Role Reward
             if guild_id_str in self.level_rewards and new_level in self.level_rewards[guild_id_str]:
                 role_id = self.level_rewards[guild_id_str][new_level]
-                role = message.guild.get_role(role_id)
+                role = member.guild.get_role(role_id)
                 if role:
                     try:
-                        await message.author.add_roles(role, reason="Level role reward")
+                        await member.add_roles(role, reason="Level role reward")
                     except Exception:
                         pass
+
+    @commands.Cog.listener()
+    async def on_message(self, message: discord.Message) -> None:
+        if message.author.bot or not message.guild:
+            return
+
+        guild_id_str = str(message.guild.id)
+        
+        if f"{guild_id_str}:{message.channel.id}" in self.ignored_channels:
+            return
+
+        u_key = f"{guild_id_str}:{message.author.id}"
+        now = time.time()
+        if now - self._xp_cd.get(u_key, 0.0) < 60:
+            return
+        self._xp_cd[u_key] = now
+
+        min_xp = self._get_setting(guild_id_str, "min_xp", 15)
+        max_xp = self._get_setting(guild_id_str, "max_xp", 25)
+        if max_xp < min_xp: max_xp = min_xp
+        base_xp = random.randint(min_xp, max_xp)
+
+        # Use helper. Helper handles multiplier.
+        await self.add_xp(message.author, base_xp, is_voice=False, fallback_channel=message.channel)
+
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before: discord.VoiceState, after: discord.VoiceState) -> None:
+        if member.bot or not member.guild:
+            return
+
+        # Is user eligible for voice XP?
+        # Must not be AFK channel. If deafened, must be streaming/video.
+        def is_eligible(vs: discord.VoiceState) -> bool:
+            if not vs.channel or vs.afk:
+                return False
+            if vs.self_deaf or vs.deaf:
+                if not (vs.self_stream or vs.self_video):
+                    return False
+            return True
+
+        before_elig = is_eligible(before)
+        after_elig = is_eligible(after)
+
+        if after_elig and not before_elig:
+            # Started session
+            self.voice_sessions[member.id] = (member.guild.id, time.time())
+        elif before_elig and not after_elig:
+            # Ended session
+            session = self.voice_sessions.pop(member.id, None)
+            if session:
+                guild_id, start_time = session
+                duration_mins = int((time.time() - start_time) / 60)
+                if duration_mins > 0:
+                    # 1 min = 1 XP
+                    await self.add_xp(member, duration_mins, is_voice=True, voice_minutes=duration_mins)
+
+    @tasks.loop(minutes=60)
+    async def sync_voice_times(self) -> None:
+        """Saves current voice sessions periodically without ending them."""
+        now = time.time()
+        for member_id, session in list(self.voice_sessions.items()):
+            guild_id, start_time = session
+            duration_mins = int((now - start_time) / 60)
+            if duration_mins > 0:
+                guild = self.bot.get_guild(guild_id)
+                if guild:
+                    member = guild.get_member(member_id)
+                    if member:
+                        await self.add_xp(member, duration_mins, is_voice=True, voice_minutes=duration_mins)
+                        # Reset start time
+                        self.voice_sessions[member_id] = (guild_id, now)
+
 
     # ── Rank Card ─────────────────────────────────────────────────────────────
 
     @commands.command(name="rank")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
+    @kumiho_check("public")
     async def rank(self, ctx: commands.Context, member: discord.Member = None) -> None:
-        """rank işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rank [@user]`"""
+        """Check your or someone else's rank.\n\n**Usage:** `{prefix}rank`"""
         member = member or ctx.author
         if member.bot:
             return await ctx.send("❌ Bots do not earn XP!")
@@ -259,6 +349,20 @@ class Leveling(commands.Cog):
             return await ctx.send(embed=embed)
 
         async with ctx.typing():
+            # Check global profile
+            global_prof = await self.db.fetchone(
+                "SELECT color_hex FROM global_profiles WHERE user_id = ?",
+                str(member.id)
+            )
+            color_hex = global_prof["color_hex"] if global_prof and global_prof["color_hex"] else "#10B981"
+            
+            # Convert hex to RGB tuple
+            try:
+                c = color_hex.lstrip("#")
+                primary_color = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+            except Exception:
+                primary_color = (16, 185, 129)
+
             avatar_bytes = None
             try:
                 avatar_bytes = await member.display_avatar.replace(size=256, static_format="png").read()
@@ -266,7 +370,21 @@ class Leveling(commands.Cog):
                 pass
 
             width, height = 900, 250
-            card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+            
+            # Load Background
+            bg_path = f"Data/banners/{member.id}.png"
+            if os.path.exists(bg_path):
+                try:
+                    card = Image.open(bg_path).convert("RGBA")
+                    # Ensure it is 900x250
+                    if card.size != (width, height):
+                        card = ImageOps.fit(card, (width, height), method=Image.Resampling.LANCZOS)
+                except Exception as e:
+                    log.error(f"Failed to load banner for {member.id}: {e}")
+                    card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+            else:
+                card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+                
             draw = ImageDraw.Draw(card)
 
             # Avatar
@@ -290,25 +408,29 @@ class Leveling(commands.Cog):
             # Fonts
             try:
                 if platform.system() == "Windows":
-                    fn = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 38)
-                    fs = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 26)
-                    fl = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 34)
+                    font_lg = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 38)
+                    font_sm = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 26)
                 else:
-                    fn = ImageFont.truetype("arial.ttf", 38)
-                    fs = fn; fl = fn
+                    font_lg = ImageFont.truetype("arial.ttf", 40)
+                    font_sm = font_lg
             except Exception:
-                fn = fs = fl = ImageFont.load_default()
+                font_lg = font_sm = ImageFont.load_default()
 
-            draw.text((250, 50),  member.name,                       fill=(255, 255, 255, 255), font=fn)
-            draw.text((250, 105), f"LEVEL {level}  |  RANK #{rank_pos}", fill=(0, 200, 255, 255), font=fl)
-            draw.text((250, 155), f"{xp} / {needed} XP",              fill=(200, 200, 200, 255), font=fs)
+            draw.text((250, 45), member.display_name, fill=(255, 255, 255), font=font_lg)
+            draw.text((width - 60, 45), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lg, anchor="ra")
 
-            # Progress bar
-            bx, by, bw, bh = 250, 195, 600, 24
-            pct = min(1.0, xp / needed)
-            draw.rectangle((bx, by, bx + bw, by + bh), fill=(50, 50, 50, 255))
-            if pct > 0:
-                draw.rectangle((bx, by, bx + int(bw * pct), by + bh), fill=(0, 200, 255, 255))
+            bar_x, bar_y = 250, 150
+            bar_w, bar_h = 600, 30
+            draw.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=15, fill=(30, 41, 59, 200))
+
+            ratio = xp / needed if needed > 0 else 0
+            ratio = min(max(ratio, 0.0), 1.0)
+            fill_w = int(bar_w * ratio)
+
+            if fill_w > 0:
+                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=15, fill=primary_color)
+
+            draw.text((bar_x + bar_w, bar_y - 25), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_sm, anchor="ra")
 
             buf = io.BytesIO()
             card.save(buf, format="PNG")
@@ -320,17 +442,22 @@ class Leveling(commands.Cog):
 
     @commands.group(name="level", invoke_without_command=True)
     async def level_group(self, ctx: commands.Context) -> None:
-        """Configure the leveling system."""
+        """level işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level [parametreler]`"""
         await ctx.send(
             "⚙️ **Leveling Settings Suite**\n"
             f"• `{ctx.prefix}level reward_add <lvl> <@role>` — Add a reward role\n"
             f"• `{ctx.prefix}level reward_remove <lvl>` — Remove a reward role\n"
             f"• `{ctx.prefix}level reward_list` — List reward roles\n"
+            f"• `{ctx.prefix}level multiplier_add <@role> <çapan>` — Rol için XP çarpanı ekle (örn: 1.5)\n"
+            f"• `{ctx.prefix}level multiplier_remove <@role>` — Rol çarpanını kaldır\n"
+            f"• `{ctx.prefix}level multiplier_list` — XP çarpanı olan rolleri listele\n"
             f"• `{ctx.prefix}level ignore_add [#channel]` — Block XP in channel\n"
             f"• `{ctx.prefix}level ignore_remove [#channel]` — Unblock XP in channel\n"
             f"• `{ctx.prefix}level channel set [#channel]` — Set a specific channel for level up messages\n"
             f"• `{ctx.prefix}level channel remove` — Send level up messages to current channel\n"
-            f"• `{ctx.prefix}level xp_rate set <min> <max>` — Configure XP gained per message"
+            f"• `{ctx.prefix}level xp_rate set <min> <max>` — Configure XP gained per message\n"
+            f"• `{ctx.prefix}level rank_bg` — Kendi Rank arka planını değiştir (Mesaja resim ekle!)\n"
+            f"• `{ctx.prefix}level rank_color <hex_kodu>` — Kendi Rank tema rengini değiştir (Örn: #FF0000)"
         )
 
     # REWARDS
@@ -339,6 +466,7 @@ class Leveling(commands.Cog):
     async def level_reward_add(
         self, ctx: commands.Context, level: int = None, role: discord.Role = None
     ) -> None:
+        """Add a role reward for a level.\n\n**Usage:** `{prefix}level_reward_add`"""
         if level is None or not role:
             return await ctx.send(f"Usage: `{ctx.prefix}level reward_add <level> <@role>`")
         await self.db.execute(
@@ -351,6 +479,7 @@ class Leveling(commands.Cog):
     @level_group.command(name="reward_remove", aliases=["remove_reward"])
     @kumiho_check("owner")
     async def level_reward_remove(self, ctx: commands.Context, level: int = None) -> None:
+        """Remove a role reward for a level.\n\n**Usage:** `{prefix}level_reward_remove`"""
         if level is None:
             return await ctx.send(f"Usage: `{ctx.prefix}level reward_remove <level>`")
         await self.db.execute(
@@ -363,6 +492,7 @@ class Leveling(commands.Cog):
     @level_group.command(name="reward_list", aliases=["rewards"])
     @kumiho_check("owner")
     async def level_reward_list(self, ctx: commands.Context) -> None:
+        """List all level role rewards.\n\n**Usage:** `{prefix}level_reward_list`"""
         rows = await self.db.fetchall(
             "SELECT level, role_id FROM level_rewards WHERE guild_id=? ORDER BY level ASC",
             str(ctx.guild.id),
@@ -378,12 +508,59 @@ class Leveling(commands.Cog):
         embed.description = desc
         await ctx.send(embed=embed)
 
+    # MULTIPLIERS
+    @level_group.command(name="multiplier_add")
+    @kumiho_check("owner")
+    async def level_multiplier_add(self, ctx: commands.Context, role: discord.Role, multiplier: float):
+        """Add an XP multiplier to a role.\n\n**Usage:** `{prefix}level_multiplier_add`"""
+        if multiplier <= 0:
+            return await ctx.send("❌ Çarpan 0'dan büyük olmalıdır.")
+            
+        await self.db.execute(
+            "INSERT INTO level_multipliers (guild_id, role_id, multiplier) VALUES (?, ?, ?) ON CONFLICT(guild_id, role_id) DO UPDATE SET multiplier=excluded.multiplier",
+            str(ctx.guild.id), str(role.id), float(multiplier)
+        )
+        await self._load_caches()
+        await ctx.send(f"✅ {role.mention} rolü için XP çarpanı **{multiplier}x** olarak ayarlandı.")
+
+    @level_group.command(name="multiplier_remove")
+    @kumiho_check("owner")
+    async def level_multiplier_remove(self, ctx: commands.Context, role: discord.Role):
+        """Remove an XP multiplier from a role.\n\n**Usage:** `{prefix}level_multiplier_remove`"""
+        await self.db.execute(
+            "DELETE FROM level_multipliers WHERE guild_id=? AND role_id=?",
+            str(ctx.guild.id), str(role.id)
+        )
+        await self._load_caches()
+        await ctx.send(f"✅ {role.name} rolünün XP çarpanı kaldırıldı.")
+
+    @level_group.command(name="multiplier_list")
+    @kumiho_check("owner")
+    async def level_multiplier_list(self, ctx: commands.Context):
+        """List all XP multipliers.\n\n**Usage:** `{prefix}level_multiplier_list`"""
+        rows = await self.db.fetchall(
+            "SELECT role_id, multiplier FROM level_multipliers WHERE guild_id=? ORDER BY multiplier DESC",
+            str(ctx.guild.id)
+        )
+        if not rows:
+            return await ctx.send("❌ Herhangi bir rol çarpanı ayarlanmamış.")
+            
+        embed = discord.Embed(title="✨ Rol XP Çarpanları", color=discord.Color.purple())
+        desc = ""
+        for row in rows:
+            role = ctx.guild.get_role(int(row["role_id"]))
+            role_text = role.mention if role else f"ID: {row['role_id']}"
+            desc += f"• {role_text} ➡️ **{row['multiplier']}x**\n"
+        embed.description = desc
+        await ctx.send(embed=embed)
+
     # IGNORES
     @level_group.command(name="ignore_add", aliases=["ignore"])
     @kumiho_check("owner")
     async def level_ignore_add(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
+        """Add a channel to the XP ignore list.\n\n**Usage:** `{prefix}level_ignore_add`"""
         channel = channel or ctx.channel
         await self.db.execute(
             "INSERT OR IGNORE INTO level_ignores (guild_id, channel_id) VALUES (?, ?)",
@@ -397,6 +574,7 @@ class Leveling(commands.Cog):
     async def level_ignore_remove(
         self, ctx: commands.Context, channel: discord.TextChannel = None
     ) -> None:
+        """Remove a channel from the XP ignore list.\n\n**Usage:** `{prefix}level_ignore_remove`"""
         channel = channel or ctx.channel
         await self.db.execute(
             "DELETE FROM level_ignores WHERE guild_id=? AND channel_id=?",
@@ -408,11 +586,13 @@ class Leveling(commands.Cog):
     # CHANNEL & XP RATE SETTINGS
     @level_group.group(name="channel", invoke_without_command=True)
     async def level_channel_group(self, ctx: commands.Context):
+        """Manage level up announcement channels.\n\n**Usage:** `{prefix}level_channel_group`"""
         await ctx.send(f"Usage: `{ctx.prefix}level channel set #kanal` veya `{ctx.prefix}level channel remove`")
 
     @level_channel_group.command(name="set")
     @kumiho_check("owner")
     async def level_channel_set(self, ctx: commands.Context, channel: discord.TextChannel):
+        """Set the channel for level up announcements.\n\n**Usage:** `{prefix}level_channel_set`"""
         await self.db.execute(
             "INSERT INTO level_settings (guild_id, level_channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET level_channel_id=excluded.level_channel_id",
             str(ctx.guild.id), str(channel.id)
@@ -423,6 +603,7 @@ class Leveling(commands.Cog):
     @level_channel_group.command(name="remove")
     @kumiho_check("owner")
     async def level_channel_remove(self, ctx: commands.Context):
+        """Disable level up announcements.\n\n**Usage:** `{prefix}level_channel_remove`"""
         await self.db.execute(
             "UPDATE level_settings SET level_channel_id = NULL WHERE guild_id = ?",
             str(ctx.guild.id)
@@ -432,11 +613,13 @@ class Leveling(commands.Cog):
 
     @level_group.group(name="xp_rate", invoke_without_command=True)
     async def level_xp_rate_group(self, ctx: commands.Context):
+        """Manage the server XP rate.\n\n**Usage:** `{prefix}level_xp_rate_group`"""
         await ctx.send(f"Usage: `{ctx.prefix}level xp_rate set <min> <max>`")
 
     @level_xp_rate_group.command(name="set")
     @kumiho_check("owner")
     async def level_xp_rate_set(self, ctx: commands.Context, min_xp: int, max_xp: int):
+        """Set the server global XP multiplier.\n\n**Usage:** `{prefix}level_xp_rate_set`"""
         if min_xp < 0 or max_xp < min_xp:
             return await ctx.send("❌ Geçersiz XP değerleri. (min >= 0, max >= min olmalı)")
             
@@ -447,31 +630,170 @@ class Leveling(commands.Cog):
         await self._load_caches()
         await ctx.send(f"✅ Bu sunucu için mesaj başına kazanılacak XP limiti **{min_xp} - {max_xp}** olarak güncellendi.")
 
+    # GLOBAL PROFILES (BANNERS & COLORS)
+    @level_group.command(name="rank_bg")
+    @kumiho_check("public")
+    async def level_rank_bg(self, ctx: commands.Context):
+        """Kendi Rank arka planını değiştirir. Mesaja bir resim eklemelisin!"""
+        if not ctx.message.attachments:
+            return await ctx.send("❌ Arka plan ayarlamak için bu komutla birlikte bir resim yüklemelisin (attachment)!")
+            
+        attachment = ctx.message.attachments[0]
+        if not attachment.content_type or not attachment.content_type.startswith("image/"):
+            return await ctx.send("❌ Lütfen geçerli bir görsel dosyası yükle (PNG, JPG vb.).")
+            
+        # 5 MB Limit
+        if attachment.size > 5 * 1024 * 1024:
+            return await ctx.send("❌ Yüklediğin görsel çok büyük! Lütfen **5 MB**'dan daha küçük bir dosya yükle.")
+            
+        await ctx.send("⏳ Görsel işleniyor, lütfen bekle...", delete_after=5)
+        
+        try:
+            image_bytes = await attachment.read()
+            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
+            
+            # Fit to 900x250
+            img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
+            
+            # Save as PNG
+            bg_path = f"Data/banners/{ctx.author.id}.png"
+            img.save(bg_path, "PNG", optimize=True)
+            
+            # Insert into DB just to be safe (color_hex is preserved if exists)
+            await self.db.execute(
+                "INSERT INTO global_profiles (user_id) VALUES (?) ON CONFLICT(user_id) DO NOTHING",
+                str(ctx.author.id)
+            )
+            
+            await ctx.send(f"✅ Rank kartı arka planın başarıyla güncellendi! Görmek için `{ctx.prefix}rank` yazabilirsin.")
+        except Exception as e:
+            log.error(f"Failed to process banner for {ctx.author.id}: {e}")
+            await ctx.send("❌ Görsel işlenirken bir hata oluştu.")
+
+    @level_group.command(name="rank_color")
+    @kumiho_check("public")
+    async def level_rank_color(self, ctx: commands.Context, hex_code: str):
+        """Kendi Rank tema rengini değiştirir. Örn: #FF0000"""
+        if not hex_code.startswith("#") or len(hex_code) not in (4, 7):
+            return await ctx.send("❌ Lütfen geçerli bir HEX kodu gir. Örn: `#FF5733`")
+            
+        await self.db.execute(
+            "INSERT INTO global_profiles (user_id, color_hex) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET color_hex=excluded.color_hex",
+            str(ctx.author.id), hex_code
+        )
+        await ctx.send(f"✅ Rank kartı temanın ana rengi **{hex_code}** olarak güncellendi! Görmek için `{ctx.prefix}rank` yazabilirsin.")
+
+
     # ── XP Leaderboard ────────────────────────────────────────────────────────
 
-    @commands.command(name="leaderboard_xp", aliases=["lb_xp", "xplb"])
+    @commands.command(name="leaderboard_xp", aliases=["lb_xp", "xplb", "ranktop", "toprank"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
+    @kumiho_check("public")
     async def lb_xp(self, ctx: commands.Context) -> None:
-        """leaderboard_xp işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.leaderboard_xp`"""
+        """View the text XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_xp`"""
         rows = await self.db.fetchall(
-            "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC LIMIT 10",
+            "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC",
             str(ctx.guild.id),
         )
         if not rows:
             return await ctx.send("❌ No XP profiles in this server yet.")
 
-        embed = discord.Embed(title="🏆 Server XP Leaderboard", color=discord.Color.gold())
-        desc = ""
-        for idx, row in enumerate(rows, 1):
-            m = ctx.guild.get_member(int(row["user_id"]))
-            name = m.mention if m else f"ID: {row['user_id']}"
-            # Approximate total XP earned
-            total = row["xp"] + sum(_get_xp_needed(l) for l in range(row["level"]))
-            desc += f"**#{idx}** {name} — Level `{row['level']}` (`{total:,} total XP`)\n"
-        embed.description = desc
-        embed.set_footer(text=f"Requested by {ctx.author.name}")
-        await ctx.send(embed=embed)
+        view = LeaderboardView(ctx, rows, lb_type="xp")
+        await ctx.send(embed=view.format_page(), view=view)
 
+    @commands.command(name="leaderboard_voice", aliases=["lb_vc", "lbvc", "sestop", "ses_top", "ses_rank"])
+    @commands.cooldown(1, 5.0, commands.BucketType.user)
+    @kumiho_check("public")
+    async def lb_vc(self, ctx: commands.Context) -> None:
+        """View the voice XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_voice`"""
+        rows = await self.db.fetchall(
+            "SELECT user_id, voice_time FROM levels WHERE guild_id=? AND voice_time > 0 ORDER BY voice_time DESC",
+            str(ctx.guild.id),
+        )
+        if not rows:
+            return await ctx.send("❌ Bu sunucuda henüz kaydedilmiş ses süresi yok.")
+
+        view = LeaderboardView(ctx, rows, lb_type="voice")
+        await ctx.send(embed=view.format_page(), view=view)
+
+class LeaderboardView(discord.ui.View):
+    def __init__(self, ctx: commands.Context, rows: list[dict], lb_type: str = "xp", per_page: int = 10):
+        super().__init__(timeout=180)
+        self.ctx = ctx
+        self.rows = rows
+        self.lb_type = lb_type
+        self.per_page = per_page
+        self.current_page = 0
+        self.total_pages = max(1, (len(rows) - 1) // per_page + 1)
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.prev_btn.disabled = self.current_page == 0
+        self.next_btn.disabled = self.current_page == self.total_pages - 1
+
+    def format_page(self):
+        start = self.current_page * self.per_page
+        end = start + self.per_page
+        page_rows = self.rows[start:end]
+        
+        if self.lb_type == "voice":
+            embed = discord.Embed(title="🎙️ Sunucu Ses Sıralaması", color=discord.Color.brand_green())
+            desc = ""
+            for idx, row in enumerate(page_rows, start + 1):
+                m = self.ctx.guild.get_member(int(row["user_id"]))
+                name = m.mention if m else f"ID: {row['user_id']}"
+                mins = row.get("voice_time", 0)
+                h = mins // 60
+                m_left = mins % 60
+                time_str = f"{h}s {m_left}dk" if h > 0 else f"{m_left}dk"
+                desc += f"**#{idx}** {name} — `{time_str}`\n"
+        else:
+            embed = discord.Embed(title="🏆 Server XP Leaderboard", color=discord.Color.gold())
+            desc = ""
+            for idx, row in enumerate(page_rows, start + 1):
+                m = self.ctx.guild.get_member(int(row["user_id"]))
+                name = m.mention if m else f"ID: {row['user_id']}"
+                # Approximate total XP earned
+                total = row["xp"] + sum(_get_xp_needed(l) for l in range(row["level"]))
+                desc += f"**#{idx}** {name} — Level `{row['level']}` (`{total:,} total XP`)\n"
+        
+        embed.description = desc
+        embed.set_footer(text=f"Sayfa {self.current_page + 1}/{self.total_pages} | {self.ctx.author.name} tarafından istendi", icon_url=self.ctx.author.display_avatar.url)
+        return embed
+
+    @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, custom_id="prev")
+    async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("❌ Bu menüyü sen açmadın.", ephemeral=True)
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.format_page(), view=self)
+
+    @discord.ui.button(emoji="🔍", label="Beni Bul", style=discord.ButtonStyle.secondary, custom_id="find_me")
+    async def find_me_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("❌ Bu menüyü sen açmadın.", ephemeral=True)
+        
+        user_index = -1
+        for idx, row in enumerate(self.rows):
+            if int(row["user_id"]) == self.ctx.author.id:
+                user_index = idx
+                break
+        
+        if user_index == -1:
+            return await interaction.response.send_message("❌ Henüz sıralamada değilsin.", ephemeral=True)
+            
+        self.current_page = user_index // self.per_page
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.format_page(), view=self)
+
+    @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary, custom_id="next")
+    async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("❌ Bu menüyü sen açmadın.", ephemeral=True)
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.format_page(), view=self)
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Leveling(bot))

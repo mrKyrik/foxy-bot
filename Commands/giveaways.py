@@ -32,6 +32,7 @@ def _load() -> dict:
 
 class Giveaways(commands.Cog):
     category = "Topluluk ve Etkileşim"
+    category_emoji = "👥"
     """
     State-of-the-art server-scoped background task-loop automated giveaways system.
     """
@@ -124,7 +125,7 @@ class Giveaways(commands.Cog):
     @commands.group(name="giveaway", aliases=["gway"], invoke_without_command=True)
     @kumiho_check("owner")
     async def giveaway_group(self, ctx: commands.Context) -> None:
-        """Setup and manage guild giveaways."""
+        """Manage giveaways in the server.\n\n**Usage:** `{prefix}giveaway`"""
         p = ctx.prefix
         await ctx.send(
             "🎊 **Server Giveaway Suite**\n"
@@ -260,7 +261,7 @@ class Giveaways(commands.Cog):
 
     @giveaway_group.command(name="list")
     async def giveaway_list(self, ctx: commands.Context) -> None:
-        """list hakkında detaylı bilgi gösterir. Kullanım: `f.list`"""
+        """List the configured items.\n\n**Usage:** `{prefix}list`"""
         data = _load()
         guild_active = [
             gw for gw in data["active"] if gw["guild_id"] == ctx.guild.id

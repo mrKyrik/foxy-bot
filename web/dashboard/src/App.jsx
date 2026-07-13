@@ -9,6 +9,8 @@ import LogSystemLayout from './layouts/LogSystemLayout';
 import LoginPage from './pages/LoginPage';
 import OverviewPage from './pages/OverviewPage';
 import CommandManagementPage from './pages/CommandManagementPage';
+import FormManagementPage from './pages/FormManagementPage';
+import PanelAuthPage from './pages/PanelAuthPage';
 
 import CallbackPage from './pages/CallbackPage';
 
@@ -34,6 +36,8 @@ function App() {
         <Route path="/" element={<MainLayout setAuthToken={setAuthToken} />}>
           <Route index element={<OverviewPage />} />
           <Route path="commands" element={<CommandManagementPage />} />
+          <Route path="forms" element={<FormManagementPage />} />
+          <Route path="auth" element={<PanelAuthPage />} />
         </Route>
 
         {/* Log Sistemi (Log Layout) */}

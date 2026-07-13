@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Users, Shield, MessageSquare, AlertTriangle, Ticket, FileText, UserPlus, Tag, Settings, ArrowLeft, Filter } from 'lucide-react';
+import { Users, Shield, MessageSquare, AlertTriangle, Ticket, FileText, UserPlus, Tag, Settings, ArrowLeft, Filter, Headphones } from 'lucide-react';
 import { motion } from 'framer-motion';
 import GlobalTagSelector from './GlobalTagSelector';
 
@@ -13,6 +13,7 @@ const LogSidebar = ({ availableTags, selectedTags, setSelectedTags }) => {
     { to: "/logs/mod", icon: <Shield size={18} />, label: "Mod Logları" },
     { to: "/logs/sunucu", icon: <Settings size={18} />, label: "Sunucu Logları" },
     { to: "/logs/rol", icon: <Tag size={18} />, label: "Rol Logları" },
+    { to: "/logs/oda", icon: <Headphones size={18} />, label: "Oda Logları" },
     { to: "/logs/uyari", icon: <AlertTriangle size={18} />, label: "Uyarı Logları" },
     { to: "/logs/ticket", icon: <Ticket size={18} />, label: "Ticket Logları" },
     { to: "/logs/basvuru", icon: <FileText size={18} />, label: "Başvuru Logları" },

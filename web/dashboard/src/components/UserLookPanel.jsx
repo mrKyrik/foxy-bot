@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import axios from 'axios';
-import { X, Mic, MessageSquare, ShieldAlert, Tag, Hash, Calendar, Edit3, Send, AlertTriangle, ShieldX, Hammer } from 'lucide-react';
+import { X, Mic, MessageSquare, ShieldAlert, Tag, Hash, Calendar, Edit3, Send, AlertTriangle, ShieldX, Hammer, Trash2 } from 'lucide-react';
 import { formatTime } from '../utils/time';
 import { API_BASE_URL } from '../config';
 import { GuildContext } from '../GuildContext';
@@ -8,6 +8,8 @@ import { GuildContext } from '../GuildContext';
 const UserLookPanel = ({ user, allLogs, onClose }) => {
   const { activeGuildId } = useContext(GuildContext);
   const [notes, setNotes] = useState([]);
+  const [currentAdminId, setCurrentAdminId] = useState(null);
+  const [isOwner, setIsOwner] = useState(false);
   const [currentRoles, setCurrentRoles] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [loadingNotes, setLoadingNotes] = useState(false);
@@ -65,8 +67,11 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
   const fetchNotes = async () => {
     setLoadingNotes(true);
     try {
-      const res = await axios.get(`${API_BASE_URL}/notes/${user.id}`);
+      if (!activeGuildId) return;
+      const res = await axios.get(`${API_BASE_URL}/notes/${activeGuildId}/${user.id}`);
       setNotes(res.data.notes || []);
+      if (res.data.current_admin_id) setCurrentAdminId(res.data.current_admin_id);
+      if (res.data.is_owner !== undefined) setIsOwner(res.data.is_owner);
     } catch (err) {
       console.error("Notlar çekilemedi:", err);
     } finally {
@@ -79,15 +84,26 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
     if (!newNote.trim()) return;
 
     try {
-      await axios.post(`${API_BASE_URL}/notes`, {
+      if (!activeGuildId) return;
+      await axios.post(`${API_BASE_URL}/notes/${activeGuildId}`, {
         user_id: user.id,
-        note: newNote,
-        added_by: "Admin" // Gerçek sistemde JWT token'dan alınabilir
+        note: newNote
       });
       setNewNote('');
       fetchNotes(); // Notları yenile
     } catch (err) {
       console.error("Not eklenemedi:", err);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!window.confirm("Bu notu silmek istediğinize emin misiniz?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/notes/${activeGuildId}/${noteId}`);
+      fetchNotes();
+    } catch (err) {
+      console.error("Not silinemedi:", err);
+      alert(err.response?.data?.error || "Not silinirken bir hata oluştu.");
     }
   };
 
@@ -231,9 +247,18 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
               <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontStyle: 'italic' }}>Bu kullanıcı için henüz not eklenmemiş.</div>
             ) : (
               notes.map((n, i) => (
-                <div key={i} style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '3px solid var(--accent-blue)', padding: '8px 12px', borderRadius: '4px' }}>
-                  <div style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '4px' }}>{n.note}</div>
+                <div key={i} style={{ background: 'rgba(59, 130, 246, 0.1)', borderLeft: '3px solid var(--accent-blue)', padding: '8px 12px', borderRadius: '4px', position: 'relative' }}>
+                  <div style={{ fontSize: '0.9rem', color: '#fff', marginBottom: '4px', paddingRight: '24px' }}>{n.note}</div>
                   <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{n.added_by} • {n.created_at}</div>
+                  {(n.admin_id === currentAdminId || isOwner) && currentAdminId && (
+                    <button 
+                      onClick={() => handleDeleteNote(n.id)}
+                      style={{ position: 'absolute', top: '8px', right: '8px', background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '4px' }}
+                      title="Notu Sil"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))
             )}

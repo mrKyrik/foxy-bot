@@ -1,8 +1,9 @@
 from core.checks import kumiho_check, kumiho_app_check
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import datetime
+import json
 
 # ---------------------------------------------------------
 # UI COMPONENTS
@@ -56,10 +57,16 @@ class ReasonModal(discord.ui.Modal):
                 if publish_channel_id:
                     pub_channel = guild.get_channel(int(publish_channel_id))
                     if pub_channel:
-                        pub_embed = discord.Embed(title=self.form_data['title'], color=discord.Color.gold())
+                        answers = []
                         for field in embed.fields:
                             if field.name not in ["Karar", "Sebep", "Sistem"]:
-                                pub_embed.add_field(name=field.name, value=field.value, inline=False)
+                                answers.append(field.value)
+                        content = "\n\n".join(answers)
+                        
+                        pub_embed = discord.Embed(
+                            description=f"📢 **{self.form_data['title']} ile bir itiraf!**\n\n{content}",
+                            color=discord.Color.purple()
+                        )
                         try:
                             await pub_channel.send(embed=pub_embed)
                             embed.add_field(name="Sistem", value=f"İçerik {pub_channel.mention} kanalında yayınlandı.", inline=False)
@@ -144,7 +151,16 @@ class AdminReviewView(discord.ui.View):
         }
         
         try:
-            channel_name = f"ticket-{submitter.name}"
+            # Ticket sayacını al ve artır
+            ticket_settings = await self.bot.db.fetchone("SELECT ticket_counter FROM ticket_settings WHERE guild_id=?", str(guild.id))
+            ticket_num = (ticket_settings[0] if ticket_settings else 0) + 1
+            
+            if ticket_settings is None:
+                await self.bot.db.execute("INSERT INTO ticket_settings (guild_id, ticket_counter) VALUES (?, 1)", str(guild.id))
+            else:
+                await self.bot.db.execute("UPDATE ticket_settings SET ticket_counter=? WHERE guild_id=?", ticket_num, str(guild.id))
+                
+            channel_name = f"{ticket_num:03d}-{submitter.name}"
             ticket_channel = await guild.create_text_channel(channel_name, category=category, overwrites=overwrites)
             
             embed = interaction.message.embeds[0]
@@ -212,15 +228,10 @@ class DynamicFormModal(discord.ui.Modal):
             self.add_item(inp)
 
     async def on_submit(self, interaction: discord.Interaction):
-        await interaction.response.send_message("Form başarıyla gönderildi! Teşekkür ederiz.", ephemeral=True)
-        
         guild = interaction.guild
         channel_id = int(self.form_data["channel_id"])
         target_channel = guild.get_channel(channel_id)
         
-        if not target_channel:
-            return
-
         embed = discord.Embed(
             title="Yeni Form Yanıtı",
             color=discord.Color.blue()
@@ -240,12 +251,57 @@ class DynamicFormModal(discord.ui.Modal):
         now = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
         embed.set_footer(text=f"Form ID: {self.form_data['form_id']} • {now}")
 
-        view = AdminReviewView(bot=self.bot)
-        await target_channel.send(embed=embed, view=view)
+        user_embed = embed.copy()
+        form_type = self.form_data.get("form_type", 1)
+
+        if form_type == 4 and self.form_data.get("auto_approve", 1) == 1:
+            user_embed.title = "Kumiho Oto-Onay - Yanıtınız Alındı ve Yayınlandı"
+            user_embed.color = discord.Color.green()
+            await interaction.response.send_message("İtirafınız/Formunuz otomatik olarak onaylandı ve paylaşıldı!", embed=user_embed, ephemeral=True)
+            
+            publish_channel_id = self.form_data.get("action_target")
+            if publish_channel_id:
+                publish_channel = guild.get_channel(int(publish_channel_id))
+                if publish_channel:
+                    answers = [inp.value for inp in self.inputs]
+                    content = "\n\n".join(answers)
+                    
+                    publish_embed = discord.Embed(
+                        description=f"📢 **{self.form_data['title']} ile bir itiraf!**\n\n{content}",
+                        color=discord.Color.purple()
+                    )
+                    await publish_channel.send(embed=publish_embed)
+                    
+            if target_channel:
+                await target_channel.send("✅ Otomatik onaylanan form logu:", embed=embed)
+        else:
+            user_embed.title = "Yanıtınız Alındı - Admin Onayı Bekliyor"
+            user_embed.color = discord.Color.orange()
+            await interaction.response.send_message("Form başarıyla gönderildi! Admin onayından sonra işleme alınacaktır.", embed=user_embed, ephemeral=True)
+            
+            if target_channel:
+                view = AdminReviewView(bot=self.bot)
+                await target_channel.send(embed=embed, view=view)
+
+        if hasattr(self.bot, "db"):
+            await self.bot.db.log_db_event(
+                guild_id=guild.id,
+                event_type="app_create",
+                setting_key="app_create_on",
+                user_id=str(interaction.user.id),
+                details={
+                    "username": str(interaction.user.id),
+                    "text": f"Başvuru Yapıldı\nForm: {self.form_data['title']}"
+                },
+                channel_id=str(channel_id)
+            )
 
 
-class FormRoleSelect(discord.ui.Select):
-    def __init__(self, form_data: dict, questions: list, roles: list[discord.Role], bot):
+import re
+
+class DynamicFormRoleSelect(discord.ui.DynamicItem[discord.ui.Select], template=r'select_form_(?P<id>[a-zA-Z0-9_-]+)'):
+    def __init__(self, form_id: str, form_data: dict, questions: list, roles: list[discord.Role], bot):
+        self.form_id = form_id
         self.form_data = form_data
         self.questions = questions
         self.bot = bot
@@ -253,36 +309,83 @@ class FormRoleSelect(discord.ui.Select):
             discord.SelectOption(label=r.name, value=str(r.id), description="Bu role başvurmak için seçin")
             for r in roles
         ]
-        super().__init__(placeholder="Başvuracağınız Rolü Seçin...", min_values=1, max_values=1, options=options, custom_id=f"select_form_{form_data['form_id']}")
+        super().__init__(discord.ui.Select(
+            placeholder="Başvuracağınız Rolü Seçin...", 
+            min_values=1, 
+            max_values=1, 
+            options=options, 
+            custom_id=f"select_form_{form_id}"
+        ))
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Item, match: re.Match[str], /):
+        form_id = match['id']
+        bot = interaction.client
+        form_data_row = await bot.db.fetchone("SELECT * FROM custom_forms WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
+        if not form_data_row:
+            return None
+        form_data = dict(form_data_row)
+        
+        questions = await bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
+        qs = [dict(q) for q in questions]
+        
+        roles_db = await bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
+        roles = []
+        for r_db in roles_db:
+            r = interaction.guild.get_role(int(r_db["role_id"]))
+            if r: roles.append(r)
+            
+        if not roles:
+            return None
+            
+        return cls(form_id, form_data, qs, roles, bot)
 
     async def callback(self, interaction: discord.Interaction):
-        selected_role_id = self.values[0]
+        selected_role_id = self.item.values[0]
         modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot, selected_role_id=selected_role_id)
         await interaction.response.send_modal(modal)
+
+
+class DynamicFormTriggerButton(discord.ui.DynamicItem[discord.ui.Button], template=r'trigger_btn_(?P<id>[a-zA-Z0-9_-]+)'):
+    def __init__(self, form_id: str, form_data: dict, questions: list, bot):
+        self.form_id = form_id
+        self.form_data = form_data
+        self.questions = questions
+        self.bot = bot
+        super().__init__(discord.ui.Button(
+            label="Formu Doldur",
+            style=discord.ButtonStyle.primary,
+            custom_id=f"trigger_btn_{form_id}"
+        ))
+
+    @classmethod
+    async def from_custom_id(cls, interaction: discord.Interaction, item: discord.ui.Item, match: re.Match[str], /):
+        form_id = match['id']
+        bot = interaction.client
+        form_data_row = await bot.db.fetchone("SELECT * FROM custom_forms WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
+        if not form_data_row:
+            return None
+        form_data = dict(form_data_row)
+        
+        questions = await bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
+        qs = [dict(q) for q in questions]
+        
+        return cls(form_id, form_data, qs, bot)
+
+    async def callback(self, interaction: discord.Interaction):
+        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot)
+        await interaction.response.send_modal(modal)
+
 
 class FormTriggerViewSelect(discord.ui.View):
     def __init__(self, form_data: dict, questions: list, roles: list[discord.Role], bot):
         super().__init__(timeout=None)
-        self.add_item(FormRoleSelect(form_data, questions, roles, bot))
+        self.add_item(DynamicFormRoleSelect(str(form_data['form_id']), form_data, questions, roles, bot))
 
 class FormTriggerViewButton(discord.ui.View):
     def __init__(self, form_data: dict, questions: list, bot):
         super().__init__(timeout=None)
-        self.form_data = form_data
-        self.questions = questions
-        self.bot = bot
-        
-        btn = discord.ui.Button(
-            label="Formu Doldur",
-            style=discord.ButtonStyle.primary,
-            custom_id=f"trigger_btn_{form_data['form_id']}"
-        )
-        btn.callback = self.button_callback
-        self.add_item(btn)
-        
-    async def button_callback(self, interaction: discord.Interaction):
-        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot)
-        await interaction.response.send_modal(modal)
+        self.add_item(DynamicFormTriggerButton(str(form_data['form_id']), form_data, questions, bot))
 
 # ---------------------------------------------------------
 # COG
@@ -290,35 +393,72 @@ class FormTriggerViewButton(discord.ui.View):
 
 class FormsCog(commands.Cog):
     category = "Topluluk ve Etkileşim"
+    category_emoji = "👥"
     def __init__(self, bot):
         self.bot = bot
         
-    @commands.Cog.listener()
-    async def on_ready(self):
+    async def cog_load(self):
+        if not self.web_actions_loop.is_running():
+            self.web_actions_loop.start()
+
+    async def cog_unload(self):
+        self.web_actions_loop.cancel()
+
+    @tasks.loop(seconds=5, reconnect=True)
+    async def web_actions_loop(self):
         try:
-            self.bot.add_view(AdminReviewView(self.bot))
-            
-            forms = await self.bot.db.fetchall("SELECT * FROM custom_forms")
-            for f in forms:
-                form_data = dict(f)
-                form_type = form_data.get("form_type", 1)
-                
-                questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_data["form_id"], form_data["guild_id"])
-                qs = [dict(q) for q in questions]
-                
-                if form_type in [1, 4]:
-                    self.bot.add_view(FormTriggerViewButton(form_data, qs, self.bot))
-                elif form_type == 2:
-                    roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=? AND guild_id=?", form_data["form_id"], form_data["guild_id"])
-                    role_ids = [r["role_id"] for r in roles_db]
+            # Sadece summon_form eylemlerini çek
+            actions = await self.bot.db.fetchall("SELECT * FROM web_actions WHERE status='pending' AND action_type='summon_form'")
+            for action in actions:
+                guild_id = action['guild_id']
+                action_id = action['action_id']
+                try:
+                    payload = json.loads(action['payload'])
+                    form_id = payload['form_id']
+                    target_channel_id = payload['target_channel_id']
                     
-                    guild = self.bot.get_guild(int(form_data["guild_id"]))
-                    if guild:
-                        roles = [guild.get_role(int(r)) for r in role_ids if guild.get_role(int(r))]
-                        if roles:
-                            self.bot.add_view(FormTriggerViewSelect(form_data, qs, roles, self.bot))
+                    guild = self.bot.get_guild(int(guild_id))
+                    if not guild:
+                        continue
+                        
+                    channel = guild.get_channel(int(target_channel_id))
+                    if not channel:
+                        continue
+                    
+                    form_data_row = await self.bot.db.fetchone("SELECT * FROM custom_forms WHERE form_id = ? AND guild_id = ?", form_id, guild_id)
+                    if form_data_row:
+                        form_data = dict(form_data_row)
+                        form_type = form_data.get("form_type", 1)
+                        questions = await self.bot.db.fetchall("SELECT question_text FROM form_questions WHERE form_id=? AND guild_id=?", form_id, guild_id)
+                        qs = [dict(q) for q in questions]
+                        
+                        embed = discord.Embed(
+                            title=form_data["title"],
+                            description="Lütfen aşağıdaki arayüzü kullanarak form/başvuru işleminizi başlatın.",
+                            color=discord.Color.blurple()
+                        )
+                        
+                        if form_type == 2:
+                            roles_db = await self.bot.db.fetchall("SELECT role_id FROM form_roles WHERE form_id=? AND guild_id=?", form_id, guild_id)
+                            roles = []
+                            for r_db in roles_db:
+                                r = guild.get_role(int(r_db["role_id"]))
+                                if r: roles.append(r)
+                            view = FormTriggerViewSelect(form_data, qs, roles, self.bot)
+                        else:
+                            view = FormTriggerViewButton(form_data, qs, self.bot)
+                        
+                        if isinstance(channel, discord.ForumChannel):
+                            await channel.create_thread(name=form_data["title"], embed=embed, view=view)
+                        else:
+                            await channel.send(embed=embed, view=view)
+                except Exception as e:
+                    print(f"Web Action Hatası: {e}")
+                finally:
+                    # İşlendi olarak işaretle
+                    await self.bot.db.execute("UPDATE web_actions SET status='completed' WHERE action_id=?", action_id)
         except Exception as e:
-            print(f"Form views yuklenirken hata: {e}")
+            pass
 
     @app_commands.command(name="form_olustur", description="Yeni bir özel form oluşturur")
     @kumiho_app_check("owner")
@@ -342,6 +482,7 @@ class FormsCog(commands.Cog):
         hedef_roller: str = None,
         yayin_kanali: discord.TextChannel = None
     ):
+        """Execute the form_olustur command.\n\n**Usage:** `{prefix}form_olustur`"""
         sorular = [{"question_text": soru_1}]
         if soru_2: sorular.append({"question_text": soru_2})
         if soru_3: sorular.append({"question_text": soru_3})
@@ -413,6 +554,13 @@ class FormsCog(commands.Cog):
     @kumiho_app_check("owner")
     @app_commands.autocomplete(form_id=form_id_autocompletion)
     async def form_sil(self, interaction: discord.Interaction, form_id: str):
+        """Delete an existing custom form.
+        
+        Removes the form and its data from the database.
+        
+        **Usage:** `/form_sil <form_id>`
+        **Required Permission:** Server Owner or Administrator
+        """
         mevcut = await self.bot.db.fetchone("SELECT form_id FROM custom_forms WHERE form_id=? AND guild_id=?", form_id, str(interaction.guild_id))
         if not mevcut:
             return await interaction.response.send_message("Böyle bir form bulunamadı.", ephemeral=True)
@@ -424,6 +572,13 @@ class FormsCog(commands.Cog):
     @kumiho_app_check("owner")
     @app_commands.autocomplete(form_id=form_id_autocompletion)
     async def form_mesaji_gonder(self, interaction: discord.Interaction, form_id: str):
+        """Send the form trigger message to a channel.
+        
+        This command posts a message with a button that users can click to fill out the form.
+        
+        **Usage:** `/form_mesaji_gonder <form_id>`
+        **Required Permission:** Server Owner or Administrator
+        """
         form_data_row = await self.bot.db.fetchone(
             "SELECT * FROM custom_forms WHERE form_id = ? AND guild_id = ?",
             form_id, str(interaction.guild_id)
@@ -458,7 +613,10 @@ class FormsCog(commands.Cog):
         else:
             view = FormTriggerViewButton(form_data, qs, self.bot)
         
-        await interaction.channel.send(embed=embed, view=view)
+        if isinstance(interaction.channel, discord.ForumChannel):
+            await interaction.channel.create_thread(name=form_data["title"], embed=embed, view=view)
+        else:
+            await interaction.channel.send(embed=embed, view=view)
         await interaction.response.send_message("Form mesajı gönderildi!", ephemeral=True)
 
 async def setup(bot):

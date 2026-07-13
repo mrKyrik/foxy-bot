@@ -23,6 +23,7 @@ HORNY_DONKEY_QUOTES = [
 
 class Nsfw(commands.Cog):
     category = "Eğlence ve Araçlar"
+    category_emoji = "🛠️"
     """
     Access premium uncensored 18+ adult content and mature feeds.
     """
@@ -39,34 +40,35 @@ class Nsfw(commands.Cog):
     @commands.group(name="nsfw", invoke_without_command=True)
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_group(self, ctx: commands.Context) -> None:
-        """
-        Unlocks premium mature adult category feeds.
-        Usage: `f.nsfw <subcommand>` (e.g. `f.nsfw bdsm`)
-        """
+        """NSFW commands group.
+
+**Usage:** `{prefix}nsfw`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="bdsm")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_bdsm(self, ctx: commands.Context) -> None:
-        """bdsm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.bdsm [parametreler]`"""
+        """Get an NSFW bdsm image.
+
+**Usage:** `{prefix}nsfw bdsm`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="hentai")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_hentai(self, ctx: commands.Context) -> None:
-        """hentai işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hentai [parametreler]`"""
+        """Get a random hentai image.\n\n**Usage:** `{prefix}hentai`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="feet")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_feet(self, ctx: commands.Context) -> None:
-        """feet işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.feet [parametreler]`"""
+        """Get a random feet image.\n\n**Usage:** `{prefix}feet`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
     @nsfw_group.command(name="rule34")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def nsfw_rule34(self, ctx: commands.Context) -> None:
-        """rule34 işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rule34 [parametreler]`"""
+        """Search for rule34 images.\n\n**Usage:** `{prefix}rule34`"""
         await ctx.send(random.choice(HORNY_DONKEY_QUOTES))
 
 

@@ -1,22 +1,29 @@
 import logging
 import discord
 from discord.ext import commands
+from core.checks import kumiho_check
 
 log = logging.getLogger(__name__)
 
 class Forums(commands.Cog):
-    category = "Yönetim"
+    category = "Yönetim ve Ayarlar"
+    category_emoji = "⚙️"
     """
     Forum yönetimi için prefix komutları.
     """
 
     def __init__(self, bot):
+        self.category = "Diğer"
         self.bot = bot
 
     @commands.command(name="forum_olustur", aliases=["forumkur", "createforum"])
-    @commands.has_permissions(manage_channels=True)
+    @kumiho_check("owner")
     async def forum_olustur(self, ctx, *, isim: str):
-        """Yeni bir forum kanalı oluşturur. Kullanım: `!forum_olustur <isim>`"""
+        """Create a new forum channel.
+        
+        **Usage:** `{prefix}forum_olustur <name>`
+        **Required Permission:** Server Owner or Administrator
+        """
         try:
             forum_channel = await ctx.guild.create_forum_channel(name=isim)
             embed = discord.Embed(
@@ -32,9 +39,13 @@ class Forums(commands.Cog):
             await ctx.send(f"❌ Bir hata oluştu: {e}")
 
     @commands.command(name="forum_mesaj", aliases=["forum_post", "forumpost"])
-    @commands.has_permissions(manage_messages=True)
+    @kumiho_check("owner")
     async def forum_mesaj(self, ctx, forum: discord.ForumChannel, baslik: str, *, icerik: str):
-        """Bir forum kanalına yeni bir post (başlık) açar. Kullanım: `!forum_mesaj #forum-kanalı "Başlık" İçerik`"""
+        """Create a new post (thread) in a forum channel.
+        
+        **Usage:** `{prefix}forum_mesaj <#forum-channel> "Title" <Content>`
+        **Required Permission:** Server Owner or Administrator
+        """
         try:
             thread_with_message = await forum.create_thread(name=baslik, content=icerik)
             
@@ -51,9 +62,13 @@ class Forums(commands.Cog):
             await ctx.send(f"❌ Bir hata oluştu: {e}")
 
     @commands.command(name="forum_sil", aliases=["forumkapat", "deleteforum"])
-    @commands.has_permissions(manage_channels=True)
+    @kumiho_check("owner")
     async def forum_sil(self, ctx, forum: discord.ForumChannel):
-        """Mevcut bir forum kanalını siler. Kullanım: `!forum_sil #forum-kanalı`"""
+        """Delete an existing forum channel.
+        
+        **Usage:** `{prefix}forum_sil <#forum-channel>`
+        **Required Permission:** Server Owner or Administrator
+        """
         try:
             await forum.delete()
             embed = discord.Embed(

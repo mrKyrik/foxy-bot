@@ -26,3 +26,16 @@ axios.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+// Response interceptor: 401 veya 403 alınırsa token'ı sil ve ana sayfaya yönlendir
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      localStorage.removeItem('kumiho_token');
+      localStorage.removeItem('kumiho_active_guild');
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);

@@ -24,8 +24,8 @@ import aiosqlite
 
 log = logging.getLogger(__name__)
 
-USER_DB_PATH = "Data/USER-DB.db"
-ADMIN_DB_PATH = "Data/ADMIN-EVENTS.db"
+USER_DB_PATH = "kumiho.db"
+ADMIN_DB_PATH = "kumiho.db"
 
 # ---------------------------------------------------------------------------
 # Schema — USER-DB.db
@@ -170,6 +170,7 @@ CREATE TABLE IF NOT EXISTS custom_forms (
     channel_id  TEXT NOT NULL,
     form_type   INTEGER DEFAULT 1,
     action_target TEXT,
+    auto_approve INTEGER DEFAULT 1,
     PRIMARY KEY (guild_id, form_id)
 );
 
@@ -299,8 +300,29 @@ CREATE TABLE IF NOT EXISTS user_cache (
 -- Kanal önbelleği (Web UI için)
 CREATE TABLE IF NOT EXISTS channel_cache (
     channel_id   TEXT PRIMARY KEY,
+    guild_id     TEXT NOT NULL,
     channel_name TEXT,
     updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS web_actions (
+    action_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS active_tickets (
+    ticket_id TEXT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    reason TEXT,
+    status TEXT DEFAULT 'open',
+    claimed_by TEXT,
+    PRIMARY KEY (guild_id, ticket_id)
 );
 
 -- Private Voice Channels
@@ -369,6 +391,7 @@ class Database:
     ) -> None:
         self._user_db_path = user_db_path
         self._admin_db_path = admin_db_path
+        self._db_path = user_db_path
         self.user_db: aiosqlite.Connection | None = None
         self.admin_db: aiosqlite.Connection | None = None
 
@@ -376,13 +399,15 @@ class Database:
         """Bağlantıları aç ve tabloları oluştur."""
         os.makedirs("Data", exist_ok=True)
 
-        self.user_db = await aiosqlite.connect(self._user_db_path)
-        self.user_db.row_factory = aiosqlite.Row  # sütun isimleriyle erişim
+        self.db = await aiosqlite.connect(self._db_path, timeout=20.0)
+        self.db.row_factory = aiosqlite.Row  # sütun isimleriyle erişim
         
-        # WAL ve Foreign Key modunu aktif et
-        await self.user_db.execute("PRAGMA journal_mode=WAL;")
-        await self.user_db.execute("PRAGMA synchronous=NORMAL;")
-        await self.user_db.execute("PRAGMA foreign_keys=ON;")
+        self.user_db = self.db
+        self.admin_db = self.db
+        
+        await self.db.execute("PRAGMA journal_mode=WAL;")
+        await self.db.execute("PRAGMA synchronous=NORMAL;")
+        await self.db.execute("PRAGMA foreign_keys=ON;")
         
         # Migration: saved_roles
         cursor = await self.user_db.execute("PRAGMA table_info(saved_roles)")
@@ -401,6 +426,26 @@ class Database:
                     for rid in r_ids:
                         await self.user_db.execute("INSERT OR IGNORE INTO saved_roles (user_id, guild_id, role_id) VALUES (?, ?, ?)", (r["user_id"], r["guild_id"], str(rid)))
                 except Exception: pass
+            await self.user_db.commit()
+
+        # Migration: private_voice_rooms log_message_id and live_data
+        cursor = await self.user_db.execute("PRAGMA table_info(private_voice_rooms)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "log_message_id" not in columns:
+            log.info("Adding log_message_id to private_voice_rooms...")
+            try:
+                await self.user_db.execute("ALTER TABLE private_voice_rooms ADD COLUMN log_message_id TEXT")
+                await self.user_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for private_voice_rooms: {e}")
+                
+        if "live_data" not in columns:
+            log.info("Adding live_data to private_voice_rooms...")
+            try:
+                await self.user_db.execute("ALTER TABLE private_voice_rooms ADD COLUMN live_data TEXT")
+                await self.user_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for private_voice_rooms live_data: {e}")
         
         # Migration: custom_forms
         cursor = await self.user_db.execute("PRAGMA table_info(custom_forms)")
@@ -422,8 +467,8 @@ class Database:
                 action_tgt = a_data.get("publish_channel_id", None)
                 
                 await self.user_db.execute(
-                    "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target) VALUES (?, ?, ?, ?, ?, ?)", 
-                    (f["form_id"], f["guild_id"], f["title"], f["channel_id"], f.get("form_type", 1), action_tgt)
+                    "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                    (f["form_id"], f["guild_id"], f["title"], f["channel_id"], f.get("form_type", 1), action_tgt, 1)
                 )
                 try:
                     q_list = json.loads(f["questions"])
@@ -455,8 +500,8 @@ class Database:
                 for f in f_data:
                     fd = dict(f)
                     await self.user_db.execute(
-                        "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target) VALUES (?, ?, ?, ?, ?, ?)",
-                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"))
+                        "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"), 1)
                     )
                 for q in q_data:
                     qd = dict(q)
@@ -474,6 +519,16 @@ class Database:
                     )
             else:
                 await self.user_db.executescript(USER_DB_SCHEMA)
+
+        cursor = await self.user_db.execute("PRAGMA table_info(custom_forms)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "auto_approve" not in columns:
+            log.info("Adding auto_approve to custom_forms...")
+            try:
+                await self.main_db.execute("ALTER TABLE custom_forms ADD COLUMN auto_approve INTEGER DEFAULT 1")
+                await self.main_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for custom_forms auto_approve: {e}")
 
         await self.user_db.commit()
 
@@ -674,21 +729,54 @@ class Database:
         except Exception as e:
             log.error(f"update_user_cache hatası: {e}")
 
-    async def update_channel_cache(self, channel_id: str, channel_name: str) -> None:
+    async def update_channel_cache(self, guild_id: str, channel_id: str, channel_name: str) -> None:
         """Kanal adını önbelleğe alır."""
         try:
             await self.user_db.execute(
                 """
-                INSERT INTO channel_cache (channel_id, channel_name)
-                VALUES (?, ?)
+                INSERT INTO channel_cache (channel_id, guild_id, channel_name)
+                VALUES (?, ?, ?)
                 ON CONFLICT(channel_id) DO UPDATE SET
-                    channel_name=excluded.channel_name
+                    guild_id=excluded.guild_id,
+                    channel_name=excluded.channel_name,
+                    updated_at=CURRENT_TIMESTAMP
                 """,
-                (str(channel_id), channel_name)
+                (str(channel_id), str(guild_id), channel_name)
             )
             await self.user_db.commit()
         except Exception as e:
             log.error(f"update_channel_cache hatası: {e}")
+
+    async def bulk_sync_channel_cache(self, guild_id: str, channels: list[tuple[str, str]]) -> None:
+        """Belirtilen sunucunun tüm kanallarını önbelleğe eşitler."""
+        try:
+            data = [(ch_id, guild_id, ch_name) for ch_id, ch_name in channels]
+            await self.user_db.executemany(
+                """
+                INSERT INTO channel_cache (channel_id, guild_id, channel_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(channel_id) DO UPDATE SET
+                    guild_id=excluded.guild_id,
+                    channel_name=excluded.channel_name,
+                    updated_at=CURRENT_TIMESTAMP
+                """,
+                data
+            )
+            
+            # Sunucuda artık var olmayan kanalları temizle
+            # (Silinen kanallar önbellekte kalmasın)
+            current_ids = [ch_id for ch_id, ch_name in channels]
+            if current_ids:
+                placeholders = ','.join('?' * len(current_ids))
+                query = f"DELETE FROM channel_cache WHERE guild_id = ? AND channel_id NOT IN ({placeholders})"
+                await self.user_db.execute(query, [guild_id] + current_ids)
+            else:
+                await self.user_db.execute("DELETE FROM channel_cache WHERE guild_id = ?", (guild_id,))
+                
+            await self.user_db.commit()
+            log.debug(f"bulk_sync_channel_cache: {len(channels)} kanal guild {guild_id} için senkronize edildi.")
+        except Exception as e:
+            log.error(f"bulk_sync_channel_cache hatası: {e}")
 
     async def update_role_cache(self, guild_id: str, role_id: str, role_name: str) -> None:
         """Rol adını önbelleğe alır."""

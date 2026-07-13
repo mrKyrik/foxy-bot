@@ -23,18 +23,22 @@ _LUMINA_BANNER = (
 
 class Utils(commands.Cog):
     category = "Eğlence ve Araçlar"
+    category_emoji = "🛠️"
     """
     Utility commands for the bot.
     """
 
     def __init__(self, bot):
+        self.category = "Eğlence ve Araçlar"
         self.bot = bot
         self.bot_start_time = time.time()
 
     @commands.command()
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def ping(self, ctx):
-        """ping işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ping [parametreler]`"""
+        """Check the bot's latency.
+
+**Usage:** `{prefix}ping`"""
         embed = discord.Embed(
             title="🏓 Pong!",
             description=f"Latency: **{round(self.bot.latency * 1000)}ms**",
@@ -46,7 +50,9 @@ class Utils(commands.Cog):
     @commands.command(aliases=["owner"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def owners(self, ctx):
-        """owners işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.owners [parametreler]`"""
+        """List the bot owners.
+
+**Usage:** `{prefix}owners`"""
         names = []
         for user_id in _OWNER_IDS:
             user = ctx.bot.get_user(int(user_id))
@@ -58,7 +64,7 @@ class Utils(commands.Cog):
     @commands.command()
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def banner(self, ctx, member: discord.Member = None):
-        """banner işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.banner [parametreler]`"""
+        """View a user's banner.\n\n**Usage:** `{prefix}banner`"""
         member = member or ctx.author
         user = await self.bot.fetch_user(member.id)
         banner = user.banner
@@ -78,7 +84,7 @@ class Utils(commands.Cog):
     )
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def avatar(self, ctx, member: discord.Member = None):
-        """avatar işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.avatar [parametreler]`"""
+    """View a user's avatar.\n\n**Usage:** `{prefix}avatar`"""
         member = member or ctx.author
 
         dAvatar = member.display_avatar
@@ -101,7 +107,7 @@ class Utils(commands.Cog):
     @commands.command(name="about", aliases=["botinfo", "stats"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def about(self, ctx):
-        """about işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.about [parametreler]`"""
+    """Get information about the bot.\n\n**Usage:** `{prefix}about`"""
 
         uptime = round(time.time() - self.bot_start_time)
 
@@ -216,7 +222,7 @@ class Utils(commands.Cog):
     @commands.command(aliases=["ui", "whois"])
     @commands.cooldown(1, 5, commands.BucketType.user)
     async def userinfo(self, ctx, member: discord.Member = None):
-        """userinfo hakkında detaylı bilgi gösterir. Kullanım: `f.userinfo`"""
+    """View detailed information about a user.\n\n**Usage:** `{prefix}userinfo`"""
         member = member or ctx.author
 
         profile = member.display_avatar.url

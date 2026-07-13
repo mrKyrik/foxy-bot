@@ -96,7 +96,7 @@ const RoleSearch = ({ onSelect, placeholder, disabled, currentRoles = [] }) => {
 };
 
 const CommandManagementPage = () => {
-  const { activeGuildId } = useContext(GuildContext);
+  const { activeGuildId, guildPermission } = useContext(GuildContext);
   const [categories, setCategories] = useState({});
   const [activeCategory, setActiveCategory] = useState(null);
   const [globalSearch, setGlobalSearch] = useState('');
@@ -165,6 +165,7 @@ const CommandManagementPage = () => {
   };
 
   const toggleCommand = (catName, cmdName) => {
+    if (guildPermission === 'read') return;
     const updatedCats = { ...categories };
     const updatedList = updatedCats[catName].map(c => {
       if (c.name === cmdName) {
@@ -179,6 +180,7 @@ const CommandManagementPage = () => {
   };
 
   const toggleMasterCategory = async (catName) => {
+    if (guildPermission === 'read') return;
     const cmds = categories[catName];
     if (!cmds || cmds.length === 0) return;
     
@@ -205,6 +207,7 @@ const CommandManagementPage = () => {
   };
 
   const addRoleToCommand = (catName, cmdName, roleId, roleName) => {
+    if (guildPermission === 'read') return;
     if (!roleId) return;
     if (roleName) setRoleCache(prev => ({ ...prev, [roleId]: roleName }));
 
@@ -223,6 +226,7 @@ const CommandManagementPage = () => {
   };
 
   const removeRoleFromCommand = (catName, cmdName, roleId) => {
+    if (guildPermission === 'read') return;
     const updatedCats = { ...categories };
     updatedCats[catName] = updatedCats[catName].map(c => {
       if (c.name === cmdName) {
@@ -409,8 +413,9 @@ const CommandManagementPage = () => {
                     <div className="master-toggle-wrapper">
                       <span className="master-toggle-label">Tümünü {allEnabled ? 'Kapat' : 'Aç'}</span>
                       <div 
-                        className={`toggle-switch ${allEnabled ? 'on' : ''}`}
+                        className={`toggle-switch ${allEnabled ? 'on' : ''} ${guildPermission === 'read' ? 'disabled' : ''}`}
                         onClick={() => toggleMasterCategory(activeCategory)}
+                        style={{ cursor: guildPermission === 'read' ? 'not-allowed' : 'pointer', opacity: guildPermission === 'read' ? 0.6 : 1 }}
                       >
                         <motion.div
                           layout
@@ -441,8 +446,9 @@ const CommandManagementPage = () => {
                           </div>
                           
                           <div 
-                            className={`toggle-switch ${cmd.is_enabled ? 'on' : ''}`}
+                            className={`toggle-switch ${cmd.is_enabled ? 'on' : ''} ${guildPermission === 'read' ? 'disabled' : ''}`}
                             onClick={() => toggleCommand(activeCategory, cmd.name)}
+                            style={{ cursor: guildPermission === 'read' ? 'not-allowed' : 'pointer', opacity: guildPermission === 'read' ? 0.6 : 1 }}
                           >
                             <motion.div
                               layout
@@ -466,16 +472,25 @@ const CommandManagementPage = () => {
                               </div>
                             ))}
                             {cmd.allowed_roles.length === 0 && (
-                              <span className="empty-roles">Varsayılan yetkiler geçerli (Sınırsız)</span>
+                              <span className="empty-roles" style={{
+                                padding: '4px 10px', 
+                                background: cmd.default_access === 'owner' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                color: cmd.default_access === 'owner' ? 'var(--accent-yellow)' : 'var(--accent-green)',
+                                borderRadius: '6px',
+                                fontSize: '0.8rem',
+                                fontWeight: '600'
+                              }}>
+                                Varsayılan: {cmd.default_access === 'owner' ? '🔒 Sadece Yöneticiler' : '🌍 Herkese Açık'}
+                              </span>
                             )}
                           </div>
 
                           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                             <RoleSearch 
-                              disabled={!cmd.is_enabled}
+                              onSelect={(roleId, roleName) => addRoleToCommand(activeCategory, cmd.name, roleId, roleName)} 
+                              placeholder="Rol ekle..."
                               currentRoles={cmd.allowed_roles}
-                              onSelect={(rId, rName) => addRoleToCommand(activeCategory, cmd.name, rId, rName)}
-                              placeholder="Kısıtlama Ekle..."
+                              disabled={guildPermission === 'read' || !cmd.is_enabled}
                             />
                             {savingId === cmd.name && (
                               <Loader size={14} style={{ animation: 'spin 1s linear infinite' }} />

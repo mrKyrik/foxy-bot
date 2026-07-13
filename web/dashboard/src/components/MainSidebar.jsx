@@ -1,18 +1,23 @@
 import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Terminal, LogOut, Activity, Server } from 'lucide-react';
+import { LayoutDashboard, Terminal, LogOut, Activity, Server, Shield, FileText } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GuildContext } from '../GuildContext';
 
 const MainSidebar = ({ setAuthToken }) => {
-  const { guilds, activeGuildId, changeGuild } = useContext(GuildContext);
+  const { guilds, activeGuildId, changeGuild, guildPermission } = useContext(GuildContext);
   const getNavClass = ({ isActive }) => isActive ? "nav-item active" : "nav-item";
 
-  const navItems = [
-    { to: "/", icon: <LayoutDashboard size={18} />, label: "Genel Bakış" },
-    { to: "/commands", icon: <Terminal size={18} />, label: "Komut Yönetimi" },
-    { to: "/logs/ses", icon: <Activity size={18} />, label: "Log Sistemi" },
-  ];
+    const navItems = [
+      { to: "/", icon: <LayoutDashboard size={18} />, label: "Genel Bakış" },
+      { to: "/commands", icon: <Terminal size={18} />, label: "Komut Yönetimi" },
+      { to: "/forms", icon: <FileText size={18} />, label: "Form Yönetimi" },
+      { to: "/logs/ses", icon: <Activity size={18} />, label: "Log Sistemi" },
+    ];
+
+  if (guildPermission === 'owner') {
+    navItems.splice(2, 0, { to: "/auth", icon: <Shield size={18} />, label: "Yetkilendirme" });
+  }
 
   const handleLogout = () => {
     localStorage.removeItem('kumiho_token');

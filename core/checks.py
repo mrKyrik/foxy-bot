@@ -25,9 +25,11 @@ async def evaluate_kumiho_permissions(interaction_or_ctx, cmd_name: str, default
     if isinstance(interaction_or_ctx, discord.Interaction):
         user = interaction_or_ctx.user
         guild = interaction_or_ctx.guild
+        bot = interaction_or_ctx.client
     else:
         user = interaction_or_ctx.author
         guild = interaction_or_ctx.guild
+        bot = interaction_or_ctx.bot
 
     # DM üzerinden kullanım her zaman public komutlar için serbesttir
     if not guild:
@@ -46,22 +48,18 @@ async def evaluate_kumiho_permissions(interaction_or_ctx, cmd_name: str, default
     if user.id == guild.owner_id:
         return True
 
-    # Sunucu Yöneticisi her zaman bypass eder
-    if user.guild_permissions.administrator:
-        return True
+    is_admin = user.guild_permissions.administrator
 
     # 1) Veritabanı Kontrolü (Web UI / Discord Senkronizasyonu)
     try:
-        async with aiosqlite.connect("kumiho.db") as db:
-            async with db.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (str(guild.id), cmd_name)) as cursor:
-                row = await cursor.fetchone()
-                
+        row = await bot.db.fetchone("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", str(guild.id), cmd_name)
+
         if row:
             is_enabled = row[0]
             allowed_roles_str = row[1]
             
             if is_enabled == 0:
-                raise CommandDisabled("Bu komut bu sunucuda devre dışı bırakılmış.")
+                raise CommandDisabled("Bu komut bu sunucuda tamamen devre dışı bırakılmış.")
                 
             if allowed_roles_str and allowed_roles_str != '[]' and allowed_roles_str != '':
                 try:
@@ -76,36 +74,47 @@ async def evaluate_kumiho_permissions(interaction_or_ctx, cmd_name: str, default
                     user_role_ids = [str(r.id) for r in user.roles]
                     has_role = any(r in user_role_ids for r in allowed_roles)
                     if not has_role:
-                        raise CommandNotAllowed("Bu komutu kullanmak için gerekli role sahip değilsiniz.")
-                    return True # Role sahipse izin ver
+                        raise CommandNotAllowed("Bu komutu kullanmak için Web Panel üzerinden atanan özel role sahip değilsiniz.")
+                    return True # Role sahipse kesin izin ver
     except Exception as e:
         if isinstance(e, (CommandDisabled, CommandNotAllowed)):
             raise e
         log.error(f"Veritabanı okuma hatası [checks.py]: {e}")
 
+    # Özel rol kısıtlaması yoksa veya DB'de kayıt yoksa, default_access mantığına düşer.
+    
+    # Yönetici ise her türlü default yetkiyi geçer (özel role takılmadıysa ve is_enabled=0 değilse buraya ulaşır)
+    if is_admin:
+        return True
+
     # 2) Fallback (Varsayılan yetki durumu)
     if default_access == "owner":
-        # Yukarıda bot sahibi, sunucu sahibi ve admin kontrolü yaptık. 
-        # Eğer buraya düştüysek, kullanıcı bunlardan hiçbiri değildir ve DB'de özel yetkisi yoktur.
-        raise CommandNotAllowed("Bu komut sadece yöneticiler veya özel yetkilendirilmiş roller tarafından kullanılabilir.")
+        # Buraya düştüysek: Bot sahibi değil, Sunucu sahibi değil, Admin değil ve DB'de özel yetki rolüne sahip değil.
+        raise CommandNotAllowed("Bu komut sadece yöneticiler veya panelden atanmış özel yetkili roller tarafından kullanılabilir.")
     
-    # public ise izin ver
+    # public ise herkese açık
     return True
 
 def kumiho_check(default_access="public"):
     """
     Prefix (Geleneksel) komutlar için merkezi yetki kontrol dekoratörü.
     """
-    async def predicate(ctx):
-        cmd_name = ctx.command.qualified_name
-        return await evaluate_kumiho_permissions(ctx, cmd_name, default_access)
-    return commands.check(predicate)
+    def decorator(func):
+        func.__kumiho_default_access__ = default_access
+        async def predicate(ctx):
+            cmd_name = ctx.command.qualified_name
+            return await evaluate_kumiho_permissions(ctx, cmd_name, default_access)
+        return commands.check(predicate)(func)
+    return decorator
 
 def kumiho_app_check(default_access="public"):
     """
     Slash (App) komutları için merkezi yetki kontrol dekoratörü.
     """
-    async def predicate(interaction: discord.Interaction):
-        cmd_name = interaction.command.name if interaction.command else "unknown"
-        return await evaluate_kumiho_permissions(interaction, cmd_name, default_access)
-    return app_commands.check(predicate)
+    def decorator(func):
+        func.__kumiho_default_access__ = default_access
+        async def predicate(interaction: discord.Interaction):
+            cmd_name = interaction.command.name if interaction.command else "unknown"
+            return await evaluate_kumiho_permissions(interaction, cmd_name, default_access)
+        return app_commands.check(predicate)(func)
+    return decorator

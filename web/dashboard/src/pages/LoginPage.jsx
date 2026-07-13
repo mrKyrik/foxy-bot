@@ -8,7 +8,9 @@ import './Login.css';
 const LoginPage = ({ setAuthToken }) => {
   const [stats, setStats] = useState({ total_guilds: 0, total_users: 0 });
 
-  const DISCORD_OAUTH_URL = "https://discord.com/api/oauth2/authorize?client_id=1514724443824328744&redirect_uri=http%3A%2F%2Flocalhost%3A5173%2Fauth%2Fcallback&response_type=code&scope=identify%20guilds";
+  const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || '1514724443824328744';
+  const redirectUri = import.meta.env.VITE_DISCORD_REDIRECT_URI || 'http://localhost:5173/auth/callback';
+  const DISCORD_OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds`;
 
   useEffect(() => {
     const fetchStats = async () => {

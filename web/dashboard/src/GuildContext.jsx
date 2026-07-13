@@ -7,6 +7,7 @@ export const GuildContext = createContext();
 export const GuildProvider = ({ children }) => {
   const [guilds, setGuilds] = useState([]);
   const [activeGuildId, setActiveGuildId] = useState(localStorage.getItem('kumiho_active_guild') || null);
+  const [guildPermission, setGuildPermission] = useState('read');
 
   useEffect(() => {
     const fetchGuilds = async () => {
@@ -26,13 +27,26 @@ export const GuildProvider = ({ children }) => {
     fetchGuilds();
   }, [activeGuildId]);
 
+  useEffect(() => {
+    if (activeGuildId) {
+      axios.get(`${API_BASE_URL}/stats/${activeGuildId}`)
+        .then(res => {
+          setGuildPermission(res.data.guild_permission || 'read');
+        })
+        .catch(err => {
+          console.error("Error fetching permission:", err);
+          setGuildPermission('read');
+        });
+    }
+  }, [activeGuildId]);
+
   const changeGuild = (id) => {
     setActiveGuildId(id);
     localStorage.setItem('kumiho_active_guild', id);
   };
 
   return (
-    <GuildContext.Provider value={{ guilds, activeGuildId, changeGuild }}>
+    <GuildContext.Provider value={{ guilds, activeGuildId, changeGuild, guildPermission }}>
       {children}
     </GuildContext.Provider>
   );

@@ -2,803 +2,803 @@
   "Moderasyon": [
     {
       "name": "automod",
-      "desc": "automod işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.automod [parametreler]`"
+      "desc": "Sunucudaki otomatik moderasyon sistemini yönetir (küfür, link, spam koruması)."
     },
     {
       "name": "automod antizalgo",
-      "desc": "automod antizalgo korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antizalgo <aç|kapat>`"
+      "desc": "Kullanıcı isimlerinde ve mesajlarda Zalgo (bozuk/taşan metin) kullanımını engeller."
     },
     {
       "name": "automod antilink",
-      "desc": "automod antilink korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antilink <aç|kapat>`"
+      "desc": "Sunucuda link (bağlantı) paylaşımını otomatik olarak siler ve uyarır."
     },
     {
       "name": "automod antiprofanity",
-      "desc": "automod antiprofanity korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antiprofanity <aç|kapat>`"
+      "desc": "Sunucuda küfür ve kötü söz kullanımını otomatik olarak engeller."
     },
     {
       "name": "automod whitelist",
-      "desc": "automod whitelist hakkında detaylı bilgi gösterir. Kullanım: `f.automod whitelist <add|remove> <domain>`"
+      "desc": "Otomatik moderasyonun göz ardı edeceği beyaz liste (whitelist) ayarlarını gösterir."
     },
     {
       "name": "automod whitelist add",
-      "desc": "Sisteme yeni bir automod whitelist add verisi ekler. Kullanım: `f.automod whitelist add <değer>`"
+      "desc": "Otomatik moderasyondan etkilenmeyecek yeni bir kanal, rol veya kelime ekler."
     },
     {
       "name": "automod whitelist remove",
-      "desc": "Sistemden belirtilen automod whitelist remove verisini siler. Kullanım: `f.automod whitelist remove <hedef>`"
+      "desc": "Beyaz listedeki bir kanalı, rolü veya kelimeyi siler."
     },
     {
       "name": "automod antispam",
-      "desc": "automod antispam korumasını/özelliğini açıp kapatır. Kullanım: `f.automod antispam <aç|kapat>`"
+      "desc": "Kullanıcıların art arda mesaj atarak spam yapmasını engeller."
     },
     {
       "name": "kick",
-      "desc": "kick işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.kick [parametreler]`"
+      "desc": "Belirtilen kullanıcıyı sunucudan atar."
     },
     {
       "name": "ban",
-      "desc": "ban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ban [parametreler]`"
+      "desc": "Belirtilen kullanıcıyı sunucudan kalıcı olarak yasaklar."
     },
     {
       "name": "unban",
-      "desc": "unban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.unban [parametreler]`"
+      "desc": "Yasaklanmış bir kullanıcının banını kaldırır."
     },
     {
       "name": "timeout",
-      "desc": "timeout işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.timeout [parametreler]`"
+      "desc": "Kullanıcıya belirli bir süreliğine mesaj yazma/sesli sohbet yasağı verir (Mute)."
     },
     {
       "name": "untimeout",
-      "desc": "untimeout işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.untimeout [parametreler]`"
+      "desc": "Kullanıcının zaman aşımı (Timeout) cezasını kaldırır."
     },
     {
       "name": "purge",
-      "desc": "purge işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.purge [parametreler]`"
+      "desc": "Belirtilen sayıdaki mesajı toplu olarak siler."
     },
     {
       "name": "warn",
-      "desc": "warn işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.warn [parametreler]`"
+      "desc": "Kullanıcıya moderasyon sistemi üzerinden uyarı verir."
     },
     {
       "name": "warns",
-      "desc": "warns işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.warns [parametreler]`"
+      "desc": "Bir kullanıcının aldığı tüm uyarıları listeler."
     },
     {
       "name": "clearwarn",
-      "desc": "Sistemdeki clearwarn kayıtlarını tamamen temizler. Kullanım: `f.clearwarn`"
+      "desc": "Bir kullanıcının uyarı geçmişini temizler."
     },
     {
       "name": "vmute",
-      "desc": "vmute işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vmute [parametreler]`"
+      "desc": "Kullanıcıyı sesli kanalda susturur."
     },
     {
       "name": "vunmute",
-      "desc": "vunmute işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vunmute [parametreler]`"
+      "desc": "Kullanıcının sesli kanaldaki susturmasını kaldırır."
     },
     {
       "name": "vdeafen",
-      "desc": "vdeafen işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vdeafen [parametreler]`"
+      "desc": "Kullanıcının sesli kanalda diğerlerini duymasını (sağırlaşmasını) sağlar."
     },
     {
       "name": "vundeafen",
-      "desc": "vundeafen işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vundeafen [parametreler]`"
+      "desc": "Kullanıcının sağırlaştırma cezasını kaldırır."
     },
     {
       "name": "vdisconnect",
-      "desc": "vdisconnect işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vdisconnect [parametreler]`"
+      "desc": "Kullanıcıyı bulunduğu sesli kanaldan zorla çıkarır."
     },
     {
       "name": "vmove",
-      "desc": "vmove işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.vmove [parametreler]`"
+      "desc": "Kullanıcıyı bulunduğu sesli kanaldan başka bir sesli kanala taşır."
     },
     {
       "name": "create_channel",
-      "desc": "create_channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.create_channel [parametreler]`"
+      "desc": "Sunucuda yeni bir metin veya ses kanalı oluşturur."
     },
     {
       "name": "delete_channel",
-      "desc": "Sistemden belirtilen delete_channel verisini siler. Kullanım: `f.delete_channel <hedef>`"
+      "desc": "Belirtilen kanalı sunucudan siler."
     },
     {
       "name": "nuke",
-      "desc": "nuke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nuke [parametreler]`"
+      "desc": "Bulunulan kanalı siler ve aynı izinlerle kopyasını oluşturur (Kanalı sıfırlar)."
     },
     {
       "name": "modlogs",
-      "desc": "modlogs işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.modlogs [parametreler]`"
+      "desc": "Moderasyon işlemlerinin loglandığı kanalı ayarlar veya gösterir."
     }
   ],
   "Gelişim ve Ekonomi": [
     {
       "name": "perk",
-      "desc": "perk işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.perk [parametreler]`"
+      "desc": "Ekonomi sistemi üzerinden satın alınabilen avantajları gösterir."
     },
     {
       "name": "perk color",
-      "desc": "perk color işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.perk color [parametreler]`"
+      "desc": "Kullanıcının isminin veya profilinin rengini değiştirmesini sağlar."
     },
     {
       "name": "perk title",
-      "desc": "perk title işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.perk title [parametreler]`"
+      "desc": "Kullanıcının özel profil başlığını ayarlar."
     },
     {
       "name": "balance",
-      "desc": "balance işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.balance [parametreler]`"
+      "desc": "Kullanıcının cüzdanındaki ve bankasındaki mevcut bakiyesini gösterir."
     },
     {
       "name": "deposit",
-      "desc": "deposit işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.deposit [parametreler]`"
+      "desc": "Cüzdandaki parayı güvende tutmak için bankaya yatırır."
     },
     {
       "name": "withdraw",
-      "desc": "withdraw işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.withdraw [parametreler]`"
+      "desc": "Bankadaki parayı harcamak için cüzdana çeker."
     },
     {
       "name": "daily",
-      "desc": "daily işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.daily [parametreler]`"
+      "desc": "Kullanıcıya 24 saatte bir verilen günlük ödülü tahsil eder."
     },
     {
       "name": "work",
-      "desc": "work işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.work [parametreler]`"
+      "desc": "Çalışarak para kazanmanızı sağlar."
     },
     {
       "name": "beg",
-      "desc": "beg işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.beg [parametreler]`"
+      "desc": "Başkalarından veya sistemden dilenerek para kazanma şansı sunar."
     },
     {
       "name": "fish",
-      "desc": "fish işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.fish [parametreler]`"
+      "desc": "Balık tutarak rastgele eşya veya para kazanmanızı sağlar."
     },
     {
       "name": "hunt",
-      "desc": "hunt işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hunt [parametreler]`"
+      "desc": "Avlanarak değerli eşyalar ve para kazanmanızı sağlar."
     },
     {
       "name": "mine",
-      "desc": "mine işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.mine [parametreler]`"
+      "desc": "Maden kazarak değerli taşlar ve para kazanmanızı sağlar."
     },
     {
       "name": "shop",
-      "desc": "shop işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.shop [parametreler]`"
+      "desc": "Paranızla eşyalar satın alabileceğiniz marketi gösterir."
     },
     {
       "name": "buy",
-      "desc": "buy işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.buy [parametreler]`"
+      "desc": "Marketten belirtilen eşyayı satın alır."
     },
     {
       "name": "sell",
-      "desc": "sell işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sell [parametreler]`"
+      "desc": "Envanterinizdeki bir eşyayı satarak paraya çevirir."
     },
     {
       "name": "inventory",
-      "desc": "inventory işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.inventory [parametreler]`"
+      "desc": "Sahip olduğunuz tüm eşyaları listeler."
     },
     {
       "name": "use",
-      "desc": "use işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.use [parametreler]`"
+      "desc": "Envanterinizdeki kullanılabilir bir eşyayı kullanır."
     },
     {
       "name": "slots",
-      "desc": "slots işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.slots [parametreler]`"
+      "desc": "Slot makinesi oynayarak paranızı katlama şansı sunar (Kumar)."
     },
     {
       "name": "gamble",
-      "desc": "gamble işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.gamble [parametreler]`"
+      "desc": "Mevcut paranızla kumar oynayarak risk almanızı sağlar."
     },
     {
       "name": "roulette",
-      "desc": "roulette işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.roulette [parametreler]`"
+      "desc": "Rulet masasında şansınızı denemenizi sağlar."
     },
     {
       "name": "blackjack",
-      "desc": "blackjack işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.blackjack [parametreler]`"
+      "desc": "Krupiyeye karşı Blackjack (21) oynayarak paranızı katlar."
     },
     {
       "name": "highlow",
-      "desc": "highlow işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.highlow [parametreler]`"
+      "desc": "Bir sonraki sayının yüksek mi düşük mü olacağını tahmin ettiğiniz oyundur."
     },
     {
       "name": "crime",
-      "desc": "crime işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.crime [parametreler]`"
+      "desc": "Suç işleyerek büyük para kazanma şansı sunar (Yakalanırsanız para kaybedersiniz)."
     },
     {
       "name": "scratch",
-      "desc": "scratch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.scratch [parametreler]`"
+      "desc": "Kazı kazan kartı alarak şansınızı denemenizi sağlar."
     },
     {
       "name": "rob",
-      "desc": "rob işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rob [parametreler]`"
+      "desc": "Başka bir kullanıcının cüzdanındaki parayı çalmayı dener."
     },
     {
       "name": "pay",
-      "desc": "pay işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.pay [parametreler]`"
+      "desc": "Başka bir kullanıcıya kendi cüzdanınızdan para transfer eder."
     },
     {
       "name": "marry",
-      "desc": "marry işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.marry [parametreler]`"
+      "desc": "Sunucudaki başka bir kullanıcıyla evlenmenizi sağlar."
     },
     {
       "name": "divorce",
-      "desc": "divorce işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.divorce [parametreler]`"
+      "desc": "Evli olduğunuz kullanıcıdan boşanmanızı sağlar."
     },
     {
       "name": "profile",
-      "desc": "profile işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.profile [parametreler]`"
+      "desc": "Kullanıcının seviye, ekonomi ve evlilik durumunu içeren detaylı profilini gösterir."
     },
     {
       "name": "leaderboard",
-      "desc": "leaderboard işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.leaderboard [parametreler]`"
+      "desc": "Sunucudaki en zengin kullanıcıların sıralamasını gösterir."
     },
     {
       "name": "cooldowns",
-      "desc": "cooldowns işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cooldowns [parametreler]`"
+      "desc": "Komutları tekrar kullanabilmek için beklemeniz gereken süreleri gösterir."
     },
     {
       "name": "farm",
-      "desc": "farm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.farm [parametreler]`"
+      "desc": "Kendi sanal tarlanızı yönetmenizi sağlar."
     },
     {
       "name": "farm harvest",
-      "desc": "farm harvest işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.farm harvest [parametreler]`"
+      "desc": "Tarlanızdaki olgunlaşmış ekinleri hasat eder."
     },
     {
       "name": "farm plant",
-      "desc": "farm plant işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.farm plant [parametreler]`"
+      "desc": "Tarlanıza yeni tohumlar eker."
     },
     {
       "name": "farm status",
-      "desc": "farm status işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.farm status [parametreler]`"
+      "desc": "Tarlanızın genel durumunu ve ekinlerin büyüme aşamalarını gösterir."
     },
     {
       "name": "farm water",
-      "desc": "farm water işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.farm water [parametreler]`"
+      "desc": "Ekinlerin büyümesini hızlandırmak için tarlanızı sular."
     },
     {
       "name": "rank",
-      "desc": "rank işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rank [parametreler]`"
+      "desc": "Kullanıcının mevcut seviyesini ve XP durumunu gösterir."
     },
     {
       "name": "level",
-      "desc": "level işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level [parametreler]`"
+      "desc": "Sunucunun seviye sistemini yapılandırmanızı sağlar."
     },
     {
       "name": "level reward_remove",
-      "desc": "Sistemden belirtilen level reward_remove verisini siler. Kullanım: `f.level reward_remove <hedef>`"
+      "desc": "Belirli bir seviyeye ulaşıldığında verilen rol ödülünü siler."
     },
     {
       "name": "level ignore_add",
-      "desc": "Sisteme yeni bir level ignore_add verisi ekler. Kullanım: `f.level ignore_add <değer>`"
+      "desc": "Belirtilen kanal veya rolün seviye (XP) kazanmasını engeller."
     },
     {
       "name": "level reward_add",
-      "desc": "Sisteme yeni bir level reward_add verisi ekler. Kullanım: `f.level reward_add <değer>`"
+      "desc": "Kullanıcılar belirli bir seviyeye ulaştığında otomatik verilecek rolü ayarlar."
     },
     {
       "name": "level channel",
-      "desc": "level channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level channel [parametreler]`"
+      "desc": "Seviye atlama mesajlarının gönderileceği kanalı yönetir."
     },
     {
       "name": "level channel remove",
-      "desc": "Sistemden belirtilen level channel remove verisini siler. Kullanım: `f.level channel remove <hedef>`"
+      "desc": "Seviye atlama mesajı gönderilen kanalı sistemden siler."
     },
     {
       "name": "level channel set",
-      "desc": "Sistemdeki level channel set ayarını yapılandırır. Kullanım: `f.level channel set <parametre>`"
+      "desc": "Seviye atlama mesajlarının gönderileceği kanalı belirler."
     },
     {
       "name": "level reward_list",
-      "desc": "level reward_list hakkında detaylı bilgi gösterir. Kullanım: `f.level reward_list`"
+      "desc": "Sunucudaki tüm seviye ödüllerini listeler."
     },
     {
       "name": "level xp_rate",
-      "desc": "level xp_rate işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level xp_rate [parametreler]`"
+      "desc": "Sunucudaki XP kazanma hızını (çarpanını) yönetir."
     },
     {
       "name": "level xp_rate set",
-      "desc": "Sistemdeki level xp_rate set ayarını yapılandırır. Kullanım: `f.level xp_rate set <parametre>`"
+      "desc": "Mesaj başına kazanılacak XP çarpanını belirler (Örn: 2x XP)."
     },
     {
       "name": "level ignore_remove",
-      "desc": "Sistemden belirtilen level ignore_remove verisini siler. Kullanım: `f.level ignore_remove <hedef>`"
+      "desc": "XP kazanımı engellenmiş kanal veya rolün engelini kaldırır."
     },
     {
       "name": "leaderboard_xp",
-      "desc": "leaderboard_xp işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.leaderboard_xp [parametreler]`"
+      "desc": "Sunucudaki en yüksek seviyeye sahip kullanıcıların sıralamasını gösterir."
     }
   ],
   "Topluluk ve Etkileşim": [
     {
       "name": "giveaway",
-      "desc": "giveaway işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.giveaway [parametreler]`"
+      "desc": "Çekiliş sistemini yönetir."
     },
     {
       "name": "giveaway start",
-      "desc": "giveaway start işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.giveaway start 10m Gift Card`"
+      "desc": "Belirtilen süre ve ödül ile yeni bir çekiliş başlatır."
     },
     {
       "name": "giveaway list",
-      "desc": "giveaway list hakkında detaylı bilgi gösterir. Kullanım: `f.giveaway list`"
+      "desc": "Sunucudaki aktif çekilişleri listeler."
     },
     {
       "name": "giveaway end",
-      "desc": "giveaway end işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.giveaway end <message_id>`"
+      "desc": "Devam eden bir çekilişi hemen sonlandırır ve kazananı belirler."
     },
     {
       "name": "giveaway reroll",
-      "desc": "giveaway reroll işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.giveaway reroll <message_id>`"
+      "desc": "Biten bir çekiliş için yeniden kazanan seçer."
     },
     {
       "name": "suggest",
-      "desc": "suggest işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.suggest <your suggestion text>`"
+      "desc": "Sunucu yönetimine yeni bir öneri sunmanızı sağlar."
     },
     {
       "name": "suggest consider",
-      "desc": "suggest consider işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.suggest consider <id> [reason]`"
+      "desc": "Bir öneriyi 'değerlendiriliyor' olarak işaretler."
     },
     {
       "name": "suggest approve",
-      "desc": "suggest approve işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.suggest approve <id> [reason]`"
+      "desc": "Sunulan bir öneriyi kabul eder ve onaylar."
     },
     {
       "name": "suggest deny",
-      "desc": "suggest deny işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.suggest deny <id> [reason]`"
+      "desc": "Sunulan bir öneriyi reddeder."
     },
     {
       "name": "suggest channel",
-      "desc": "suggest channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.suggest channel #kanal`"
+      "desc": "Kullanıcı önerilerinin gönderileceği kanalı belirler."
     },
     {
       "name": "ticket",
-      "desc": "ticket işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket [parametreler]`"
+      "desc": "Kullanıcıların yetkililerle özel görüşebilmesi için destek talebi (Ticket) sistemini yönetir."
     },
     {
       "name": "ticket log",
-      "desc": "ticket log işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket log <#channel>`"
+      "desc": "Kapatılan ticket'ların geçmiş (log) kayıtlarının gönderileceği kanalı ayarlar."
     },
     {
       "name": "ticket setup",
-      "desc": "Sistemdeki ticket setup ayarını yapılandırır. Kullanım: `f.ticket setup <parametre>`"
+      "desc": "Destek talebi (Ticket) oluşturma butonunu belirlenen kanala kurar."
     },
     {
       "name": "ticket remove",
-      "desc": "Sistemden belirtilen ticket remove verisini siler. Kullanım: `f.ticket remove <@user>`"
+      "desc": "Bir ticket kanalından kullanıcıyı çıkarır."
     },
     {
       "name": "ticket support",
-      "desc": "ticket support işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket support <@role>`"
+      "desc": "Ticket'larla ilgilenecek yetkili destek rolünü belirler."
     },
     {
       "name": "ticket add",
-      "desc": "Sisteme yeni bir ticket add verisi ekler. Kullanım: `f.ticket add <@user>`"
+      "desc": "Mevcut bir ticket kanalına başka bir kullanıcıyı dahil eder."
     },
     {
       "name": "ticket category",
-      "desc": "ticket category işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket category <category_id>`"
+      "desc": "Açılan ticket kanallarının hangi kategoride oluşturulacağını belirler."
     }
   ],
   "Eğlence ve Araçlar": [
     {
       "name": "8ball",
-      "desc": "8ball işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.8ball [parametreler]`"
+      "desc": "Sorduğunuz sorulara sihirli 8 topu tarzında rastgele cevaplar verir."
     },
     {
       "name": "say",
-      "desc": "say işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.say [parametreler]`"
+      "desc": "Bota istediğiniz bir mesajı yazdırır."
     },
     {
       "name": "joke",
-      "desc": "joke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.joke [parametreler]`"
+      "desc": "Rastgele komik bir şaka anlatır."
     },
     {
       "name": "mock",
-      "desc": "mock işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.mock [parametreler]`"
+      "desc": "Yazdığınız yazıyı iĞnEleYici BiR tArZdA yeniden yazar."
     },
     {
       "name": "love",
-      "desc": "love işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.love <user> [user2]`"
+      "desc": "İki kullanıcı arasındaki aşk uyumunu yüzdelik olarak hesaplar."
     },
     {
       "name": "rage",
-      "desc": "rage işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rage @user [amount]`"
+      "desc": "Birisine olan öfkenizi dile getirir (Roleplay)."
     },
     {
       "name": "rage list",
-      "desc": "rage list hakkında detaylı bilgi gösterir. Kullanım: `f.rage list`"
+      "desc": "Öfke (Rage) sisteminin komutlarını listeler."
     },
     {
       "name": "rage set",
-      "desc": "Sistemdeki rage set ayarını yapılandırır. Kullanım: `f.rage set @user <amount>`"
+      "desc": "Öfke puanı hedefini ayarlar."
     },
     {
       "name": "rage remove",
-      "desc": "Sistemden belirtilen rage remove verisini siler. Kullanım: `f.rage remove @user <amount>`"
+      "desc": "Öfke puanını siler."
     },
     {
       "name": "howgay",
-      "desc": "howgay işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.howgay [parametreler]`"
+      "desc": "Kullanıcının ne kadar eşcinsel olduğunu yüzdelik olarak 'ölçer' (Eğlence amaçlı)."
     },
     {
       "name": "howaustic",
-      "desc": "howaustic işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.howaustic [parametreler]`"
+      "desc": "Kullanıcının ne kadar otistik olduğunu yüzdelik olarak 'ölçer' (Eğlence amaçlı)."
     },
     {
       "name": "iq",
-      "desc": "iq işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.iq [parametreler]`"
+      "desc": "Kullanıcının IQ seviyesini rastgele belirler (Eğlence amaçlı)."
     },
     {
       "name": "meme",
-      "desc": "meme işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.meme [parametreler]`"
+      "desc": "Reddit'ten rastgele eğlenceli bir 'meme' paylaşır."
     },
     {
       "name": "cat",
-      "desc": "cat işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cat [parametreler]`"
+      "desc": "Rastgele tatlı bir kedi fotoğrafı gönderir."
     },
     {
       "name": "dog",
-      "desc": "dog işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dog [parametreler]`"
+      "desc": "Rastgele tatlı bir köpek fotoğrafı gönderir."
     },
     {
       "name": "coinflip",
-      "desc": "coinflip işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.coinflip [parametreler]`"
+      "desc": "Yazı tura atar."
     },
     {
       "name": "roll",
-      "desc": "roll işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.roll [parametreler]`"
+      "desc": "Belirtilen sayı aralığında rastgele bir zar atar."
     },
     {
       "name": "rps",
-      "desc": "rps işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.rps [parametreler]`"
+      "desc": "Botla Taş-Kağıt-Makas oyunu oynarsınız."
     },
     {
       "name": "choose",
-      "desc": "choose işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.choose [parametreler]`"
+      "desc": "Yazdığınız seçenekler arasından rastgele birini seçer."
     },
     {
       "name": "fact",
-      "desc": "fact işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.fact [parametreler]`"
+      "desc": "İlginç ve rastgele bir bilgi paylaşır."
     },
     {
       "name": "trivia",
-      "desc": "trivia işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.trivia [parametreler]`"
+      "desc": "Bilgi yarışması tarzında rastgele bir soru sorar."
     },
     {
       "name": "slap",
-      "desc": "slap işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.slap [parametreler]`"
+      "desc": "Bir kullanıcıyı tokatlarsınız (Roleplay)."
     },
     {
       "name": "hug",
-      "desc": "hug işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.hug [parametreler]`"
+      "desc": "Bir kullanıcıya sarılırsınız (Roleplay)."
     },
     {
       "name": "pat",
-      "desc": "pat işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.pat [parametreler]`"
+      "desc": "Bir kullanıcının başını okşarsınız (Roleplay)."
     },
     {
       "name": "kiss",
-      "desc": "kiss işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.kiss [parametreler]`"
+      "desc": "Bir kullanıcıyı öpersiniz (Roleplay)."
     },
     {
       "name": "cuddle",
-      "desc": "cuddle işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cuddle [parametreler]`"
+      "desc": "Bir kullanıcıyla kucaklaşırsınız (Roleplay)."
     },
     {
       "name": "bite",
-      "desc": "bite işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.bite [parametreler]`"
+      "desc": "Bir kullanıcıyı ısırırsınız (Roleplay)."
     },
     {
       "name": "punch",
-      "desc": "punch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.punch [parametreler]`"
+      "desc": "Bir kullanıcıyı yumruklarsınız (Roleplay)."
     },
     {
       "name": "poke",
-      "desc": "poke işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.poke [parametreler]`"
+      "desc": "Bir kullanıcıyı dürtersiniz (Roleplay)."
     },
     {
       "name": "lick",
-      "desc": "lick işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.lick [parametreler]`"
+      "desc": "Bir kullanıcıyı yalarsınız (Roleplay)."
     },
     {
       "name": "boop",
-      "desc": "boop işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.boop [parametreler]`"
+      "desc": "Bir kullanıcının burnuna dokunursunuz (Roleplay)."
     },
     {
       "name": "tickle",
-      "desc": "tickle işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.tickle [parametreler]`"
+      "desc": "Bir kullanıcıyı gıdıklarsınız (Roleplay)."
     },
     {
       "name": "wave",
-      "desc": "wave işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.wave [parametreler]`"
+      "desc": "Bir kullanıcıya el sallarsınız (Roleplay)."
     },
     {
       "name": "highfive",
-      "desc": "highfive işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.highfive [parametreler]`"
+      "desc": "Bir kullanıcıyla çak bir beşlik yaparsınız (Roleplay)."
     },
     {
       "name": "cry",
-      "desc": "cry işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.cry [parametreler]`"
+      "desc": "Ağlarsınız (Roleplay)."
     },
     {
       "name": "laugh",
-      "desc": "laugh işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.laugh [parametreler]`"
+      "desc": "Gülersiniz (Roleplay)."
     },
     {
       "name": "blush",
-      "desc": "blush işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.blush [parametreler]`"
+      "desc": "Kızarırsınız (Roleplay)."
     },
     {
       "name": "yeet",
-      "desc": "yeet işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.yeet [parametreler]`"
+      "desc": "Bir şeyi fırlatırsınız (Roleplay)."
     },
     {
       "name": "dance",
-      "desc": "dance işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dance [parametreler]`"
+      "desc": "Dans edersiniz (Roleplay)."
     },
     {
       "name": "nsfw",
-      "desc": "nsfw işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nsfw <subcommand> (e.g. f.nsfw bdsm)`"
+      "desc": "Yetişkinlere özel (+18) içerik gönderir."
     },
     {
       "name": "nsfw hentai",
-      "desc": "nsfw hentai işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nsfw hentai [parametreler]`"
+      "desc": "+18 Anime (Hentai) görseli gönderir."
     },
     {
       "name": "nsfw rule34",
-      "desc": "nsfw rule34 işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nsfw rule34 [parametreler]`"
+      "desc": "+18 Rule34 görseli gönderir."
     },
     {
       "name": "nsfw bdsm",
-      "desc": "nsfw bdsm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nsfw bdsm [parametreler]`"
+      "desc": "+18 BDSM içerikli görsel gönderir."
     },
     {
       "name": "nsfw feet",
-      "desc": "nsfw feet işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.nsfw feet [parametreler]`"
+      "desc": "+18 Ayak fetiş görseli gönderir."
     },
     {
       "name": "oda-kurulum",
-      "desc": "oda-kurulum işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.oda-kurulum [parametreler]`"
+      "desc": "Kullanıcıların kendi geçici ses kanallarını oluşturabileceği 'Özel Oda' sistemini kurar."
     },
     {
       "name": "ping",
-      "desc": "ping işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ping [parametreler]`"
+      "desc": "Botun Discord sunucularına olan gecikme (ping) süresini gösterir."
     },
     {
       "name": "owners",
-      "desc": "owners işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.owners [parametreler]`"
+      "desc": "Botun sahiplerini ve yapımcılarını gösterir."
     },
     {
       "name": "banner",
-      "desc": "banner işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.banner [parametreler]`"
+      "desc": "Bir kullanıcının profil afişini (banner) gösterir."
     },
     {
       "name": "avatar",
-      "desc": "avatar işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.avatar [parametreler]`"
+      "desc": "Bir kullanıcının profil fotoğrafını (avatar) gösterir."
     },
     {
       "name": "about",
-      "desc": "about işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.about [parametreler]`"
+      "desc": "Kumiho bot hakkında istatistik ve genel bilgiler verir."
     },
     {
       "name": "userinfo",
-      "desc": "userinfo hakkında detaylı bilgi gösterir. Kullanım: `f.userinfo`"
+      "desc": "Belirtilen kullanıcının hesap kurulum tarihi, rolleri vb. bilgilerini gösterir."
     }
   ],
   "Yönetim ve Ayarlar": [
     {
       "name": "givemoney",
-      "desc": "givemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.givemoney [parametreler]`"
+      "desc": "Yönetici olarak bir kullanıcıya karşılıksız para verir."
     },
     {
       "name": "takemoney",
-      "desc": "takemoney işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.takemoney [parametreler]`"
+      "desc": "Yönetici olarak bir kullanıcının parasını siler."
     },
     {
       "name": "ecoban",
-      "desc": "ecoban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecoban [parametreler]`"
+      "desc": "Kullanıcının ekonomi komutlarını kullanmasını yasaklar."
     },
     {
       "name": "ecounban",
-      "desc": "ecounban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ecounban [parametreler]`"
+      "desc": "Ekonomi komutlarından yasaklanan kullanıcının yasağını kaldırır."
     },
     {
       "name": "botban",
-      "desc": "botban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botban [parametreler]`"
+      "desc": "Kullanıcının botun hiçbir komutunu kullanmamasını sağlayacak şekilde botu yasaklar."
     },
     {
       "name": "botunban",
-      "desc": "botunban işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.botunban [parametreler]`"
+      "desc": "Bot kullanım yasağını kaldırır."
     },
     {
       "name": "sync",
-      "desc": "sync işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync [parametreler]`"
+      "desc": "Botun / (Eğik Çizgi) komutlarını sunucuyla senkronize eder."
     },
     {
       "name": "sync_roles",
-      "desc": "sync_roles işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync_roles [parametreler]`"
+      "desc": "Sunucudaki rolleri veritabanıyla senkronize eder."
     },
     {
       "name": "db",
-      "desc": "db işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db [parametreler]`"
+      "desc": "Veritabanı ayarlarını ve verilerini yönetmenizi sağlar."
     },
     {
       "name": "db app",
-      "desc": "db app işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db app [parametreler]`"
+      "desc": "Kullanıcı başvuruları (Örn: Yetkili alım formu) ile ilgili kayıtları yönetir."
     },
     {
       "name": "db app create",
-      "desc": "db app create işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db app create [parametreler]`"
+      "desc": "Yeni bir başvuru formu oluşturur."
     },
     {
       "name": "db app reject",
-      "desc": "db app reject işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db app reject [parametreler]`"
+      "desc": "Yapılan bir başvuruyu reddeder."
     },
     {
       "name": "db app accept",
-      "desc": "db app accept işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db app accept [parametreler]`"
+      "desc": "Yapılan bir başvuruyu kabul eder."
     },
     {
       "name": "db server",
-      "desc": "db server işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db server [parametreler]`"
+      "desc": "Sunucu genel ayarlarını veritabanında yapılandırır."
     },
     {
       "name": "db server update",
-      "desc": "db server update işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db server update [parametreler]`"
+      "desc": "Sunucu ayarlarını günceller."
     },
     {
       "name": "db server role",
-      "desc": "db server role işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db server role [parametreler]`"
+      "desc": "Sunucu rol verilerini yapılandırır."
     },
     {
       "name": "db server emoji",
-      "desc": "db server emoji işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db server emoji [parametreler]`"
+      "desc": "Sunucu emoji verilerini yapılandırır."
     },
     {
       "name": "db server perm",
-      "desc": "db server perm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db server perm [parametreler]`"
+      "desc": "Sunucu yetki/izin verilerini yapılandırır."
     },
     {
       "name": "db text",
-      "desc": "db text işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db text [parametreler]`"
+      "desc": "Metin kanalları ile ilgili kayıtları düzenler."
     },
     {
       "name": "db text delete",
-      "desc": "Sistemden belirtilen db text delete verisini siler. Kullanım: `f.db text delete <hedef>`"
+      "desc": "Bir metin kanalı kaydını siler."
     },
     {
       "name": "db text edit",
-      "desc": "db text edit işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db text edit [parametreler]`"
+      "desc": "Bir metin kanalı kaydını düzenler."
     },
     {
       "name": "db voice",
-      "desc": "db voice işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db voice [parametreler]`"
+      "desc": "Ses kanalları ile ilgili kayıtları yönetir."
     },
     {
       "name": "db voice join",
-      "desc": "db voice join işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db voice join [parametreler]`"
+      "desc": "Ses kanalına katılma log/ayarlarını düzenler."
     },
     {
       "name": "db voice stream",
-      "desc": "db voice stream işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db voice stream [parametreler]`"
+      "desc": "Ses kanalında yayın açma log/ayarlarını düzenler."
     },
     {
       "name": "db voice switch",
-      "desc": "db voice switch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db voice switch [parametreler]`"
+      "desc": "Ses kanalları arası geçiş log/ayarlarını düzenler."
     },
     {
       "name": "db invite",
-      "desc": "db invite işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db invite [parametreler]`"
+      "desc": "Sunucu davet (Invite) kayıtlarını yönetir."
     },
     {
       "name": "db invite create",
-      "desc": "db invite create işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db invite create [parametreler]`"
+      "desc": "Davet oluşturma loglarını yönetir."
     },
     {
       "name": "db invite use",
-      "desc": "db invite use işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db invite use [parametreler]`"
+      "desc": "Davet kullanım loglarını yönetir."
     },
     {
       "name": "db role",
-      "desc": "db role işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db role [parametreler]`"
+      "desc": "Rol kayıtlarını yönetir."
     },
     {
       "name": "db role remove",
-      "desc": "Sistemden belirtilen db role remove verisini siler. Kullanım: `f.db role remove <hedef>`"
+      "desc": "Bir rol kaydını veritabanından siler."
     },
     {
       "name": "db role add",
-      "desc": "Sisteme yeni bir db role add verisi ekler. Kullanım: `f.db role add <değer>`"
+      "desc": "Veritabanına yeni bir rol kaydı ekler."
     },
     {
       "name": "db mod",
-      "desc": "db mod işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db mod [parametreler]`"
+      "desc": "Moderasyon kayıtlarını yönetir."
     },
     {
       "name": "db mod channel",
-      "desc": "db mod channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db mod channel [parametreler]`"
+      "desc": "Kanal moderasyon loglarını yönetir."
     },
     {
       "name": "db mod msg",
-      "desc": "db mod msg işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db mod msg [parametreler]`"
+      "desc": "Mesaj moderasyon loglarını yönetir."
     },
     {
       "name": "db mod role",
-      "desc": "db mod role işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db mod role [parametreler]`"
+      "desc": "Rol moderasyon loglarını yönetir."
     },
     {
       "name": "db warn",
-      "desc": "db warn işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db warn [parametreler]`"
+      "desc": "Uyarı sistemi kayıtlarını yönetir."
     },
     {
       "name": "db warn remove",
-      "desc": "Sistemden belirtilen db warn remove verisini siler. Kullanım: `f.db warn remove <hedef>`"
+      "desc": "Veritabanından bir uyarının kaydını siler."
     },
     {
       "name": "db warn add",
-      "desc": "Sisteme yeni bir db warn add verisi ekler. Kullanım: `f.db warn add <değer>`"
+      "desc": "Veritabanına yeni bir uyarı kaydı ekler."
     },
     {
       "name": "db ticket",
-      "desc": "db ticket işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db ticket [parametreler]`"
+      "desc": "Destek talebi (Ticket) veritabanı kayıtlarını yönetir."
     },
     {
       "name": "db ticket create",
-      "desc": "db ticket create işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db ticket create [parametreler]`"
+      "desc": "Bilet (ticket) oluşturma kayıtlarını yönetir."
     },
     {
       "name": "db ticket close",
-      "desc": "db ticket close işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.db ticket close [parametreler]`"
+      "desc": "Bilet (ticket) kapatma kayıtlarını yönetir."
     },
     {
       "name": "dblog",
-      "desc": "dblog işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.dblog [parametreler]`"
+      "desc": "Botun arka planda kaydettiği detaylı veritabanı loglarını gösterir."
     },
     {
       "name": "log",
-      "desc": "log işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log [parametreler]`"
+      "desc": "Sunucudaki log (Kayıt) kanalını ve ayarlarını yönetir."
     },
     {
       "name": "log voice",
-      "desc": "log voice işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log voice [parametreler]`"
+      "desc": "Ses kanalı giriş-çıkış loglarını yapılandırır."
     },
     {
       "name": "log voice join",
-      "desc": "log voice join işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log voice join [parametreler]`"
+      "desc": "Kullanıcıların ses kanalına katılmasını loglar."
     },
     {
       "name": "log voice stream",
-      "desc": "log voice stream işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log voice stream [parametreler]`"
+      "desc": "Ses kanalında ekran paylaşımı/kamera açılmasını loglar."
     },
     {
       "name": "log voice switch",
-      "desc": "log voice switch işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log voice switch [parametreler]`"
+      "desc": "Kullanıcıların bir ses kanalından diğerine geçmesini loglar."
     },
     {
       "name": "log invite",
-      "desc": "log invite işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log invite [parametreler]`"
+      "desc": "Sunucuya davet ile girenlerin/çıkanların loglarını yapılandırır."
     },
     {
       "name": "log invite create",
-      "desc": "log invite create işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log invite create [parametreler]`"
+      "desc": "Yeni bir davet linki oluşturulduğunda loglar."
     },
     {
       "name": "log invite use",
-      "desc": "log invite use işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log invite use [parametreler]`"
+      "desc": "Kullanıcıların hangi davet linkini kullanarak katıldığını loglar."
     },
     {
       "name": "log set",
-      "desc": "Sistemdeki log set ayarını yapılandırır. Kullanım: `f.log set <parametre>`"
+      "desc": "Loglama sisteminin açık/kapalı durumunu veya log kanalını ayarlar."
     },
     {
       "name": "log text",
-      "desc": "log text işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log text [parametreler]`"
+      "desc": "Metin kanallarındaki mesaj loglarını (silinen/düzenlenen) yapılandırır."
     },
     {
       "name": "log text delete",
-      "desc": "Sistemden belirtilen log text delete verisini siler. Kullanım: `f.log text delete <hedef>`"
+      "desc": "Kullanıcıların sildiği mesajları log kanalına gönderir."
     },
     {
       "name": "log text edit",
-      "desc": "log text edit işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log text edit [parametreler]`"
+      "desc": "Kullanıcıların düzenlediği mesajların eski ve yeni halini loglar."
     },
     {
       "name": "log role",
@@ -814,19 +814,19 @@
     },
     {
       "name": "log mod",
-      "desc": "log mod işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log mod [parametreler]`"
+      "desc": "Moderatörlerin yaptığı ban, kick, timeout işlemlerini loglar."
     },
     {
       "name": "log mod role",
-      "desc": "log mod role işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log mod role [parametreler]`"
+      "desc": "Kullanıcılara verilen/alınan rolleri loglar."
     },
     {
       "name": "log mod channel",
-      "desc": "log mod channel işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log mod channel [parametreler]`"
+      "desc": "Kanal açma/silme/düzenleme işlemlerini loglar."
     },
     {
       "name": "log mod msg",
-      "desc": "log mod msg işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log mod msg [parametreler]`"
+      "desc": "Moderatörlerin sildiği kullanıcı mesajlarını loglar."
     },
     {
       "name": "log warn",
@@ -870,23 +870,23 @@
     },
     {
       "name": "log server",
-      "desc": "log server işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log server [parametreler]`"
+      "desc": "Sunucu ayarlarında yapılan değişiklikleri loglar."
     },
     {
       "name": "log server update",
-      "desc": "log server update işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log server update [parametreler]`"
+      "desc": "Sunucu isminin, ikonunun vb. güncellenmesini loglar."
     },
     {
       "name": "log server perm",
-      "desc": "log server perm işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log server perm [parametreler]`"
+      "desc": "Sunucudaki rollerin yetkilerindeki değişiklikleri loglar."
     },
     {
       "name": "log server emoji",
-      "desc": "log server emoji işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log server emoji [parametreler]`"
+      "desc": "Sunucuya yeni emoji eklendiğini/silindiğini loglar."
     },
     {
       "name": "log server role",
-      "desc": "log server role işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log server role [parametreler]`"
+      "desc": "Sunucuya yeni rol eklendiğini/silindiğini loglar."
     }
   ],
   "Diğer": []

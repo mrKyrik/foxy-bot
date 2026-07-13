@@ -7,6 +7,7 @@ log = logging.getLogger(__name__)
 
 class RoleSync(commands.Cog):
     category = "Yönetim ve Ayarlar"
+    category_emoji = "⚙️"
     """Rol Senkronizasyonu"""
 
     def __init__(self, bot: commands.Bot) -> None:
@@ -15,7 +16,9 @@ class RoleSync(commands.Cog):
     @commands.command(name="sync_roles", aliases=["rol_senkronize", "rolesync"])
     @kumiho_check("owner")
     async def sync_roles(self, ctx: commands.Context) -> None:
-        """sync_roles işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.sync_roles [parametreler]`"""
+        """Synchronize user roles with the database.
+
+**Usage:** `{prefix}sync_roles`"""
         msg = await ctx.send("🔄 Üye rolleri taranıyor, lütfen bekleyin... (Bu işlem sunucu büyüklüğüne göre sürebilir.)")
         
         events = []

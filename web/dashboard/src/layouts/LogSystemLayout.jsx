@@ -16,6 +16,7 @@ import TicketLogPage from '../pages/TicketLogPage';
 import AppLogPage from '../pages/AppLogPage';
 import InviteLogPage from '../pages/InviteLogPage';
 import RoleLogPage from '../pages/RoleLogPage';
+import OdaLogPage from '../pages/OdaLogPage';
 import SettingsPage from '../pages/SettingsPage';
 
 import { API_BASE_URL } from '../config';
@@ -149,6 +150,7 @@ const LogSystemLayout = () => {
               <Route path="basvuru" element={<AppLogPage logs={logs} viewWindow={viewWindow} setViewWindow={setViewWindow} globalRange={globalRange} selectedTags={selectedTags} onUserClick={setSelectedUserForLook} />} />
               <Route path="davet" element={<InviteLogPage logs={logs} viewWindow={viewWindow} setViewWindow={setViewWindow} globalRange={globalRange} selectedTags={selectedTags} onUserClick={setSelectedUserForLook} />} />
               <Route path="rol" element={<RoleLogPage logs={logs} viewWindow={viewWindow} setViewWindow={setViewWindow} globalRange={globalRange} selectedTags={selectedTags} onUserClick={setSelectedUserForLook} />} />
+              <Route path="oda" element={<OdaLogPage logs={logs} viewWindow={viewWindow} setViewWindow={setViewWindow} globalRange={globalRange} selectedTags={selectedTags} onUserClick={setSelectedUserForLook} />} />
               <Route path="settings" element={<SettingsPage />} />
             </Routes>
           </div>

@@ -18,6 +18,7 @@ log = logging.getLogger(__name__)
 
 class Suggestions(commands.Cog):
     category = "Topluluk ve Etkileşim"
+    category_emoji = "👥"
     """
     State-of-the-art server-scoped suggestion cards voting and reviewing system.
     """
@@ -28,10 +29,9 @@ class Suggestions(commands.Cog):
     @commands.group(name="suggest", invoke_without_command=True)
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def suggest(self, ctx: commands.Context, *, text: str = None) -> None:
-        """
-        Submits a suggestion to the server suggestions board.
-        Usage: `f.suggest <your suggestion text>`
-        """
+        """Submit a suggestion to the server.
+
+**Usage:** `{prefix}suggest <text>`"""
         if not text:
             return await ctx.send(f"Usage: `{ctx.prefix}suggest <your suggestion text>`")
 

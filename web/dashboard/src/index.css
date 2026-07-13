@@ -331,6 +331,17 @@ input[type="text"], input[type="text"]:focus {
 .msg-dot:hover .msg-tooltip {
   display: block;
 }
+.event-dot .tooltip {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+  transform: translateX(-50%) translateY(10px);
+}
+.event-dot:hover .tooltip {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
 .timeline-row:has(.msg-dot:hover) {
   z-index: 9999;
 }
