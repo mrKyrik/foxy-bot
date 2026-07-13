@@ -406,6 +406,10 @@ class Database:
         self.user_db = self.db
         self.admin_db = self.db
         
+        # Ensure schema exists first
+        await self.user_db.executescript(USER_DB_SCHEMA)
+        await self.user_db.commit()
+        
         await self.db.execute("PRAGMA journal_mode=WAL;")
         await self.db.execute("PRAGMA synchronous=NORMAL;")
         await self.db.execute("PRAGMA foreign_keys=ON;")
