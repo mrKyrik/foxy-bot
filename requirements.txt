@@ -19,3 +19,9 @@ psutil>=5.9.0
 
 # Security (OAuth2 / JWT)
 PyJWT>=2.8.0
+
+# API and Dashboard dependencies
+fastapi>=0.100.0
+uvicorn>=0.22.0
+requests>=2.31.0
+pydantic>=2.0.0
