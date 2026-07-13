@@ -31,6 +31,8 @@ app.add_middleware(
         "http://localhost:3000",  # CRA / alternatif
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
+        "http://kyrik.duckdns.org:5173",
+        "http://152.67.86.27:5173",
     ],
     allow_credentials=True,
     allow_methods=["*"],

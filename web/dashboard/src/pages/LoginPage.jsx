@@ -9,7 +9,7 @@ const LoginPage = ({ setAuthToken }) => {
   const [stats, setStats] = useState({ total_guilds: 0, total_users: 0 });
 
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || '1514724443824328744';
-  const redirectUri = import.meta.env.VITE_DISCORD_REDIRECT_URI || 'http://localhost:5173/auth/callback';
+  const redirectUri = import.meta.env.VITE_DISCORD_REDIRECT_URI || `${window.location.protocol}//${window.location.host}/auth/callback`;
   const DISCORD_OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds`;
 
   useEffect(() => {
