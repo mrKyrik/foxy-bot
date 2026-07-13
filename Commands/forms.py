@@ -1,3 +1,4 @@
+from __future__ import annotations
 from core.checks import kumiho_check, kumiho_app_check
 import discord
 from discord.ext import commands, tasks
