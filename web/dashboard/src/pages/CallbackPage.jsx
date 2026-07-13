@@ -19,7 +19,11 @@ const CallbackPage = () => {
 
     const exchangeCode = async () => {
       try {
-        const res = await axios.post(`${API_BASE_URL}/auth/discord/callback`, { code });
+        const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
+        const res = await axios.post(`${API_BASE_URL}/auth/discord/callback`, { 
+          code,
+          redirect_uri: redirectUri
+        });
         if (res.data.token) {
           localStorage.setItem('kumiho_token', res.data.token);
           // Reload to initialize contexts with new token

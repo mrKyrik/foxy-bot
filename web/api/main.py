@@ -298,6 +298,7 @@ import requests
 async def discord_callback(request: Request):
     data = await request.json()
     code = data.get("code")
+    redirect_uri = data.get("redirect_uri") or DISCORD_REDIRECT_URI
     if not code:
         raise HTTPException(status_code=400, detail="Code eksik")
         
@@ -307,7 +308,7 @@ async def discord_callback(request: Request):
         "client_secret": DISCORD_CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": DISCORD_REDIRECT_URI
+        "redirect_uri": redirect_uri
     }
     
     headers = {
