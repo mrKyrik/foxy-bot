@@ -1343,7 +1343,7 @@ def search_roles(guild_id: str, q: Optional[str] = "", _: dict = Depends(verify_
     return {"roles": roles}
 
 class CategoryPermUpdate(BaseModel):
-    commands: list[str]
+    commands: List[str]
     is_enabled: int
 
 @app.post("/api/commands/category/{guild_id}")
@@ -1361,7 +1361,7 @@ def update_category_commands(guild_id: str, req: CategoryPermUpdate, _: dict = D
     return {"status": "success"}
 
 class CategoryRoleUpdate(BaseModel):
-    commands: list[str]
+    commands: List[str]
     role_id: str
 
 @app.post("/api/commands/category/{guild_id}/roles")
