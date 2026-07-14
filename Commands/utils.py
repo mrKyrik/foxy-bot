@@ -73,8 +73,8 @@ class Utils(commands.Cog):
             title=f"{member.display_name}'s Banner",
             color=discord.Color.blurple(),
         )
-        if not banner:
-            return await ctx.send("No banner found.")
+        if banner:
+            embed.set_image(url=banner.url)
         else:
             embed.set_image(url=_LUMINA_BANNER)
             embed.set_footer(text="No banner found. Using default banner.")
