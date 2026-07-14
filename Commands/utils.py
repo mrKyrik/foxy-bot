@@ -74,7 +74,8 @@ class Utils(commands.Cog):
             color=discord.Color.blurple(),
         )
         if banner:
-            embed.set_image(url=banner.url)
+            banner_url = banner.with_format("gif" if banner.is_animated() else "png").url
+            embed.set_image(url=banner_url)
         else:
             embed.set_image(url=_LUMINA_BANNER)
             embed.set_footer(text="No banner found. Using default banner.")
