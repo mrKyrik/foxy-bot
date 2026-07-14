@@ -13,7 +13,10 @@ import axios from 'axios';
 // FastAPI backend'in base URL'si
 // Dev: http://localhost:3001/api
 // Prod: https://api.kumiho.bot/api
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:3001/api`;
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 
+  (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+    ? `http://${window.location.hostname}:3001/api` 
+    : `${window.location.protocol}//${window.location.host}/api`);
 
 // Axios interceptor: Her isteğe JWT token ekle
 axios.interceptors.request.use(
