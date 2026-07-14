@@ -11,6 +11,7 @@ const LoginPage = ({ setAuthToken }) => {
   const clientId = import.meta.env.VITE_DISCORD_CLIENT_ID || '1514724443824328744';
   const redirectUri = import.meta.env.VITE_DISCORD_REDIRECT_URI || `${window.location.protocol}//${window.location.host}/auth/callback`;
   const DISCORD_OAUTH_URL = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify%20guilds`;
+  const DISCORD_INVITE_URL = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&permissions=8&scope=bot%20applications.commands`;
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -67,9 +68,14 @@ const LoginPage = ({ setAuthToken }) => {
             <p>Sisteme erişmek ve sunucunuzu yönetmek için Discord ile giriş yapın.</p>
           </div>
 
-          <a href={DISCORD_OAUTH_URL} className="login-btn" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
-            Discord ile Giriş Yap
-          </a>
+          <div className="login-btn-group">
+            <a href={DISCORD_OAUTH_URL} className="login-btn btn-primary" style={{ textDecoration: 'none' }}>
+              Discord ile Giriş Yap
+            </a>
+            <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer" className="login-btn btn-secondary" style={{ textDecoration: 'none' }}>
+              Botu Sunucuya Ekle
+            </a>
+          </div>
         </div>
       </div>
     </div>

@@ -190,10 +190,15 @@
   animation: slideInRight 0.3s ease-out;
 }
 
+.login-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .login-btn {
   width: 100%;
   padding: 16px;
-  background: linear-gradient(135deg, var(--accent-blue), #2563eb);
   color: #fff;
   border: none;
   border-radius: 12px;
@@ -207,6 +212,14 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+}
+
+.login-btn.btn-primary {
+  background: linear-gradient(135deg, var(--accent-blue), #2563eb);
+}
+
+.login-btn.btn-secondary {
+  background: linear-gradient(135deg, var(--accent-green), #059669);
 }
 
 .login-btn::after {
@@ -223,7 +236,14 @@
 
 .login-btn:hover:not(:disabled) {
   transform: translateY(-2px);
+}
+
+.login-btn.btn-primary:hover:not(:disabled) {
   box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+}
+
+.login-btn.btn-secondary:hover:not(:disabled) {
+  box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
 }
 
 .login-btn:disabled {
