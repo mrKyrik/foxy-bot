@@ -77,10 +77,9 @@ class Utils(commands.Cog):
             banner_url = banner.with_format("gif" if banner.is_animated() else "png").url
             embed.description = f"[Banner Link]({banner_url})"
             embed.set_image(url=banner_url)
+            await ctx.send(embed=embed)
         else:
-            embed.set_image(url=_LUMINA_BANNER)
-            embed.set_footer(text="No banner found. Using default banner.")
-        await ctx.send(embed=embed)
+            await ctx.send("No banner found.")
 
     @commands.command(
         aliases=["pfp", "profile picture"],
