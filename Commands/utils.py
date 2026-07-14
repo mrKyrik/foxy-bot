@@ -75,6 +75,7 @@ class Utils(commands.Cog):
         )
         if banner:
             banner_url = banner.with_format("gif" if banner.is_animated() else "png").url
+            embed.description = f"[Banner Link]({banner_url})"
             embed.set_image(url=banner_url)
         else:
             embed.set_image(url=_LUMINA_BANNER)
