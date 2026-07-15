@@ -224,6 +224,17 @@ CREATE TABLE IF NOT EXISTS ragepoints (
     PRIMARY KEY (guild_id, user_id)
 );
 
+-- Bekleyen Anonim İtiraflar (Çevrimdışı veya Rastgele Zamanlı)
+CREATE TABLE IF NOT EXISTS pending_offline_forms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT,
+    submitter_id TEXT,
+    channel_id TEXT,
+    embed_json TEXT,
+    publish_mode TEXT,
+    publish_at REAL
+);
+
 -- Master Log Ayarları (Discord'a gönderilen logların kanal ayarları)
 CREATE TABLE IF NOT EXISTS log_settings (
     guild_id        TEXT PRIMARY KEY,

@@ -113,11 +113,11 @@ class AdminReviewView(discord.ui.View):
         if not interaction.user.guild_permissions.administrator:
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
-        submitter_id, form_data, selected_role_id = await self._parse_state(interaction)
+        submitter_id, form_data, selected_role_id, publish_mode = await self._parse_state(interaction)
         if not form_data:
             return await interaction.response.send_message("Form veritabanında bulunamadı.", ephemeral=True)
             
-        modal = ReasonModal("approve", submitter_id, interaction.message, form_data, selected_role_id, self.bot)
+        modal = ReasonModal("approve", submitter_id, interaction.message, form_data, selected_role_id, self.bot, publish_mode=publish_mode)
         await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="Reddet", style=discord.ButtonStyle.danger, custom_id="form_reject_adv")
@@ -125,7 +125,7 @@ class AdminReviewView(discord.ui.View):
         if not interaction.user.guild_permissions.administrator:
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
-        submitter_id, form_data, selected_role_id = await self._parse_state(interaction)
+        submitter_id, form_data, selected_role_id, _ = await self._parse_state(interaction)
         if not form_data:
             return await interaction.response.send_message("Form veritabanında bulunamadı.", ephemeral=True)
             
@@ -137,7 +137,7 @@ class AdminReviewView(discord.ui.View):
         if not interaction.user.guild_permissions.administrator:
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
-        submitter_id, form_data, _ = await self._parse_state(interaction)
+        submitter_id, form_data, _, _ = await self._parse_state(interaction)
             
         await interaction.response.defer(ephemeral=True)
         
@@ -212,17 +212,21 @@ class AdminReviewView(discord.ui.View):
             if role_match:
                 selected_role_id = role_match.group(1)
                 
-        return submitter_id, form_data, selected_role_id
+        mode_match = re.search(r'Mode: (\S+)', embed.footer.text)
+        publish_mode = mode_match.group(1) if mode_match else "now"
+                
+        return submitter_id, form_data, selected_role_id, publish_mode
 
 
 class DynamicFormModal(discord.ui.Modal):
-    def __init__(self, form_data: dict, questions: list, bot_db, bot, selected_role_id: str = None):
+    def __init__(self, form_data: dict, questions: list, bot_db, bot, selected_role_id: str = None, publish_mode: str = "now"):
         super().__init__(title=form_data["title"])
         self.form_data = form_data
         self.questions = questions
         self.bot_db = bot_db
         self.bot = bot
         self.selected_role_id = selected_role_id
+        self.publish_mode = publish_mode
         self.inputs = []
 
         for q in questions:
@@ -264,9 +268,18 @@ class DynamicFormModal(discord.ui.Modal):
         form_type = self.form_data.get("form_type", 1)
 
         if form_type == 4 and self.form_data.get("auto_approve", 1) == 1:
-            user_embed.title = "Kumiho Oto-Onay - Yanıtınız Alındı ve Yayınlandı"
-            user_embed.color = discord.Color.green()
-            await interaction.response.send_message("İtirafınız/Formunuz otomatik olarak onaylandı ve paylaşıldı!", embed=user_embed, ephemeral=True)
+            if self.publish_mode == "offline":
+                user_embed.title = "Kumiho - İtirafınız Alındı (Çevrimdışı Bekliyor)"
+                user_embed.color = discord.Color.orange()
+                await interaction.response.send_message("İtirafınız kaydedildi. Siz Discord'da çevrimdışı olduğunuzda otomatik olarak paylaşılacaktır.", embed=user_embed, ephemeral=True)
+            elif self.publish_mode == "random":
+                user_embed.title = "Kumiho - İtirafınız Alındı (Rastgele Zaman Bekliyor)"
+                user_embed.color = discord.Color.orange()
+                await interaction.response.send_message("İtirafınız kaydedildi. Önümüzdeki 1 saat içinde rastgele bir zamanda paylaşılacaktır.", embed=user_embed, ephemeral=True)
+            else:
+                user_embed.title = "Kumiho Oto-Onay - Yanıtınız Alındı ve Yayınlandı"
+                user_embed.color = discord.Color.green()
+                await interaction.response.send_message("İtirafınız otomatik olarak onaylandı ve paylaşıldı!", embed=user_embed, ephemeral=True)
             
             publish_channel_id = self.form_data.get("action_target")
             if publish_channel_id:
@@ -280,17 +293,33 @@ class DynamicFormModal(discord.ui.Modal):
                         color=discord.Color.purple()
                     )
                     
-                    pub_view = discord.ui.View()
-                    pub_view.add_item(discord.ui.Button(
-                        label="İtiraf Et",
-                        style=discord.ButtonStyle.primary,
-                        custom_id=f"trigger_btn_{self.form_data['form_id']}"
-                    ))
-
-                    await publish_channel.send(embed=publish_embed, view=pub_view)
-                    
+                    if self.publish_mode == "now":
+                        pub_view = discord.ui.View()
+                        pub_view.add_item(discord.ui.Button(
+                            label="İtiraf Et",
+                            style=discord.ButtonStyle.primary,
+                            custom_id=f"trigger_btn_{self.form_data['form_id']}"
+                        ))
+                        await publish_channel.send(embed=publish_embed, view=pub_view)
+                    else:
+                        import json
+                        import time
+                        import random
+                        embed_dict = publish_embed.to_dict()
+                        embed_json = json.dumps(embed_dict)
+                        
+                        publish_at = None
+                        if self.publish_mode == "random":
+                            delay_seconds = random.randint(60, 3600)
+                            publish_at = time.time() + delay_seconds
+                            
+                        await self.bot_db.execute(
+                            "INSERT INTO pending_offline_forms (guild_id, submitter_id, channel_id, embed_json, publish_mode, publish_at) VALUES (?, ?, ?, ?, ?, ?)",
+                            str(guild.id), str(interaction.user.id), str(publish_channel_id), embed_json, self.publish_mode, publish_at
+                        )
+                        
             if target_channel:
-                await target_channel.send("✅ Otomatik onaylanan form logu:", embed=embed)
+                await target_channel.send(f"✅ Otomatik onaylanan form logu (Mod: {self.publish_mode}):", embed=embed)
         else:
             user_embed.title = "Yanıtınız Alındı - Admin Onayı Bekliyor"
             user_embed.color = discord.Color.orange()
@@ -363,6 +392,32 @@ class DynamicFormRoleSelect(discord.ui.DynamicItem[discord.ui.Select], template=
         await interaction.response.send_modal(modal)
 
 
+class PublishModeView(discord.ui.View):
+    def __init__(self, form_data: dict, questions: list, bot):
+        super().__init__(timeout=300)
+        self.form_data = form_data
+        self.questions = questions
+        self.bot = bot
+
+    @discord.ui.button(label="Hemen Paylaş", style=discord.ButtonStyle.primary, custom_id="pub_now")
+    async def btn_now(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot, publish_mode="now")
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="Çevrimdışı Olunca", style=discord.ButtonStyle.secondary, custom_id="pub_offline")
+    async def btn_offline(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot, publish_mode="offline")
+        await interaction.response.send_modal(modal)
+
+    @discord.ui.button(label="1 Saat İçinde Rastgele", style=discord.ButtonStyle.secondary, custom_id="pub_random")
+    async def btn_random(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot, publish_mode="random")
+        await interaction.response.send_modal(modal)
+
+    async def callback(self, interaction: discord.Interaction):
+        pass # Not used directly on View
+
+
 class DynamicFormTriggerButton(discord.ui.DynamicItem[discord.ui.Button], template=r'trigger_btn_(?P<id>[a-zA-Z0-9_-]+)'):
     def __init__(self, form_id: str, form_data: dict, questions: list, bot):
         self.form_id = form_id
@@ -370,7 +425,7 @@ class DynamicFormTriggerButton(discord.ui.DynamicItem[discord.ui.Button], templa
         self.questions = questions
         self.bot = bot
         super().__init__(discord.ui.Button(
-            label="Formu Doldur",
+            label="İtiraf Et" if form_data.get("form_type") == 4 else "Formu Doldur",
             style=discord.ButtonStyle.primary,
             custom_id=f"trigger_btn_{form_id}"
         ))
@@ -390,8 +445,12 @@ class DynamicFormTriggerButton(discord.ui.DynamicItem[discord.ui.Button], templa
         return cls(form_id, form_data, qs, bot)
 
     async def callback(self, interaction: discord.Interaction):
-        modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot)
-        await interaction.response.send_modal(modal)
+        if self.form_data.get("form_type") == 4:
+            view = PublishModeView(self.form_data, self.questions, self.bot)
+            await interaction.response.send_message("İtirafınız ne zaman paylaşılsın? Bir seçenek belirleyin, ardından itiraf formunuz açılacaktır.", view=view, ephemeral=True)
+        else:
+            modal = DynamicFormModal(self.form_data, self.questions, self.bot.db, self.bot)
+            await interaction.response.send_modal(modal)
 
 
 class FormTriggerViewSelect(discord.ui.View):
