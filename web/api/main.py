@@ -1228,6 +1228,7 @@ class CustomFormCreate(BaseModel):
     form_type: int
     action_target: str = None
     auto_approve: int = 1
+    show_reply_button: int = 0
     questions: List[str] = []
     roles: List[str] = []
 
@@ -1264,9 +1265,9 @@ def create_form(guild_id: str, form_data: CustomFormCreate, _: dict = Depends(ve
         conn.close()
         raise HTTPException(status_code=400, detail="Bu Form ID zaten kullanımda.")
         
-    c.execute('''INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)''', 
-              (form_data.form_id, guild_id, form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve))
+    c.execute('''INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve, show_reply_button)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)''', 
+              (form_data.form_id, guild_id, form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve, form_data.show_reply_button))
               
     for q in form_data.questions:
         c.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (form_data.form_id, guild_id, q))
@@ -1289,9 +1290,9 @@ def update_form(guild_id: str, form_id: str, form_data: CustomFormCreate, _: dic
         conn.close()
         raise HTTPException(status_code=404, detail="Form bulunamadı.")
         
-    c.execute('''UPDATE custom_forms SET title = ?, channel_id = ?, form_type = ?, action_target = ?, auto_approve = ?
+    c.execute('''UPDATE custom_forms SET title = ?, channel_id = ?, form_type = ?, action_target = ?, auto_approve = ?, show_reply_button = ?
                  WHERE guild_id = ? AND form_id = ?''', 
-              (form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve, guild_id, form_id))
+              (form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve, form_data.show_reply_button, guild_id, form_id))
               
     c.execute("DELETE FROM form_questions WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
     c.execute("DELETE FROM form_roles WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))

@@ -24,6 +24,7 @@ const FormManagementPage = () => {
     form_type: 1,
     action_target: '',
     auto_approve: 1,
+    show_reply_button: 0,
     questions: [''],
     roles: []
   });
@@ -79,7 +80,8 @@ const FormManagementPage = () => {
       channel_id: form.channel_id,
       form_type: form.form_type,
       action_target: form.action_target || '',
-      auto_approve: form.auto_approve || 1,
+      auto_approve: form.auto_approve !== undefined ? form.auto_approve : 1,
+      show_reply_button: form.show_reply_button || 0,
       questions: form.questions && form.questions.length > 0 ? form.questions : [''],
       roles: form.roles || []
     });
@@ -157,7 +159,7 @@ const FormManagementPage = () => {
             className="action-btn"
             style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--accent-blue)', color: '#fff', padding: '10px 20px', borderRadius: '12px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
             onClick={() => {
-              setFormData({ form_id: '', title: '', channel_id: '', form_type: 1, action_target: '', auto_approve: 1, questions: [''], roles: [] });
+              setFormData({ form_id: '', title: '', channel_id: '', form_type: 1, action_target: '', auto_approve: 1, show_reply_button: 0, questions: [''], roles: [] });
               setIsEditing(false);
               setIsModalOpen(true);
             }}
@@ -288,6 +290,16 @@ const FormManagementPage = () => {
                       style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)' }}
                     />
                     İtirafları Otomatik Onayla (Kapatılırsa admin onayı gerekir)
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', marginTop: '8px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={formData.show_reply_button === 1}
+                      onChange={e => setFormData({...formData, show_reply_button: e.target.checked ? 1 : 0})}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)' }}
+                    />
+                    Yayınlanan İtirafların altında 'Sen de Formu Doldur' butonu gösterilsin mi?
                   </label>
                 </div>
               )}
