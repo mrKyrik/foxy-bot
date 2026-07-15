@@ -180,6 +180,9 @@ const SettingsPage = () => {
   const [selectedCat, setSelectedCat] = useState("");
   const [selectedVoice, setSelectedVoice] = useState("");
 
+  // ── Forum başvuru etiket anahtar kelimeleri ────────────────────────────
+  const [forumTags, setForumTags] = useState({ accept: "", reject: "" });
+  const [forumTagsSaving, setForumTagsSaving] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -195,6 +198,12 @@ const SettingsPage = () => {
           setSelectedCat(res.data.private_voice.category_id || "");
           setSelectedVoice(res.data.private_voice.hub_id || "");
         }
+        // Forum etiketleri
+        const ft = res.data.forum_tags || { accept: [], reject: [] };
+        setForumTags({
+          accept: (ft.accept || []).join(', '),
+          reject: (ft.reject || []).join(', ')
+        });
       });
 
     const fetchChannels = axios.get(`${API_BASE_URL}/channels/${activeGuildId}`)
@@ -330,6 +339,32 @@ const SettingsPage = () => {
       setChannelSettings(p => ({ ...p, [columnKey]: prev }));
     } finally {
       setChannelLoading(false);
+    }
+  };
+
+  // ── Forum etiketlerini kaydet ─────────────────────────────────────────
+  const saveForumTags = async () => {
+    const acceptList = forumTags.accept
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+    const rejectList = forumTags.reject
+      .split(',')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    setForumTagsSaving(true);
+    try {
+      await axios.post(`${API_BASE_URL}/settings/forum-tags/${activeGuildId}`, {
+        accept_tags: acceptList,
+        reject_tags: rejectList,
+      });
+      alert("Forum etiket anahtar kelimeleri kaydedildi.");
+    } catch (err) {
+      console.error(err);
+      alert("Etiketler kaydedilemedi.");
+    } finally {
+      setForumTagsSaving(false);
     }
   };
 
@@ -758,6 +793,61 @@ const SettingsPage = () => {
                   >
                     <FileText size={18} /> Form Yönetimine Git
                   </button>
+                </div>
+              )}
+
+              {/* ── Forum Başvuru Etiket Ayarları ── */}
+              {activeCategory === 'basvuru' && (
+                <div style={{ marginTop: '40px', background: 'rgba(0,0,0,0.2)', padding: '24px', borderRadius: '16px', border: '1px solid var(--panel-border)' }}>
+                  <h3 style={{ fontSize: '1.4rem', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <FileText size={24} color="var(--accent-blue)" /> Forum Başvuru Etiket Anahtar Kelimeleri
+                  </h3>
+                  <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.6' }}>
+                    Bot, forum kanallarındaki başvuru gönderilerine eklenen etiketleri tarar. Aşağıda belirlediğiniz
+                    anahtar kelimeleri <strong>içeren</strong> etiketler <strong>kabul</strong> veya <strong>red</strong>
+                    olarak değerlendirilir. Kelimeleri virgülle ayırarak yazın.<br />
+                    <em>Örn. kabul, onay, accepted</em>
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                        ✅ Kabul Etiketi Anahtar Kelimeleri
+                      </label>
+                      <input 
+                        type="text" 
+                        value={forumTags.accept} 
+                        onChange={e => setForumTags(prev => ({ ...prev, accept: e.target.value }))} 
+                        placeholder="kabul, onay, accepted"
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px' }}
+                      />
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', color: 'var(--text-secondary)', marginBottom: '8px', fontWeight: 600 }}>
+                        ❌ Red Etiketi Anahtar Kelimeleri
+                      </label>
+                      <input 
+                        type="text" 
+                        value={forumTags.reject} 
+                        onChange={e => setForumTags(prev => ({ ...prev, reject: e.target.value }))} 
+                        placeholder="red, iptal, rejected"
+                        style={{ width: '100%', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--panel-border)', color: '#fff', fontSize: '1rem', padding: '12px 16px', borderRadius: '12px' }}
+                      />
+                    </div>
+
+                    <button 
+                      onClick={saveForumTags} 
+                      disabled={forumTagsSaving} 
+                      style={{
+                        padding: '12px 24px', background: 'var(--accent-green)', color: '#fff', fontWeight: 600,
+                        border: 'none', borderRadius: '8px', cursor: forumTagsSaving ? 'not-allowed' : 'pointer',
+                        alignSelf: 'flex-start', marginTop: '8px'
+                      }}
+                    >
+                      {forumTagsSaving ? 'Kaydediliyor...' : 'Etiket Ayarlarını Kaydet'}
+                    </button>
+                  </div>
                 </div>
               )}
 
