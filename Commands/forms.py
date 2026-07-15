@@ -68,8 +68,16 @@ class ReasonModal(discord.ui.Modal):
                             description=f"📢 **{self.form_data['title']} ile bir itiraf!**\n\n{content}",
                             color=discord.Color.purple()
                         )
+                        
+                        pub_view = discord.ui.View()
+                        pub_view.add_item(discord.ui.Button(
+                            label="İtiraf Et",
+                            style=discord.ButtonStyle.primary,
+                            custom_id=f"trigger_btn_{self.form_data['form_id']}"
+                        ))
+
                         try:
-                            await pub_channel.send(embed=pub_embed)
+                            await pub_channel.send(embed=pub_embed, view=pub_view)
                             embed.add_field(name="Sistem", value=f"İçerik {pub_channel.mention} kanalında yayınlandı.", inline=False)
                         except Exception as e:
                             embed.add_field(name="Sistem", value=f"Yayınlama başarısız: {e}", inline=False)
@@ -271,7 +279,15 @@ class DynamicFormModal(discord.ui.Modal):
                         description=f"📢 **{self.form_data['title']} ile bir itiraf!**\n\n{content}",
                         color=discord.Color.purple()
                     )
-                    await publish_channel.send(embed=publish_embed)
+                    
+                    pub_view = discord.ui.View()
+                    pub_view.add_item(discord.ui.Button(
+                        label="İtiraf Et",
+                        style=discord.ButtonStyle.primary,
+                        custom_id=f"trigger_btn_{self.form_data['form_id']}"
+                    ))
+
+                    await publish_channel.send(embed=publish_embed, view=pub_view)
                     
             if target_channel:
                 await target_channel.send("✅ Otomatik onaylanan form logu:", embed=embed)
