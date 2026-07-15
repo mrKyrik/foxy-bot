@@ -172,7 +172,6 @@ CREATE TABLE IF NOT EXISTS custom_forms (
     form_type   INTEGER DEFAULT 1,
     action_target TEXT,
     auto_approve INTEGER DEFAULT 1,
-    show_reply_button INTEGER DEFAULT 0,
     PRIMARY KEY (guild_id, form_id)
 );
 
@@ -414,14 +413,6 @@ class Database:
         await self.db.execute("PRAGMA journal_mode=WAL;")
         await self.db.execute("PRAGMA synchronous=NORMAL;")
         await self.db.execute("PRAGMA foreign_keys=ON;")
-        
-        # Migration: custom_forms show_reply_button
-        cursor = await self.user_db.execute("PRAGMA table_info(custom_forms)")
-        columns = [row["name"] for row in await cursor.fetchall()]
-        if "show_reply_button" not in columns:
-            log.info("Migrating custom_forms to include show_reply_button...")
-            await self.user_db.execute("ALTER TABLE custom_forms ADD COLUMN show_reply_button INTEGER DEFAULT 0")
-            await self.user_db.commit()
         
         # Migration: saved_roles
         cursor = await self.user_db.execute("PRAGMA table_info(saved_roles)")
