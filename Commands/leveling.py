@@ -224,7 +224,7 @@ class Leveling(commands.Cog):
             
             if target_channel:
                 try:
-                    await target_channel.send(embed=embed)
+                    await target_channel.send(content=member.mention, embed=embed)
                 except Exception:
                     pass
 
