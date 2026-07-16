@@ -200,7 +200,7 @@ const FormManagementPage = () => {
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '16px', flex: 1 }}>
                 <p style={{ marginBottom: '4px' }}><strong>Tip:</strong> {getFormTypeName(form.form_type)}</p>
                 <p style={{ marginBottom: '4px' }}><strong>Soru Sayısı:</strong> {form.questions?.length || 0}</p>
-                <p style={{ marginBottom: '0' }}><strong>Hedef Kanal:</strong> {channels.find(c => c.channel_id === form.channel_id)?.channel_name || form.channel_id}</p>
+                <p style={{ marginBottom: '0' }}><strong>Hedef Kanal:</strong> {form.channel_id === "0" ? "Log Yok (Sadece DB)" : (channels.find(c => c.channel_id === form.channel_id)?.channel_name || form.channel_id)}</p>
               </div>
               
               <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
@@ -268,6 +268,7 @@ const FormManagementPage = () => {
                 </label>
                 <select required value={formData.channel_id} onChange={e => setFormData({...formData, channel_id: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
                   <option value="">-- Kanal Seç --</option>
+                  {(formData.form_type === 4) && <option value="0">Log İstemiyorum (Sadece DB/Web Panel)</option>}
                   {channels.map(c => <option key={c.channel_id} value={c.channel_id}># {c.channel_name}</option>)}
                 </select>
               </div>

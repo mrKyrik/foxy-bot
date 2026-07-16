@@ -267,6 +267,22 @@ class DynamicFormModal(discord.ui.Modal):
         user_embed = embed.copy()
         form_type = self.form_data.get("form_type", 1)
 
+        # Build detailed log text for DB
+        answers_text = ""
+        for i, q in enumerate(self.questions):
+            answers_text += f"\n**{q['question_text']}**\n{self.inputs[i].value}\n"
+        
+        emoji = "📝"
+        form_isim = "Başvuru Yapıldı"
+        if form_type == 4:
+            emoji = "🕵️"
+            form_isim = "İtiraf Gönderildi"
+        elif form_type == 2:
+            emoji = "🛡️"
+            form_isim = "Rol Başvurusu Yapıldı"
+            
+        log_text = f"{emoji} {form_isim}\n**Form:** {self.form_data['title']}\n{answers_text}"
+
         if form_type == 4 and self.form_data.get("auto_approve", 1) == 1:
             if self.publish_mode == "offline":
                 user_embed.title = "Kumiho - İtirafınız Alındı (Çevrimdışı Bekliyor)"
@@ -292,6 +308,8 @@ class DynamicFormModal(discord.ui.Modal):
                         description=f"📢 **{self.form_data['title']} ile bir itiraf!**\n\n{content}",
                         color=discord.Color.purple()
                     )
+                    now_str = datetime.datetime.now().strftime("%d.%m.%Y %H:%M")
+                    publish_embed.set_footer(text=f"Form ID: {self.form_data['form_id']} • {now_str}")
                     
                     if self.publish_mode == "now":
                         pub_view = discord.ui.View()
@@ -337,9 +355,9 @@ class DynamicFormModal(discord.ui.Modal):
                 user_id=str(interaction.user.id),
                 details={
                     "username": str(interaction.user.id),
-                    "text": f"Başvuru Yapıldı\nForm: {self.form_data['title']}"
+                    "text": log_text
                 },
-                channel_id=str(channel_id)
+                channel_id=str(channel_id) if channel_id else None
             )
 
 
@@ -548,8 +566,8 @@ class FormsCog(commands.Cog):
         interaction: discord.Interaction,
         form_id: str,
         baslik: str,
-        hedef_kanal: discord.TextChannel,
         form_turu: app_commands.Choice[int],
+        hedef_kanal: discord.TextChannel = None,
         soru_1: str,
         soru_2: str = None,
         soru_3: str = None,
@@ -582,15 +600,20 @@ class FormsCog(commands.Cog):
             if len(r_ids) > 5:
                 return await interaction.response.send_message("En fazla 5 rol ID'si belirtebilirsiniz.", ephemeral=True)
             
+        if form_turu.value in [1, 2] and not hedef_kanal:
+            return await interaction.response.send_message("Normal başvuru ve rol formları için bir Hedef/Log Kanalı seçmek zorunludur.", ephemeral=True)
+            
         if form_turu.value == 4:
             if not yayin_kanali:
                 return await interaction.response.send_message("Otomatik yayın formu için `yayin_kanali` belirtmelisiniz.", ephemeral=True)
             action_target = str(yayin_kanali.id)
 
+        channel_id_str = str(hedef_kanal.id) if hedef_kanal else "0"
+
         # 1. Forma kayıt ekle
         await self.bot.db.execute(
             "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target) VALUES (?, ?, ?, ?, ?, ?)",
-            form_id, str(interaction.guild_id), baslik[:45], str(hedef_kanal.id), form_turu.value, action_target
+            form_id, str(interaction.guild_id), baslik[:45], channel_id_str, form_turu.value, action_target
         )
         
         # 2. Soruları ekle
@@ -605,7 +628,7 @@ class FormsCog(commands.Cog):
         # Arayüze trigger ekle
         form_data = {
             "form_id": form_id, "guild_id": str(interaction.guild_id), "title": baslik[:45],
-            "channel_id": str(hedef_kanal.id), "form_type": form_turu.value, "action_target": action_target
+            "channel_id": channel_id_str, "form_type": form_turu.value, "action_target": action_target
         }
         
         if form_turu.value in [1, 4]:
