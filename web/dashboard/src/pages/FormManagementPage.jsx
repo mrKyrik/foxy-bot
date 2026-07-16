@@ -268,7 +268,7 @@ const FormManagementPage = () => {
                 </label>
                 <select required value={formData.channel_id} onChange={e => setFormData({...formData, channel_id: e.target.value})} style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}>
                   <option value="">-- Kanal Seç --</option>
-                  {(formData.form_type === 4) && <option value="0">Log İstemiyorum (Sadece DB/Web Panel)</option>}
+                  <option value="0">Log İstemiyorum (Sadece DB/Web Panel)</option>
                   {channels.map(c => <option key={c.channel_id} value={c.channel_id}># {c.channel_name}</option>)}
                 </select>
               </div>
