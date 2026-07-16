@@ -132,8 +132,8 @@ const PanelAuthPage = () => {
         axios.get(`${API_BASE_URL}/discord-members/${activeGuildId}`)
       ]);
       setPermissions(authRes.data.permissions || []);
-      setDiscordRoles(rolesRes.data || []);
-      setDiscordMembers(membersRes.data || []);
+      setDiscordRoles(Array.isArray(rolesRes.data) ? rolesRes.data : []);
+      setDiscordMembers(Array.isArray(membersRes.data) ? membersRes.data : []);
       setError(null);
     } catch (err) {
       console.error(err);
