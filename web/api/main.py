@@ -401,8 +401,8 @@ async def discord_callback(request: Request):
     for g in guilds_data:
         g_id = str(g["id"])
         
-        # Sadece botun ekli olduğu sunucuları listele (Bot sahibi bile olsa botun olmadığı sunucu görünmesin)
-        if g_id not in kumiho_guilds:
+        # Sadece botun ekli olduğu sunucuları listele (Bot sahibi değilse)
+        if not is_bot_owner and g_id not in kumiho_guilds:
             continue
             
         perms = int(g.get("permissions", 0))
