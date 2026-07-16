@@ -53,6 +53,10 @@ class Owner(commands.Cog):
         except Exception:
             pass
 
+        # Eğer yardım komutu kontrol ediyorsa hata vermeden True dön ki listede gözüksün
+        if ctx.command and ctx.command.name == "help":
+            return True
+
         await ctx.send("❌ Only authorized bot owners can use this command suite.")
         return False
 
