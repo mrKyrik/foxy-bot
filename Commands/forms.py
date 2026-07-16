@@ -103,14 +103,37 @@ class ReasonModal(discord.ui.Modal):
                 pass
 
 
+class FormAdminSettingsView(discord.ui.View):
+    def __init__(self, bot):
+        super().__init__(timeout=300)
+        self.bot = bot
+
+    @discord.ui.select(cls=discord.ui.RoleSelect, placeholder="Form Onay Yetkilisi Rolünü Seçin", min_values=1, max_values=1)
+    async def select_role(self, interaction: discord.Interaction, select: discord.ui.RoleSelect):
+        role = select.values[0]
+        await self.bot.db.execute("INSERT OR REPLACE INTO form_admin_roles (guild_id, role_id) VALUES (?, ?)", str(interaction.guild_id), str(role.id))
+        await interaction.response.send_message(f"✅ Form yönetici yetkisi {role.mention} rolüne verildi. Artık bu role sahip olanlar formları onaylayıp reddedebilecek.", ephemeral=True)
+
+
+
 class AdminReviewView(discord.ui.View):
     def __init__(self, bot):
         super().__init__(timeout=None)
         self.bot = bot
 
+    async def _check_permissions(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.guild_permissions.administrator:
+            return True
+        role_data = await self.bot.db.fetchone("SELECT role_id FROM form_admin_roles WHERE guild_id=?", str(interaction.guild_id))
+        if role_data:
+            role_id = int(role_data[0])
+            if any(r.id == role_id for r in interaction.user.roles):
+                return True
+        return False
+
     @discord.ui.button(label="Onayla", style=discord.ButtonStyle.success, custom_id="form_approve_adv")
     async def approve_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.administrator:
+        if not await self._check_permissions(interaction):
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
         submitter_id, form_data, selected_role_id, publish_mode = await self._parse_state(interaction)
@@ -122,7 +145,7 @@ class AdminReviewView(discord.ui.View):
 
     @discord.ui.button(label="Reddet", style=discord.ButtonStyle.danger, custom_id="form_reject_adv")
     async def reject_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.administrator:
+        if not await self._check_permissions(interaction):
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
         submitter_id, form_data, selected_role_id, _ = await self._parse_state(interaction)
@@ -134,7 +157,7 @@ class AdminReviewView(discord.ui.View):
         
     @discord.ui.button(label="🎫 Ticket Aç", style=discord.ButtonStyle.secondary, custom_id="form_ticket_adv")
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        if not interaction.user.guild_permissions.administrator:
+        if not await self._check_permissions(interaction):
             return await interaction.response.send_message("Bunu yapmaya yetkiniz yok.", ephemeral=True)
             
         submitter_id, form_data, _, _ = await self._parse_state(interaction)
@@ -189,6 +212,14 @@ class AdminReviewView(discord.ui.View):
             await interaction.followup.send(f"✅ Ticket kanalı açıldı: {ticket_channel.mention}", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Kanal açılamadı: {e}", ephemeral=True)
+
+    @discord.ui.button(label="⚙️ Ayarlar", style=discord.ButtonStyle.secondary, custom_id="form_settings_adv")
+    async def settings_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message("Sadece sunucu yöneticileri ayarları değiştirebilir.", ephemeral=True)
+        
+        view = FormAdminSettingsView(self.bot)
+        await interaction.response.send_message("Lütfen form işlemlerini yapabilecek (onayla, reddet, ticket aç) yetkili rolünü seçin:", view=view, ephemeral=True)
 
     async def _parse_state(self, interaction: discord.Interaction):
         import re

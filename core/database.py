@@ -191,6 +191,11 @@ CREATE TABLE IF NOT EXISTS form_roles (
     FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS form_admin_roles (
+    guild_id    TEXT PRIMARY KEY,
+    role_id     TEXT NOT NULL
+);
+
 -- Geçiçi Yasaklamalar
 CREATE TABLE IF NOT EXISTS temp_bans (
     guild_id        TEXT,
