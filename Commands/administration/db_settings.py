@@ -24,10 +24,9 @@ class DBSettings(commands.Cog):
             return "🟢 Açık" if row.get(col, 0) else "🔴 Kapalı"
 
         embed = discord.Embed(
-            title="🗄️ Veritabanı Log Sistemi",
+            title="🗄️ Veritabanı & Dashboard Log Şalterleri",
             description=(
-                "Web dashboard için olayları SQLite'a kaydeden şalterler.\n"
-                "Bu sistem **Discord kanalı log sisteminden bağımsızdır**.\n"
+                "Bu panelden açılan şalterler Web Dashboard'da ve Discord Log kanalında (ayarlanmışsa) ortak olarak tutulur.\n"
                 "Şalter açmak için: `f.db <tür> <olay> <on|off>`\n"
                 "Kayıtları görmek için: `f.dblog <tür>`"
             ),
@@ -123,9 +122,16 @@ class DBSettings(commands.Cog):
         
         await self.bot.db.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
         await self.bot.db.execute(f"UPDATE db_log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+
+        # Sync log_settings (DC Embeds)
+        try:
+            await self.bot.db.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
+            await self.bot.db.execute(f"UPDATE log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+        except Exception:
+            pass
         
         durum = "açıldı" if val == 1 else "kapatıldı"
-        await ctx.send(f"✅ {log_name} DB logları **{durum}**.")
+        await ctx.send(f"✅ {log_name} DB logları ve kanal logları senkronize olarak **{durum}**.")
 
     # TEXT
     @db.group(name="text", invoke_without_command=True)

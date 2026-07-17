@@ -1061,11 +1061,21 @@ def update_log_setting(guild_id: str, update: LogSettingsUpdate, _: dict = Depen
     try:
         c = user_conn.cursor()
         val = 1 if update.state.lower() == "on" else 0
+        
+        # 1) db_log_settings (Web)
         c.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", (guild_id,))
         c.execute(
             f"UPDATE db_log_settings SET {update.setting_name} = ? WHERE guild_id = ?",
             (val, guild_id)
         )
+        
+        # 2) log_settings (Discord Embed)
+        c.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", (guild_id,))
+        c.execute(
+            f"UPDATE log_settings SET {update.setting_name} = ? WHERE guild_id = ?",
+            (val, guild_id)
+        )
+        
         user_conn.commit()
         return {"status": "success", "setting": update.setting_name, "state": update.state}
     except Exception as e:

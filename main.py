@@ -638,6 +638,9 @@ async def on_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.send("❌ Komut bulunamadı!")
         return
+    if isinstance(error, commands.NotOwner):
+        await ctx.send(str(error))
+        return
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send(f"❌ Eksik argüman: `{error.param.name}`")
         return

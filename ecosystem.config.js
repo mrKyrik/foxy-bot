@@ -3,7 +3,7 @@ module.exports = {
     {
       name: "Kumiho-Bot",
       script: "main.py",
-      interpreter: "python3",
+      interpreter: "/home/ubuntu/prc/foxy/venv/bin/python3",
       watch: false,
       cwd: ".",
       env: {
@@ -13,7 +13,7 @@ module.exports = {
     {
       name: "Kumiho-API",
       script: "main.py",
-      interpreter: "python3",
+      interpreter: "/home/ubuntu/prc/foxy/venv/bin/python3",
       watch: false,
       cwd: "./web/api",
       env: {

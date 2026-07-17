@@ -614,10 +614,10 @@ const SettingsPage = () => {
               {/* ── Şalterler ── */}
               <div>
                 <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Veritabanı Loglama Şalterleri
+                  Discord & Web Dashboard Log Şalterleri
                 </div>
                 <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
-                  Bu şalterler web dashboard üzerinde gösterilmek üzere log kaydı tutulmasını sağlar.
+                  Buradan açtığınız şalterler, ayarladığınız Discord log kanalına mesaj gönderilmesini sağlar ve eşzamanlı olarak o olayları sol menüdeki Log Ayarları sayfasına kaydeder.
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>

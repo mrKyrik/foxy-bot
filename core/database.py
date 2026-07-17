@@ -242,57 +242,69 @@ CREATE TABLE IF NOT EXISTS pending_offline_forms (
 
 -- Master Log Ayarları (Discord'a gönderilen logların kanal ayarları)
 CREATE TABLE IF NOT EXISTS log_settings (
-    guild_id        TEXT PRIMARY KEY,
-    msg_channel     TEXT,
-    msg_delete_on   INTEGER DEFAULT 1,
-    msg_edit_on     INTEGER DEFAULT 1,
-    ses_channel     TEXT,
-    ses_join_on     INTEGER DEFAULT 1,
-    ses_switch_on   INTEGER DEFAULT 1,
-    ses_stream_on   INTEGER DEFAULT 1,
-    uyari_channel   TEXT,
-    ticket_channel  TEXT,
-    mod_channel     TEXT,
-    mod_role_on     INTEGER DEFAULT 1,
-    mod_channel_on  INTEGER DEFAULT 1,
-    mod_msg_on      INTEGER DEFAULT 1,
-    basvuru_channel TEXT,
-    davet_channel   TEXT,
-    sunucu_channel  TEXT,
-    srv_update_on   INTEGER DEFAULT 1,
-    srv_emoji_on    INTEGER DEFAULT 1,
-    srv_role_on     INTEGER DEFAULT 1,
-    srv_perm_on     INTEGER DEFAULT 1,
-    rol_channel     TEXT
+    guild_id         TEXT PRIMARY KEY,
+    msg_channel      TEXT,
+    msg_delete_on    INTEGER DEFAULT 0,
+    msg_edit_on      INTEGER DEFAULT 0,
+    ses_channel      TEXT,
+    ses_join_on      INTEGER DEFAULT 0,
+    ses_switch_on    INTEGER DEFAULT 0,
+    ses_stream_on    INTEGER DEFAULT 0,
+    ses_camera_on    INTEGER DEFAULT 0,
+    uyari_channel    TEXT,
+    ticket_channel   TEXT,
+    mod_channel      TEXT,
+    mod_role_on      INTEGER DEFAULT 0,
+    mod_channel_on   INTEGER DEFAULT 0,
+    mod_msg_on       INTEGER DEFAULT 0,
+    basvuru_channel  TEXT,
+    davet_channel    TEXT,
+    sunucu_channel   TEXT,
+    srv_update_on    INTEGER DEFAULT 0,
+    srv_emoji_on     INTEGER DEFAULT 0,
+    srv_role_on      INTEGER DEFAULT 0,
+    srv_perm_on      INTEGER DEFAULT 0,
+    warn_add_on      INTEGER DEFAULT 0,
+    warn_remove_on   INTEGER DEFAULT 0,
+    ticket_create_on INTEGER DEFAULT 0,
+    ticket_close_on  INTEGER DEFAULT 0,
+    app_create_on    INTEGER DEFAULT 0,
+    app_accept_on    INTEGER DEFAULT 0,
+    app_reject_on    INTEGER DEFAULT 0,
+    invite_create_on INTEGER DEFAULT 0,
+    invite_use_on    INTEGER DEFAULT 0,
+    role_add_on      INTEGER DEFAULT 0,
+    role_remove_on   INTEGER DEFAULT 0,
+    rol_channel      TEXT
 );
 
 -- Veritabanı / Dashboard loglama şalterleri (Web UI üzerinden yönetilir)
 CREATE TABLE IF NOT EXISTS db_log_settings (
     guild_id         TEXT PRIMARY KEY,
-    msg_delete_on    INTEGER DEFAULT 1,
-    msg_edit_on      INTEGER DEFAULT 1,
-    ses_join_on      INTEGER DEFAULT 1,
-    ses_switch_on    INTEGER DEFAULT 1,
-    ses_stream_on    INTEGER DEFAULT 1,
-    ses_camera_on    INTEGER DEFAULT 1,
-    mod_role_on      INTEGER DEFAULT 1,
-    mod_channel_on   INTEGER DEFAULT 1,
-    mod_msg_on       INTEGER DEFAULT 1,
-    srv_update_on    INTEGER DEFAULT 1,
-    srv_emoji_on     INTEGER DEFAULT 1,
-    srv_role_on      INTEGER DEFAULT 1,
-    srv_perm_on      INTEGER DEFAULT 1,
-    warn_add_on      INTEGER DEFAULT 1,
-    warn_remove_on   INTEGER DEFAULT 1,
-    ticket_create_on INTEGER DEFAULT 1,
-    ticket_close_on  INTEGER DEFAULT 1,
-    app_create_on    INTEGER DEFAULT 1,
-    app_accept_on    INTEGER DEFAULT 1,
-    app_reject_on    INTEGER DEFAULT 1,
-    invite_create_on INTEGER DEFAULT 1,
-    invite_use_on    INTEGER DEFAULT 1,
-    role_add_on      INTEGER DEFAULT 1,
-    role_remove_on   INTEGER DEFAULT 1
+    msg_delete_on    INTEGER DEFAULT 0,
+    msg_edit_on      INTEGER DEFAULT 0,
+    ses_join_on      INTEGER DEFAULT 0,
+    ses_switch_on    INTEGER DEFAULT 0,
+    ses_stream_on    INTEGER DEFAULT 0,
+    ses_camera_on    INTEGER DEFAULT 0,
+    mod_role_on      INTEGER DEFAULT 0,
+    mod_channel_on   INTEGER DEFAULT 0,
+    mod_msg_on       INTEGER DEFAULT 0,
+    srv_update_on    INTEGER DEFAULT 0,
+    srv_emoji_on     INTEGER DEFAULT 0,
+    srv_role_on      INTEGER DEFAULT 0,
+    srv_perm_on      INTEGER DEFAULT 0,
+    warn_add_on      INTEGER DEFAULT 0,
+    warn_remove_on   INTEGER DEFAULT 0,
+    ticket_create_on INTEGER DEFAULT 0,
+    ticket_close_on  INTEGER DEFAULT 0,
+    app_create_on    INTEGER DEFAULT 0,
+    app_accept_on    INTEGER DEFAULT 0,
+    app_reject_on    INTEGER DEFAULT 0,
+    invite_create_on INTEGER DEFAULT 0,
+    invite_use_on    INTEGER DEFAULT 0,
+    role_add_on      INTEGER DEFAULT 0,
+    role_remove_on   INTEGER DEFAULT 0
 );
 
 -- Genel Olay Logları (JSON Formatlı)
@@ -522,7 +534,7 @@ class Database:
                     fd = dict(f)
                     await self.user_db.execute(
                         "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"), 1)
+                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"), 0)
                     )
                 for q in q_data:
                     qd = dict(q)
@@ -550,6 +562,21 @@ class Database:
                 await self.main_db.commit()
             except Exception as e:
                 log.error(f"Migration error for custom_forms auto_approve: {e}")
+
+        # Migrate missing columns to log_settings
+        cursor3 = await self.user_db.execute("PRAGMA table_info(log_settings)")
+        columns3 = [row["name"] for row in await cursor3.fetchall()]
+        missing_cols = [
+            "warn_add_on", "warn_remove_on", "ticket_create_on", "ticket_close_on",
+            "app_create_on", "app_accept_on", "app_reject_on", "invite_create_on",
+            "invite_use_on", "role_add_on", "role_remove_on", "ses_camera_on"
+        ]
+        for col in missing_cols:
+            if col not in columns3:
+                try:
+                    await self.user_db.execute(f"ALTER TABLE log_settings ADD COLUMN {col} INTEGER DEFAULT 0")
+                except Exception as e:
+                    log.error("Error migrating %s: %s", col, e)
 
         await self.user_db.commit()
 
@@ -669,10 +696,12 @@ class Database:
                 )
                 if row:
                     row_dict = dict(row)
-                    # Şalter kolonu tabloda var ve 0 ise loglama
-                    if setting_key in row_dict and row_dict[setting_key] == 0:
+                    # Şalter kolonu tabloda var ve 1 değilse loglama (varsayılan kapalı mantığı)
+                    if setting_key in row_dict and row_dict[setting_key] != 1:
                         return
-                # Kayıt yoksa → tablo henüz oluşturulmamış → varsayılan açık (logla)
+                else:
+                    # Kayıt yoksa → varsayılan kapalı
+                    return
             except Exception as e:
                 log.error("log_db_event ayar kontrol hatası: %s", e)
 

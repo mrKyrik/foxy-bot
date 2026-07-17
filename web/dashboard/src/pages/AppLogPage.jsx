@@ -65,13 +65,16 @@ const AppLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
                    <div key={i} className="msg-dot" style={{ position: 'absolute', left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)', cursor: 'pointer', zIndex: 10 }}>
                       <div style={{ fontSize: '20px' }}>{icon}</div>
                       
-                      <div className="msg-tooltip" style={{ width: '250px' }}>
+                      <div className="msg-tooltip" style={{ width: '300px' }}>
                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '8px' }}>
                            <FileText size={18} />
                            <strong style={{ fontSize: '1rem' }}>Başvuru İşlemi</strong>
                          </div>
-                         <div style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '4px' }}>Saat: {formatTime(ev.ts)}</div>
-                         <div style={{ color: '#eee', fontSize: '0.9rem' }}>
+                         <div style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '8px' }}>
+                           Saat: {formatTime(ev.ts)}<br/>
+                           Kullanıcı: {ev.username || ev.user_id || "Bilinmiyor"}
+                         </div>
+                         <div style={{ color: '#eee', fontSize: '0.9rem', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
                            {ev.details || "Başvuru olayı."}
                          </div>
                       </div>

@@ -33,12 +33,11 @@ class Settings(commands.Cog):
             return "🟢 Açık" if row.get(col, 0) else "🔴 Kapalı"
 
         embed = discord.Embed(
-            title="📡 Discord Log Sistemi",
+            title="⚙️ Discord & Dashboard Log Şalterleri",
             description=(
-                "Discord kanallarına embed log gönderme sistemi.\n"
-                "Kanal seçmek için: `f.log set <tür> #kanal`\n"
-                "Şalter açmak için: `f.log <tür> <olay> <on|off>`\n"
-                "Web dashboard'dan da yönetilebilir."
+                "Bu panelden açılan log şalterleri, hem seçilen Discord kanalına log gönderilmesini sağlar hem de Web Dashboard'da gösterilmek üzere veritabanına kayıt tutulmasını (senkronize olarak) kontrol eder.\n\n"
+                "Kanal ayarlamak için: `f.log <tür> channel #kanal`\n"
+                "Şalter açmak/kapatmak için: `f.log <tür> <olay> <on|off>`"
             ),
             color=discord.Color.blurple(),
             timestamp=discord.utils.utcnow()
@@ -168,9 +167,17 @@ class Settings(commands.Cog):
         # Update log_settings (DC Embeds)
         await self.bot.db.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
         await self.bot.db.execute(f"UPDATE log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+
+        # Sync db_log_settings (Web Dashboard)
+        try:
+            await self.bot.db.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
+            await self.bot.db.execute(f"UPDATE db_log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+        except Exception as e:
+            # Sütun henüz db_log_settings'de yoksa veya başka hata varsa göz ardı edebiliriz
+            pass
         
         durum = "açıldı" if val == 1 else "kapatıldı"
-        await ctx.send(f"✅ {log_name} kanal logları **{durum}**.")
+        await ctx.send(f"✅ {log_name} kanal logları ve veritabanı olay kaydı senkronize olarak **{durum}**.")
 
     # TEXT
     @log.group(name="text", invoke_without_command=True)
