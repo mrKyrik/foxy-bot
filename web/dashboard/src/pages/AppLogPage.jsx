@@ -75,7 +75,7 @@ const AppLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
                            Kullanıcı: {ev.username || ev.user_id || "Bilinmiyor"}
                          </div>
                          <div style={{ color: '#eee', fontSize: '0.9rem', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
-                           {ev.details || "Başvuru olayı."}
+                           {(ev.details_obj && ev.details_obj.text) ? ev.details_obj.text : (ev.details || "Başvuru olayı.")}
                          </div>
                       </div>
                    </div>

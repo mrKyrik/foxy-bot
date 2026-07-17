@@ -382,7 +382,7 @@ class DynamicFormModal(discord.ui.Modal):
             await self.bot.db.log_db_event(
                 guild_id=guild.id,
                 event_type="app_create",
-                setting_key="app_create_on",
+                setting_key=None,
                 user_id=str(interaction.user.id),
                 details={
                     "username": str(interaction.user.id),
