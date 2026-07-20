@@ -546,7 +546,7 @@ async def on_ready():
             type=discord.ActivityType.streaming,
             name=local_status,
             url=MY_TWITCH or "https://twitch.tv/placeholder",
-            state="LUMINAlabs",
+            state="KumihoBot",
         )
     )
     log.info("Presence ayarlandı: %s", local_status)

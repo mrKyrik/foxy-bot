@@ -1,11 +1,13 @@
 from __future__ import annotations
 import os
-import sqlite3
+
 import json
 import urllib.request
 import urllib.error
 import urllib.parse
 import jwt
+import oracledb
+import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends
@@ -142,78 +144,158 @@ TOGGLE_COLUMNS = [
 ]
 
 
-def dict_factory(cursor, row):
-    d = {}
-    for idx, col in enumerate(cursor.description):
-        d[col[0]] = row[idx]
-    return d
+# Oracle DB Ayarları
+DB_USER = "admin"
+DB_PASSWORD = "$@P%5WCUgMnb"
+DB_DSN = "kumihodb_high"
+WALLET_DIR = os.path.join(BASE_DIR, "core", "wallet")
 
+class SyncOracleCursor:
+    def __init__(self, cursor):
+        self.cursor = cursor
+        
+    @property
+    def description(self):
+        return self.cursor.description
 
-def get_db_connection(db_path=MAIN_DB_PATH):
-    if not os.path.exists(db_path):
-        return None
-    conn = sqlite3.connect(db_path, timeout=10.0)
-    conn.row_factory = dict_factory
-    conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
-    conn.execute("PRAGMA busy_timeout=5000;")
-    return conn
+    def _translate_query(self, query: str) -> str:
+        if "LIMIT " in query.upper():
+            query = re.sub(r'(?i)\bLIMIT\s+1\b', 'FETCH FIRST 1 ROWS ONLY', query)
+            query = re.sub(r'(?i)\bLIMIT\s+(\d+)\b', r'FETCH FIRST \1 ROWS ONLY', query)
+            query = re.sub(r'(?i)\bLIMIT\s+\?\b', 'FETCH FIRST ? ROWS ONLY', query)
+            
+        if "INSERT OR IGNORE" in query.upper():
+            query = re.sub(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)', r'BEGIN INSERT INTO \1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;', query)
 
+        # Basic ? to :1, :2 translation
+        if '?' in query:
+            parts = query.split('?')
+            new_query = parts[0]
+            param_idx = 1
+            for part in parts[1:]:
+                # If we replaced LIMIT ? earlier, don't replace again. BUT we just did basic substitution.
+                # Since Oracle handles positional binds as :1, :2
+                new_query += f":{param_idx}" + part
+                param_idx += 1
+            query = new_query
+
+        # Remove ATTACH DATABASE syntax
+        if "ATTACH DATABASE" in query.upper():
+            return "SELECT 1 FROM DUAL" # dummy
+
+        return query
+
+    def execute(self, query, params=()):
+        if isinstance(params, list):
+            params = tuple(params)
+            
+        # Specific hack for ON CONFLICT DO UPDATE SET in commands update
+        if "ON CONFLICT" in query.upper():
+            if "command_permissions" in query.lower() and "allowed_roles" in query.lower():
+                query = """
+                MERGE INTO command_permissions t
+                USING (SELECT :1 as guild_id, :2 as command_name, :3 as is_enabled, :4 as allowed_roles FROM DUAL) s
+                ON (t.guild_id = s.guild_id AND t.command_name = s.command_name)
+                WHEN MATCHED THEN
+                    UPDATE SET is_enabled = s.is_enabled, allowed_roles = s.allowed_roles
+                WHEN NOT MATCHED THEN
+                    INSERT (guild_id, command_name, is_enabled, allowed_roles)
+                    VALUES (s.guild_id, s.command_name, s.is_enabled, s.allowed_roles)
+                """
+            elif "panel_access_controls" in query.lower():
+                query = """
+                MERGE INTO panel_access_controls t
+                USING (SELECT :1 as guild_id, :2 as target_id, :3 as target_type, :4 as permission_level FROM DUAL) s
+                ON (t.guild_id = s.guild_id AND t.target_id = s.target_id)
+                WHEN MATCHED THEN
+                    UPDATE SET permission_level = s.permission_level, target_type = s.target_type
+                WHEN NOT MATCHED THEN
+                    INSERT (guild_id, target_id, target_type, permission_level)
+                    VALUES (s.guild_id, s.target_id, s.target_type, s.permission_level)
+                """
+            elif "private_voice_hubs" in query.lower():
+                query = """
+                MERGE INTO private_voice_hubs t
+                USING (SELECT :1 as guild_id, :2 as hub_id, :3 as category_id FROM DUAL) s
+                ON (t.guild_id = s.guild_id)
+                WHEN MATCHED THEN
+                    UPDATE SET hub_id = s.hub_id, category_id = s.category_id
+                WHEN NOT MATCHED THEN
+                    INSERT (guild_id, hub_id, category_id)
+                    VALUES (s.guild_id, s.hub_id, s.category_id)
+                """
+            elif "private_voice_settings" in query.lower():
+                query = """
+                MERGE INTO private_voice_settings t
+                USING (SELECT :1 as user_id, :2 as room_name, :3 as user_limit, :4 as bitrate, :5 as is_locked, :6 as is_hidden FROM DUAL) s
+                ON (t.user_id = s.user_id)
+                WHEN MATCHED THEN
+                    UPDATE SET room_name = s.room_name, user_limit = s.user_limit, bitrate = s.bitrate, is_locked = s.is_locked, is_hidden = s.is_hidden
+                WHEN NOT MATCHED THEN
+                    INSERT (user_id, room_name, user_limit, bitrate, is_locked, is_hidden)
+                    VALUES (s.user_id, s.room_name, s.user_limit, s.bitrate, s.is_locked, s.is_hidden)
+                """
+        else:
+            query = self._translate_query(query)
+            
+        try:
+            self.cursor.execute(query, params)
+        except Exception as e:
+            print(f"Oracle Execution Error: {e} - Query: {query} - Params: {params}")
+        return self
+
+    def fetchone(self):
+        try:
+            row = self.cursor.fetchone()
+            if not row: return None
+            return dict(zip([d[0].lower() for d in self.cursor.description], row))
+        except Exception as e:
+            print(f"Fetchone error: {e}")
+            return None
+
+    def fetchall(self):
+        try:
+            rows = self.cursor.fetchall()
+            if not rows: return []
+            cols = [d[0].lower() for d in self.cursor.description]
+            return [dict(zip(cols, row)) for row in rows]
+        except Exception as e:
+            print(f"Fetchall error: {e}")
+            return []
+            
+class SyncOracleConnection:
+    def __init__(self):
+        try:
+            self.conn = oracledb.connect(
+                user=DB_USER,
+                password=DB_PASSWORD,
+                dsn=DB_DSN,
+                config_dir=WALLET_DIR,
+                wallet_location=WALLET_DIR,
+                wallet_password=DB_PASSWORD
+            )
+        except Exception as e:
+            print(f"Oracle Connection Error: {e}")
+            self.conn = None
+            
+    def cursor(self):
+        if not self.conn:
+            return None
+        return SyncOracleCursor(self.conn.cursor())
+        
+    def commit(self):
+        if self.conn:
+            self.conn.commit()
+            
+    def close(self):
+        if self.conn:
+            self.conn.close()
+
+def get_db_connection(db_path=None):
+    return SyncOracleConnection()
 
 def init_db():
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    c = conn.cursor()
-    # admin_notes tablosu
-    c.execute('''CREATE TABLE IF NOT EXISTS admin_notes (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT DEFAULT 'GLOBAL',
-        user_id TEXT NOT NULL,
-        note TEXT NOT NULL,
-        added_by TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    try:
-        c.execute("ALTER TABLE admin_notes ADD COLUMN guild_id TEXT DEFAULT 'GLOBAL'")
-    except sqlite3.OperationalError:
-        pass
-    try:
-        c.execute("ALTER TABLE admin_notes ADD COLUMN admin_id TEXT")
-    except sqlite3.OperationalError:
-        pass
-
-    # command_permissions tablosu
-    c.execute('''CREATE TABLE IF NOT EXISTS command_permissions (
-        guild_id TEXT NOT NULL,
-        command_name TEXT NOT NULL,
-        is_enabled INTEGER DEFAULT 1,
-        allowed_roles TEXT DEFAULT '[]',
-        PRIMARY KEY (guild_id, command_name)
-    )''')
-    # pending_actions tablosu
-    c.execute('''CREATE TABLE IF NOT EXISTS pending_actions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        guild_id TEXT NOT NULL,
-        target_user_id TEXT NOT NULL,
-        action_type TEXT NOT NULL,
-        reason TEXT,
-        status TEXT DEFAULT 'pending',
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )''')
-    # panel_access_controls tablosu
-    c.execute('''CREATE TABLE IF NOT EXISTS panel_access_controls (
-        guild_id TEXT NOT NULL,
-        target_id TEXT NOT NULL,
-        target_type TEXT NOT NULL,
-        permission_level TEXT NOT NULL,
-        PRIMARY KEY (guild_id, target_id)
-    )''')
-    conn.commit()
-    conn.close()
-
-# Uygulama başlarken db'yi init edelim
-init_db()
-
-
+    pass
 
 @app.post("/api/settings/oda-kurulum/{guild_id}")
 def setup_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
@@ -376,8 +458,8 @@ async def discord_callback(request: Request):
     
     # 1. Fetch Bot Presence & Role Permissions from SQLite
     try:
-        import sqlite3
-        conn = sqlite3.connect(MAIN_DB_PATH)
+
+        conn = get_db_connection(MAIN_DB_PATH)
         cur = conn.cursor()
         cur.execute("SELECT guild_id FROM log_settings")
         kumiho_guilds = {str(row[0]) for row in cur.fetchall()}
@@ -451,7 +533,7 @@ async def discord_callback(request: Request):
 
 @app.get("/api/global_stats")
 def get_global_stats():
-    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     try:
         c.execute("SELECT COUNT(DISTINCT guild_id) FROM guild_settings")
@@ -520,8 +602,7 @@ def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_access))
 @app.get("/api/users/{guild_id}/{user_id}/roles")
 def get_user_current_roles(guild_id: str, user_id: str, _: dict = Depends(verify_guild_access)):
     try:
-        conn = sqlite3.connect(MAIN_DB_PATH)
-        conn.row_factory = sqlite3.Row
+        conn = get_db_connection(MAIN_DB_PATH)
         cur = conn.cursor()
         cur.execute(
             "SELECT role_id, role_name FROM user_current_roles WHERE guild_id=? AND user_id=?", 
@@ -577,7 +658,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
                 e.event_type,
                 e.user_id,
                 e.details,
-                e.timestamp || 'Z' as timestamp,
+                TO_CHAR(e.timestamp, 'YYYY-MM-DD HH24:MI:SS') || 'Z' as timestamp,
                 e.channel_id,
                 u.username,
                 u.avatar_url,
@@ -626,7 +707,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
                     e.admin_id as user_id,
                     e.admin_id as admin_id,
                     e.reason as details,
-                    e.timestamp || 'Z' as timestamp,
+                    TO_CHAR(e.timestamp, 'YYYY-MM-DD HH24:MI:SS') || 'Z' as timestamp,
                     e.target_id as channel_id,
                     u.username,
                     u.avatar_url,
@@ -1184,8 +1265,7 @@ class CommandPermUpdate(BaseModel):
 
 @app.get("/api/commands/{guild_id}")
 def get_commands(guild_id: str, _: dict = Depends(verify_guild_access)):
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    conn.row_factory = dict_factory
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     c.execute("SELECT * FROM command_permissions WHERE guild_id = ?", (guild_id,))
     perms = c.fetchall()
@@ -1214,7 +1294,7 @@ def get_commands(guild_id: str, _: dict = Depends(verify_guild_access)):
 
 @app.post("/api/commands/{guild_id}")
 def update_command(guild_id: str, req: CommandPermUpdate, _: dict = Depends(verify_write_access)):
-    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
                  VALUES (?, ?, ?, ?)
@@ -1342,8 +1422,7 @@ def summon_form(guild_id: str, form_id: str, req: SummonFormReq, _: dict = Depen
 
 @app.get("/api/roles/{guild_id}")
 def search_roles(guild_id: str, q: Optional[str] = "", _: dict = Depends(verify_guild_access)):
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    conn.row_factory = dict_factory
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     query = "SELECT role_id, role_name FROM roles WHERE guild_id = ?"
     params = [guild_id]
@@ -1365,7 +1444,7 @@ class CategoryPermUpdate(BaseModel):
 
 @app.post("/api/commands/category/{guild_id}")
 def update_category_commands(guild_id: str, req: CategoryPermUpdate, _: dict = Depends(verify_write_access)):
-    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
         c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
@@ -1384,8 +1463,7 @@ class CategoryRoleUpdate(BaseModel):
 @app.post("/api/commands/category/{guild_id}/roles")
 def add_role_to_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
     import json
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    conn.row_factory = dict_factory
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
         c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
@@ -1414,8 +1492,7 @@ def add_role_to_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depen
 @app.post("/api/commands/category/{guild_id}/roles/remove")
 def remove_role_from_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
     import json
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    conn.row_factory = dict_factory
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
         c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
@@ -1452,7 +1529,7 @@ class ActionCreate(BaseModel):
 
 @app.post("/api/actions/{guild_id}")
 def create_action(guild_id: str, req: ActionCreate, _: dict = Depends(verify_write_access)):
-    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn = get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     c.execute('''INSERT INTO pending_actions (guild_id, target_user_id, action_type, reason)
                  VALUES (?, ?, ?, ?)''', 

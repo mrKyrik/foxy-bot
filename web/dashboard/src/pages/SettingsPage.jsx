@@ -207,7 +207,7 @@ const SettingsPage = () => {
       .catch(err => console.error("Discord kanalları çekilemedi:", err));
 
     const fetchRoles = axios.get(`${API_BASE_URL}/discord-roles/${activeGuildId}`)
-      .then(res => setDiscordRoles(res.data || []))
+      .then(res => setDiscordRoles(Array.isArray(res.data) ? res.data : (res.data?.roles || [])))
       .catch(err => console.error("Roller çekilemedi:", err));
 
     const fetchMembers = axios.get(`${API_BASE_URL}/discord-members/${activeGuildId}`)

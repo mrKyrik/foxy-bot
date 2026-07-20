@@ -15,8 +15,8 @@ log = logging.getLogger(__name__)
 _OWNER_IDS: list[str] = [
     o.strip() for o in (os.getenv("OWNER_ID") or "").split(",") if o.strip()
 ]
-# Lumina Labs banner — static fallback
-_LUMINA_BANNER = (
+# Kumiho Bot banner — static fallback
+_KUMIHO_BANNER = (
     "https://cdn.discordapp.com/banners/1505199750855659570/"
     "7b097c5d9cffbb17df26b5357adf92a1.png?size=512"
 )
@@ -45,7 +45,7 @@ class Utils(commands.Cog):
             description=f"Latency: **{round(self.bot.latency * 1000)}ms**",
             color=discord.Color.from_rgb(0, 200, 255),
         )
-        embed.set_image(url=_LUMINA_BANNER)
+        embed.set_image(url=_KUMIHO_BANNER)
         await ctx.send(embed=embed)
 
     @commands.command(aliases=["owner"])

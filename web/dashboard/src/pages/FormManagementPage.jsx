@@ -14,6 +14,7 @@ const FormManagementPage = () => {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [formError, setFormError] = useState("");
   const [isSummonModalOpen, setIsSummonModalOpen] = useState(false);
   const [activeForm, setActiveForm] = useState(null);
   
@@ -54,6 +55,11 @@ const FormManagementPage = () => {
 
   const handleCreateForm = async (e) => {
     e.preventDefault();
+    setFormError("");
+    if (!formData.form_id || !formData.title || !formData.channel_id) {
+      setFormError("Lütfen Form ID, Başlık ve Hedef Kanal alanlarını doldurun.");
+      return;
+    }
     try {
       // Filter out empty questions
       const cleanedData = {
@@ -68,7 +74,7 @@ const FormManagementPage = () => {
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
-      alert("Form kaydedilemedi: " + (error.response?.data?.detail || error.message));
+      setFormError("Form kaydedilemedi: " + (error.response?.data?.detail || error.message));
     }
   };
 
@@ -83,6 +89,7 @@ const FormManagementPage = () => {
       questions: form.questions && form.questions.length > 0 ? form.questions : [''],
       roles: form.roles || []
     });
+    setFormError("");
     setIsEditing(true);
     setIsModalOpen(true);
   };
@@ -232,16 +239,20 @@ const FormManagementPage = () => {
       {/* --- FORM CREATE MODAL --- */}
       {isModalOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
-          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-panel" style={{ width: '600px', maxWidth: '90%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', borderRadius: '16px', overflow: 'hidden' }}>
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} style={{ background: 'var(--panel-bg)', width: '600px', maxWidth: '90%', borderRadius: '16px', border: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', maxHeight: '90vh' }}>
             <div style={{ padding: '24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {isEditing ? <Settings size={20} color="var(--accent-blue)" /> : <Plus size={20} color="var(--accent-blue)" />} 
-                {isEditing ? "Formu Güncelle" : "Yeni Form Oluştur"}
-              </h2>
-              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}><X size={20} /></button>
+              <h2 style={{ fontSize: '1.4rem', color: '#fff' }}>{isEditing ? 'Formu Düzenle' : 'Yeni Form Oluştur'}</h2>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                <X size={24} />
+              </button>
             </div>
             
             <form onSubmit={handleCreateForm} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              {formError && (
+                <div style={{ padding: '12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', borderRadius: '8px', fontSize: '0.9rem' }}>
+                  {formError}
+                </div>
+              )}
               <div style={{ display: 'flex', gap: '16px' }}>
                 <div style={{ flex: 1 }}>
                   <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px' }}>Form ID (Benzersiz)</label>
