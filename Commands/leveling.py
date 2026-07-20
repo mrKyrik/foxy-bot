@@ -84,39 +84,7 @@ class Leveling(commands.Cog):
     # ── DB & Cache Helpers ────────────────────────────────────────────────────────────
 
     async def _ensure_level_tables(self) -> None:
-        await self.db.user_db.executescript("""
-        CREATE TABLE IF NOT EXISTS level_rewards (
-            guild_id TEXT,
-            level    INTEGER,
-            role_id  TEXT,
-            PRIMARY KEY (guild_id, level)
-        );
-        CREATE TABLE IF NOT EXISTS level_ignores (
-            guild_id   TEXT,
-            channel_id TEXT,
-            PRIMARY KEY (guild_id, channel_id)
-        );
-        CREATE TABLE IF NOT EXISTS level_settings (
-            guild_id TEXT PRIMARY KEY,
-            level_channel_id TEXT,
-            min_xp INTEGER DEFAULT 15,
-            max_xp INTEGER DEFAULT 25
-        );
-        CREATE TABLE IF NOT EXISTS level_multipliers (
-            guild_id TEXT,
-            role_id TEXT,
-            multiplier REAL,
-            PRIMARY KEY (guild_id, role_id)
-        );
-        """)
-        
-        # Add voice_time column to levels if it doesn't exist
-        try:
-            await self.db.user_db.execute("ALTER TABLE levels ADD COLUMN voice_time INTEGER DEFAULT 0")
-        except Exception:
-            pass
-        
-        await self.db.user_db.commit()
+        pass
 
     async def _load_caches(self):
         # Ignores

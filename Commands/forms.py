@@ -56,7 +56,7 @@ class ReasonModal(discord.ui.Modal):
             if form_type == 4:
                 publish_channel_id = self.form_data.get("action_target")
                 if publish_channel_id:
-                    pub_channel = guild.get_channel(int(publish_channel_id))
+                    pub_channel = interaction.client.get_channel(int(publish_channel_id))
                     if pub_channel:
                         answers = []
                         for field in embed.fields:
@@ -273,8 +273,7 @@ class DynamicFormModal(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction):
         guild = interaction.guild
-        channel_id = int(self.form_data["channel_id"])
-        target_channel = guild.get_channel(channel_id)
+        target_channel = interaction.client.get_channel(int(self.form_data["channel_id"]))
         
         embed = discord.Embed(
             title="Yeni Form Yanıtı",
@@ -330,7 +329,7 @@ class DynamicFormModal(discord.ui.Modal):
             
             publish_channel_id = self.form_data.get("action_target")
             if publish_channel_id:
-                publish_channel = guild.get_channel(int(publish_channel_id))
+                publish_channel = interaction.client.get_channel(int(publish_channel_id))
                 if publish_channel:
                     answers = [inp.value for inp in self.inputs]
                     content = "\n\n".join(answers)
@@ -369,6 +368,36 @@ class DynamicFormModal(discord.ui.Modal):
                         
             if target_channel:
                 await target_channel.send(f"✅ Otomatik onaylanan form logu (Mod: {self.publish_mode}):", embed=embed)
+        elif form_type == 2 and self.form_data.get("auto_approve", 1) == 1:
+            if self.selected_role_id:
+                role = guild.get_role(int(self.selected_role_id))
+                if role:
+                    try:
+                        await interaction.user.add_roles(role, reason="Form Otomatik Onaylandı")
+                        embed.add_field(name="Sistem", value=f"{role.mention} rolü başarıyla verildi (Oto Onay).", inline=False)
+                        
+                        user_embed.title = "Kumiho - Rol Başvurunuz Onaylandı"
+                        user_embed.color = discord.Color.green()
+                        user_embed.add_field(name="Sistem", value=f"{role.name} rolü hesabınıza tanımlandı.", inline=False)
+                        
+                        await interaction.response.send_message("Başvurunuz otomatik onaylandı ve rolünüz verildi!", embed=user_embed, ephemeral=True)
+                        
+                        if target_channel:
+                            await target_channel.send("✅ Otomatik onaylanan rol formu logu:", embed=embed)
+                            
+                    except Exception as e:
+                        embed.add_field(name="Sistem Hata", value=f"Rol verilemedi: {e}", inline=False)
+                        user_embed.title = "Kumiho - Rol Verilirken Hata Oluştu"
+                        user_embed.color = discord.Color.red()
+                        await interaction.response.send_message(f"Başvurunuz alındı fakat rol verilirken hata oluştu: {e}", embed=user_embed, ephemeral=True)
+                        if target_channel:
+                            await target_channel.send("❌ Oto onay sırasında rol verme hatası:", embed=embed)
+                else:
+                    await interaction.response.send_message("Başvurunuz alındı ancak seçilen rol sunucuda bulunamadı.", ephemeral=True)
+                    if target_channel:
+                        await target_channel.send("❌ Oto onay başarısız: Rol bulunamadı.", embed=embed)
+            else:
+                await interaction.response.send_message("Başvurunuz alındı ancak rol seçilmemiş.", ephemeral=True)
         else:
             user_embed.title = "Yanıtınız Alındı - Admin Onayı Bekliyor"
             user_embed.color = discord.Color.orange()
@@ -569,6 +598,11 @@ class FormsCog(commands.Cog):
                             for r_db in roles_db:
                                 r = guild.get_role(int(r_db["role_id"]))
                                 if r: roles.append(r)
+                            
+                            if not roles:
+                                await channel.send(f"⚠️ **Sistem Uyarı**: `{form_data['title']}` formu için seçilen roller sunucuda bulunamadığı için form oluşturulamadı. Lütfen paneli kontrol edin.")
+                                continue
+                                
                             view = FormTriggerViewSelect(form_data, qs, roles, self.bot)
                         else:
                             view = FormTriggerViewButton(form_data, qs, self.bot)

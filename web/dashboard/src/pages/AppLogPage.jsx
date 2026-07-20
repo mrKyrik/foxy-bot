@@ -72,7 +72,8 @@ const AppLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
                          </div>
                          <div style={{ color: '#ccc', fontSize: '0.85rem', marginBottom: '8px' }}>
                            Saat: {formatTime(ev.ts)}<br/>
-                           Kullanıcı: {ev.username || ev.user_id || "Bilinmiyor"}
+                           Kullanıcı: {ev.username || "Bilinmiyor"}<br/>
+                           ID: {ev.user_id || (ev.details_obj && ev.details_obj.username) || "Bilinmiyor"}
                          </div>
                          <div style={{ color: '#eee', fontSize: '0.9rem', whiteSpace: 'pre-wrap', maxHeight: '300px', overflowY: 'auto' }}>
                            {(ev.details_obj && ev.details_obj.text) ? ev.details_obj.text : (ev.details || "Başvuru olayı.")}

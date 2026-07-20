@@ -306,6 +306,15 @@ const FormManagementPage = () => {
                       </div>
                     ))}
                   </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-secondary)', fontSize: '0.85rem', cursor: 'pointer', marginTop: '12px' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={formData.auto_approve === 1}
+                      onChange={e => setFormData({...formData, auto_approve: e.target.checked ? 1 : 0})}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--accent-blue)' }}
+                    />
+                    Rolü Otomatik Ver (Kapatılırsa admin onayı gerekir)
+                  </label>
                 </div>
               )}
 

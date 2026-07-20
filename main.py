@@ -567,15 +567,15 @@ async def on_ready():
     log.info("Web API komut registry güncelleniyor...")
     try:
         await bot.db.execute('''CREATE TABLE IF NOT EXISTS bot_commands_registry (
-            command_name TEXT PRIMARY KEY,
-            category TEXT,
-            description TEXT,
-            default_access TEXT
+            command_name VARCHAR2(255) PRIMARY KEY,
+            category VARCHAR2(255),
+            description VARCHAR2(4000),
+            default_access VARCHAR2(50)
         )''')
         
         # Geriye dönük uyumluluk için tabloya kolon eklenebilir
         try:
-            await bot.db.execute("ALTER TABLE bot_commands_registry ADD COLUMN default_access TEXT DEFAULT 'public'")
+            await bot.db.execute("ALTER TABLE bot_commands_registry ADD default_access VARCHAR2(50) DEFAULT 'public'")
         except Exception:
             pass
             

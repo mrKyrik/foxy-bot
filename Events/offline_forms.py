@@ -79,11 +79,8 @@ class OfflineForms(commands.Cog):
                 if form_id_match:
                     form_db_id = form_id_match.group(1)
             
-            # RACE CONDITION FIX: Try to delete the row first. If rowcount is 0, another event already processed it.
-            async with self.bot.db.user_db.execute("DELETE FROM pending_offline_forms WHERE id=?", (form_id,)) as cursor:
-                if cursor.rowcount == 0:
-                    return # Zaten başka bir görev tarafından paylaşıldı
-            await self.bot.db.user_db.commit()
+            # RACE CONDITION FIX: Delete the row first to avoid duplicates
+            await self.bot.db.execute("DELETE FROM pending_offline_forms WHERE id=?", form_id)
             
             if form_db_id:
                 # Orijinal trigger butonunu da ekleyelim

@@ -579,11 +579,15 @@ class PrivateVoice(commands.Cog):
                     action = "📥 Odaya katıldı."
                     await self.append_master_embed_timeline(after.channel.id, "participants", f"📥 {member.mention} odaya katıldı.")
                     await self.log_participant_event(member.guild.id, member, after.channel.id, action)
+            
             hub_row = await self.bot.db.fetchone("SELECT category_id, hub_id FROM private_voice_hubs WHERE guild_id=?", str(member.guild.id))
+            log.info(f"[PrivateVoice Debug] Join channel {after.channel.id} in guild {member.guild.id}. Hub row from DB: {hub_row}")
             if hub_row:
                 category_id, hub_id = hub_row
+                log.info(f"[PrivateVoice Debug] category_id={category_id}, hub_id={hub_id}, after.channel.id={after.channel.id}. Match? {str(after.channel.id) == str(hub_id)}")
                 if str(after.channel.id) == str(hub_id):
                     # Kilit Sistemi (Spam Engelleme)
+                    log.info(f"[PrivateVoice Debug] Match found! Checking lock for member {member.id}. Lock set: {self.creation_locks}")
                     if member.id in self.creation_locks:
                         return
                     self.creation_locks.add(member.id)
