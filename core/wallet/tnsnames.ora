@@ -1,0 +1,12 @@
+kumihodb_high = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-zurich-1.oraclecloud.com))(connect_data=(service_name=ga06372181fc027_kumihodb_high.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+
+kumihodb_medium = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-zurich-1.oraclecloud.com))(connect_data=(service_name=ga06372181fc027_kumihodb_medium.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+
+kumihodb_low = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-zurich-1.oraclecloud.com))(connect_data=(service_name=ga06372181fc027_kumihodb_low.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+
+kumihodb_tp = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-zurich-1.oraclecloud.com))(connect_data=(service_name=ga06372181fc027_kumihodb_tp.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+
+kumihodb_tpurgent = (description= (retry_count=20)(retry_delay=3)(address=(protocol=tcps)(port=1522)(host=adb.eu-zurich-1.oraclecloud.com))(connect_data=(service_name=ga06372181fc027_kumihodb_tpurgent.adb.oraclecloud.com))(security=(ssl_server_dn_match=yes)))
+
+
+

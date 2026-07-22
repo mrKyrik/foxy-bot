@@ -1,0 +1,916 @@
+from __future__ import annotations
+"""
+core/database.py
+----------------
+İki ayrı SQLite veritabanı için async wrapper.
+
+  • USER-DB.db   → Kullanıcı/sunucu verileri (roller, izinler, ekonomi, XP, ...)
+  • ADMIN-EVENTS.db → Moderasyon eylem logu
+
+Her iki DB de aiosqlite üzerinden async çalışır; bot event loop'unu bloklamamak
+için tüm sorgu metodları `await` ile çağrılmalıdır.
+
+Kullanım:
+    # main.py'de:
+    bot.db = Database()
+    await bot.db.init()
+
+    # Bir cog içinde:
+    row = await ctx.bot.db.fetchone("SELECT wallet FROM economy WHERE user_id=? AND guild_id=?", user_id, guild_id)
+"""
+
+import logging
+import os
+import aiosqlite
+
+log = logging.getLogger(__name__)
+
+USER_DB_PATH = "kumiho.db"
+ADMIN_DB_PATH = "kumiho.db"
+
+# ---------------------------------------------------------------------------
+# Schema — USER-DB.db
+# ---------------------------------------------------------------------------
+USER_DB_SCHEMA = """
+-- Sunucu bazlı bot ayarları
+CREATE TABLE IF NOT EXISTS guild_settings (
+    guild_id        TEXT PRIMARY KEY,
+    prefix          TEXT    DEFAULT 'f.',
+    log_channel     TEXT,
+    welcome_channel TEXT,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bot içi rol kaydı (izin sistemi için)
+CREATE TABLE IF NOT EXISTS roles (
+    guild_id  TEXT,
+    role_id   TEXT,
+    role_name TEXT,
+    PRIMARY KEY (guild_id, role_id)
+);
+
+-- Kullanıcıların anlık (current) rollerini saklar
+CREATE TABLE IF NOT EXISTS user_current_roles (
+    guild_id  TEXT,
+    user_id   TEXT,
+    role_id   TEXT,
+    role_name TEXT,
+    PRIMARY KEY (guild_id, user_id, role_id)
+);
+
+-- Rol bazlı komut izinleri
+CREATE TABLE IF NOT EXISTS role_permissions (
+    guild_id        TEXT,
+    role_id         TEXT,
+    permission_name TEXT,
+    PRIMARY KEY (guild_id, role_id, permission_name)
+);
+
+-- Kullanıcı uyarı kayıtları
+CREATE TABLE IF NOT EXISTS warns (
+    warn_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id  TEXT    NOT NULL,
+    user_id   TEXT    NOT NULL,
+    mod_id    TEXT    NOT NULL,
+    reason    TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ekonomi cüzdan/banka
+CREATE TABLE IF NOT EXISTS economy (
+    user_id         TEXT,
+    guild_id        TEXT,
+    wallet          INTEGER DEFAULT 200,
+    bank            INTEGER DEFAULT 0,
+    daily_cooldown  REAL    DEFAULT 0.0,
+    work_cooldown   REAL    DEFAULT 0.0,
+    fish_cooldown   REAL    DEFAULT 0.0,
+    hunt_cooldown   REAL    DEFAULT 0.0,
+    mine_cooldown   REAL    DEFAULT 0.0,
+    rob_cooldown    REAL    DEFAULT 0.0,
+    padlock_active  INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id)
+);
+
+-- Economy extras: evlilik, çiftçilik, özel başlık
+CREATE TABLE IF NOT EXISTS economy_extras (
+    user_id            TEXT,
+    guild_id           TEXT,
+    married_to         TEXT,
+    farm_crop          TEXT,
+    farm_time          REAL    DEFAULT 0.0,
+    farm_watered       INTEGER DEFAULT 0,
+    custom_title_text  TEXT,
+    last_message_time  REAL    DEFAULT 0.0,
+    PRIMARY KEY (user_id, guild_id)
+);
+
+-- Kullanıcı envanteri
+CREATE TABLE IF NOT EXISTS inventory (
+    user_id  TEXT,
+    guild_id TEXT,
+    item_id  TEXT,
+    quantity INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id, item_id)
+);
+
+-- XP / Seviye sistemi
+CREATE TABLE IF NOT EXISTS levels (
+    user_id       TEXT,
+    guild_id      TEXT,
+    xp            INTEGER DEFAULT 0,
+    level         INTEGER DEFAULT 0,
+    message_count INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id)
+);
+
+-- Sunucu terk eden üyelerin rollerini sakla
+CREATE TABLE IF NOT EXISTS saved_roles (
+    user_id  TEXT,
+    guild_id TEXT,
+    role_id  TEXT,
+    PRIMARY KEY (user_id, guild_id, role_id)
+);
+
+-- Global bot yasakları (bot genelinde)
+CREATE TABLE IF NOT EXISTS bot_bans (
+    user_id    TEXT PRIMARY KEY,
+    reason     TEXT,
+    banned_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Ekonomi yasakları (sunucu bazlı)
+CREATE TABLE IF NOT EXISTS eco_bans (
+    user_id   TEXT,
+    guild_id  TEXT,
+    reason    TEXT,
+    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, guild_id)
+);
+
+-- Seviye ödül rolleri
+CREATE TABLE IF NOT EXISTS level_rewards (
+    guild_id TEXT,
+    level    INTEGER,
+    role_id  TEXT,
+    PRIMARY KEY (guild_id, level)
+);
+
+-- XP kazanılmayan (ignore) kanallar
+CREATE TABLE IF NOT EXISTS level_ignores (
+    guild_id   TEXT,
+    channel_id TEXT,
+    PRIMARY KEY (guild_id, channel_id)
+);
+
+-- Özel Formlar
+CREATE TABLE IF NOT EXISTS custom_forms (
+    form_id     TEXT,
+    guild_id    TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    channel_id  TEXT NOT NULL,
+    form_type   INTEGER DEFAULT 1,
+    action_target TEXT,
+    auto_approve INTEGER DEFAULT 1,
+    PRIMARY KEY (guild_id, form_id)
+);
+
+CREATE TABLE IF NOT EXISTS form_questions (
+    question_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    form_id     TEXT NOT NULL,
+    guild_id    TEXT NOT NULL,
+    question_text TEXT NOT NULL,
+    FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS form_roles (
+    action_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    form_id     TEXT NOT NULL,
+    guild_id    TEXT NOT NULL,
+    role_id     TEXT NOT NULL,
+    FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS form_admin_roles (
+    guild_id    TEXT PRIMARY KEY,
+    role_id     TEXT NOT NULL
+);
+
+-- Geçiçi Yasaklamalar
+CREATE TABLE IF NOT EXISTS temp_bans (
+    guild_id        TEXT,
+    user_id         TEXT,
+    unban_timestamp REAL,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+-- Öneriler
+CREATE TABLE IF NOT EXISTS suggestions (
+    suggestion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id      TEXT,
+    author_id     TEXT,
+    text          TEXT,
+    status        TEXT DEFAULT 'pending',
+    message_id    TEXT,
+    reason        TEXT
+);
+
+-- Öneri Panosu Ayarları
+CREATE TABLE IF NOT EXISTS suggestion_config (
+    guild_id   TEXT PRIMARY KEY,
+    channel_id TEXT
+);
+
+-- Ragebait Puanları
+CREATE TABLE IF NOT EXISTS ragepoints (
+    guild_id TEXT,
+    user_id  TEXT,
+    points   INTEGER DEFAULT 0,
+    PRIMARY KEY (guild_id, user_id)
+);
+
+-- Bekleyen Anonim İtiraflar (Çevrimdışı veya Rastgele Zamanlı)
+CREATE TABLE IF NOT EXISTS pending_offline_forms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT,
+    submitter_id TEXT,
+    channel_id TEXT,
+    embed_json TEXT,
+    publish_mode TEXT,
+    publish_at REAL
+);
+
+-- Master Log Ayarları (Discord'a gönderilen logların kanal ayarları)
+CREATE TABLE IF NOT EXISTS log_settings (
+    guild_id         TEXT PRIMARY KEY,
+    msg_channel      TEXT,
+    msg_delete_on    INTEGER DEFAULT 0,
+    msg_edit_on      INTEGER DEFAULT 0,
+    ses_channel      TEXT,
+    ses_join_on      INTEGER DEFAULT 0,
+    ses_switch_on    INTEGER DEFAULT 0,
+    ses_stream_on    INTEGER DEFAULT 0,
+    ses_camera_on    INTEGER DEFAULT 0,
+    uyari_channel    TEXT,
+    ticket_channel   TEXT,
+    mod_channel      TEXT,
+    mod_role_on      INTEGER DEFAULT 0,
+    mod_channel_on   INTEGER DEFAULT 0,
+    mod_msg_on       INTEGER DEFAULT 0,
+    basvuru_channel  TEXT,
+    davet_channel    TEXT,
+    sunucu_channel   TEXT,
+    srv_update_on    INTEGER DEFAULT 0,
+    srv_emoji_on     INTEGER DEFAULT 0,
+    srv_role_on      INTEGER DEFAULT 0,
+    srv_perm_on      INTEGER DEFAULT 0,
+    warn_add_on      INTEGER DEFAULT 0,
+    warn_remove_on   INTEGER DEFAULT 0,
+    ticket_create_on INTEGER DEFAULT 0,
+    ticket_close_on  INTEGER DEFAULT 0,
+    app_create_on    INTEGER DEFAULT 0,
+    app_accept_on    INTEGER DEFAULT 0,
+    app_reject_on    INTEGER DEFAULT 0,
+    invite_create_on INTEGER DEFAULT 0,
+    invite_use_on    INTEGER DEFAULT 0,
+    role_add_on      INTEGER DEFAULT 0,
+    role_remove_on   INTEGER DEFAULT 0,
+    rol_channel      TEXT
+);
+
+-- Veritabanı / Dashboard loglama şalterleri (Web UI üzerinden yönetilir)
+CREATE TABLE IF NOT EXISTS db_log_settings (
+    guild_id         TEXT PRIMARY KEY,
+    msg_delete_on    INTEGER DEFAULT 0,
+    msg_edit_on      INTEGER DEFAULT 0,
+    ses_join_on      INTEGER DEFAULT 0,
+    ses_switch_on    INTEGER DEFAULT 0,
+    ses_stream_on    INTEGER DEFAULT 0,
+    ses_camera_on    INTEGER DEFAULT 0,
+    mod_role_on      INTEGER DEFAULT 0,
+    mod_channel_on   INTEGER DEFAULT 0,
+    mod_msg_on       INTEGER DEFAULT 0,
+    srv_update_on    INTEGER DEFAULT 0,
+    srv_emoji_on     INTEGER DEFAULT 0,
+    srv_role_on      INTEGER DEFAULT 0,
+    srv_perm_on      INTEGER DEFAULT 0,
+    warn_add_on      INTEGER DEFAULT 0,
+    warn_remove_on   INTEGER DEFAULT 0,
+    ticket_create_on INTEGER DEFAULT 0,
+    ticket_close_on  INTEGER DEFAULT 0,
+    app_create_on    INTEGER DEFAULT 0,
+    app_accept_on    INTEGER DEFAULT 0,
+    app_reject_on    INTEGER DEFAULT 0,
+    invite_create_on INTEGER DEFAULT 0,
+    invite_use_on    INTEGER DEFAULT 0,
+    role_add_on      INTEGER DEFAULT 0,
+    role_remove_on   INTEGER DEFAULT 0
+);
+
+-- Genel Olay Logları (JSON Formatlı)
+CREATE TABLE IF NOT EXISTS db_event_logs (
+    log_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id    TEXT    NOT NULL,
+    event_type  TEXT    NOT NULL,
+    user_id     TEXT,
+    details     TEXT,
+    timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    channel_id  TEXT
+);
+
+-- Önbellek Tabloları (Web UI için)
+CREATE TABLE IF NOT EXISTS user_cache (
+    user_id     TEXT PRIMARY KEY,
+    username    TEXT,
+    avatar_url  TEXT,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Kanal önbelleği (Web UI için)
+CREATE TABLE IF NOT EXISTS channel_cache (
+    channel_id   TEXT PRIMARY KEY,
+    guild_id     TEXT NOT NULL,
+    channel_name TEXT,
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS web_actions (
+    action_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    action_type TEXT NOT NULL,
+    payload TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS active_tickets (
+    ticket_id TEXT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    reason TEXT,
+    status TEXT DEFAULT 'open',
+    claimed_by TEXT,
+    PRIMARY KEY (guild_id, ticket_id)
+);
+
+-- Private Voice Channels
+CREATE TABLE IF NOT EXISTS private_voice_hubs (
+    guild_id    TEXT PRIMARY KEY,
+    hub_id      TEXT,
+    category_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS private_voice_rooms (
+    channel_id  TEXT PRIMARY KEY,
+    owner_id    TEXT,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS private_voice_settings (
+    user_id     TEXT PRIMARY KEY,
+    room_name   TEXT,
+    user_limit  INTEGER DEFAULT 0,
+    bitrate     INTEGER DEFAULT 64000,
+    is_locked   INTEGER DEFAULT 0,
+    is_hidden   INTEGER DEFAULT 0,
+    whitelist   TEXT DEFAULT '[]',
+    banlist     TEXT DEFAULT '[]'
+);
+
+-- Index Optimizasyonları
+CREATE INDEX IF NOT EXISTS idx_warns_guild_user ON warns(guild_id, user_id);
+CREATE INDEX IF NOT EXISTS idx_economy_guild ON economy(guild_id);
+CREATE INDEX IF NOT EXISTS idx_levels_guild ON levels(guild_id);
+"""
+
+# ---------------------------------------------------------------------------
+# Schema — ADMIN-EVENTS.db
+# ---------------------------------------------------------------------------
+ADMIN_DB_SCHEMA = """
+-- Moderasyon eylem logu
+CREATE TABLE IF NOT EXISTS admin_events (
+    event_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id    TEXT    NOT NULL,
+    admin_id    TEXT    NOT NULL,
+    action_type TEXT    NOT NULL,
+    target_id   TEXT    NOT NULL,
+    reason      TEXT,
+    timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Index Optimizasyonları
+CREATE INDEX IF NOT EXISTS idx_admin_events_guild_target ON admin_events(guild_id, target_id);
+"""
+
+
+class Database:
+    """
+    İki SQLite veritabanını yöneten async bağlantı wrapper'ı.
+
+    Attributes:
+        user_db:  USER-DB.db için aiosqlite.Connection
+        admin_db: ADMIN-EVENTS.db için aiosqlite.Connection
+    """
+
+    def __init__(
+        self,
+        user_db_path: str = USER_DB_PATH,
+        admin_db_path: str = ADMIN_DB_PATH,
+    ) -> None:
+        self._user_db_path = user_db_path
+        self._admin_db_path = admin_db_path
+        self._db_path = user_db_path
+        self.user_db: aiosqlite.Connection | None = None
+        self.admin_db: aiosqlite.Connection | None = None
+
+    async def init(self) -> None:
+        """Bağlantıları aç ve tabloları oluştur."""
+        os.makedirs("Data", exist_ok=True)
+
+        self.db = await aiosqlite.connect(self._db_path, timeout=20.0)
+        self.db.row_factory = aiosqlite.Row  # sütun isimleriyle erişim
+        
+        self.user_db = self.db
+        self.admin_db = self.db
+        
+        # Ensure schema exists first
+        await self.user_db.executescript(USER_DB_SCHEMA)
+        await self.user_db.commit()
+        
+        await self.db.execute("PRAGMA journal_mode=WAL;")
+        await self.db.execute("PRAGMA synchronous=NORMAL;")
+        await self.db.execute("PRAGMA foreign_keys=ON;")
+        
+        # Migration: saved_roles
+        cursor = await self.user_db.execute("PRAGMA table_info(saved_roles)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "role_ids" in columns:
+            log.info("Migrating saved_roles JSON to relational...")
+            old_roles = await self.user_db.execute("SELECT user_id, guild_id, role_ids FROM saved_roles")
+            old_data = await old_roles.fetchall()
+            await self.user_db.execute("DROP TABLE saved_roles")
+            await self.user_db.executescript(USER_DB_SCHEMA)
+            
+            import json
+            for r in old_data:
+                try:
+                    r_ids = json.loads(r["role_ids"])
+                    for rid in r_ids:
+                        await self.user_db.execute("INSERT OR IGNORE INTO saved_roles (user_id, guild_id, role_id) VALUES (?, ?, ?)", (r["user_id"], r["guild_id"], str(rid)))
+                except Exception: pass
+            await self.user_db.commit()
+
+        # Migration: private_voice_rooms log_message_id and live_data
+        cursor = await self.user_db.execute("PRAGMA table_info(private_voice_rooms)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "log_message_id" not in columns:
+            log.info("Adding log_message_id to private_voice_rooms...")
+            try:
+                await self.user_db.execute("ALTER TABLE private_voice_rooms ADD COLUMN log_message_id TEXT")
+                await self.user_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for private_voice_rooms: {e}")
+                
+        if "live_data" not in columns:
+            log.info("Adding live_data to private_voice_rooms...")
+            try:
+                await self.user_db.execute("ALTER TABLE private_voice_rooms ADD COLUMN live_data TEXT")
+                await self.user_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for private_voice_rooms live_data: {e}")
+        
+        # Migration: custom_forms
+        cursor = await self.user_db.execute("PRAGMA table_info(custom_forms)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "questions" in columns:
+            log.info("Migrating custom_forms JSON to relational...")
+            old_forms = await self.user_db.execute("SELECT * FROM custom_forms")
+            old_form_data = await old_forms.fetchall()
+            await self.user_db.execute("DROP TABLE custom_forms")
+            await self.user_db.executescript(USER_DB_SCHEMA)
+            
+            import json
+            for row in old_form_data:
+                f = dict(row)
+                a_data = {}
+                try: a_data = json.loads(f.get("action_data", "{}"))
+                except Exception: pass
+                
+                action_tgt = a_data.get("publish_channel_id", None)
+                
+                await self.user_db.execute(
+                    "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve) VALUES (?, ?, ?, ?, ?, ?, ?)", 
+                    (f["form_id"], f["guild_id"], f["title"], f["channel_id"], f.get("form_type", 1), action_tgt, 1)
+                )
+                try:
+                    q_list = json.loads(f["questions"])
+                    for q in q_list:
+                        await self.user_db.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (f["form_id"], f["guild_id"], q["label"]))
+                except Exception: pass
+                try:
+                    for rid in a_data.get("role_ids", []):
+                        await self.user_db.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (f["form_id"], f["guild_id"], str(rid)))
+                except Exception: pass
+        else:
+            # Check if we need the new multi-guild primary key migration
+            cursor2 = await self.user_db.execute("PRAGMA table_info(form_questions)")
+            columns2 = [row["name"] for row in await cursor2.fetchall()]
+            if "guild_id" not in columns2:
+                log.info("Migrating custom_forms for multi-guild primary keys...")
+                old_f = await self.user_db.execute("SELECT * FROM custom_forms")
+                f_data = await old_f.fetchall()
+                old_q = await self.user_db.execute("SELECT * FROM form_questions")
+                q_data = await old_q.fetchall()
+                old_r = await self.user_db.execute("SELECT * FROM form_roles")
+                r_data = await old_r.fetchall()
+                
+                await self.user_db.execute("DROP TABLE form_questions")
+                await self.user_db.execute("DROP TABLE form_roles")
+                await self.user_db.execute("DROP TABLE custom_forms")
+                await self.user_db.executescript(USER_DB_SCHEMA)
+                
+                for f in f_data:
+                    fd = dict(f)
+                    await self.user_db.execute(
+                        "INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (fd["form_id"], fd["guild_id"], fd["title"], fd["channel_id"], fd.get("form_type", 1), fd.get("action_target"), 0)
+                    )
+                for q in q_data:
+                    qd = dict(q)
+                    f_guild = next((dict(f)["guild_id"] for f in f_data if dict(f)["form_id"] == qd["form_id"]), "GLOBAL")
+                    await self.user_db.execute(
+                        "INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)",
+                        (qd["form_id"], f_guild, qd["question_text"])
+                    )
+                for r in r_data:
+                    rd = dict(r)
+                    f_guild = next((dict(f)["guild_id"] for f in f_data if dict(f)["form_id"] == rd["form_id"]), "GLOBAL")
+                    await self.user_db.execute(
+                        "INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)",
+                        (rd["form_id"], f_guild, rd["role_id"])
+                    )
+            else:
+                await self.user_db.executescript(USER_DB_SCHEMA)
+
+        cursor = await self.user_db.execute("PRAGMA table_info(custom_forms)")
+        columns = [row["name"] for row in await cursor.fetchall()]
+        if "auto_approve" not in columns:
+            log.info("Adding auto_approve to custom_forms...")
+            try:
+                await self.main_db.execute("ALTER TABLE custom_forms ADD COLUMN auto_approve INTEGER DEFAULT 1")
+                await self.main_db.commit()
+            except Exception as e:
+                log.error(f"Migration error for custom_forms auto_approve: {e}")
+
+        # Migrate missing columns to log_settings
+        cursor3 = await self.user_db.execute("PRAGMA table_info(log_settings)")
+        columns3 = [row["name"] for row in await cursor3.fetchall()]
+        missing_cols = [
+            "warn_add_on", "warn_remove_on", "ticket_create_on", "ticket_close_on",
+            "app_create_on", "app_accept_on", "app_reject_on", "invite_create_on",
+            "invite_use_on", "role_add_on", "role_remove_on", "ses_camera_on"
+        ]
+        for col in missing_cols:
+            if col not in columns3:
+                try:
+                    await self.user_db.execute(f"ALTER TABLE log_settings ADD COLUMN {col} INTEGER DEFAULT 0")
+                except Exception as e:
+                    log.error("Error migrating %s: %s", col, e)
+
+        await self.user_db.commit()
+
+        self.admin_db = await aiosqlite.connect(self._admin_db_path)
+        self.admin_db.row_factory = aiosqlite.Row
+        
+        # WAL modunu aktif et
+        await self.admin_db.execute("PRAGMA journal_mode=WAL;")
+        await self.admin_db.execute("PRAGMA synchronous=NORMAL;")
+        
+        await self.admin_db.executescript(ADMIN_DB_SCHEMA)
+        await self.admin_db.commit()
+
+        log.info("Veritabanları başlatıldı: %s, %s", self._user_db_path, self._admin_db_path)
+
+    async def close(self) -> None:
+        """Bot kapanırken bağlantıları temizle."""
+        if self.user_db:
+            await self.user_db.close()
+        if self.admin_db:
+            await self.admin_db.close()
+        log.info("Veritabanı bağlantıları kapatıldı.")
+
+    # ------------------------------------------------------------------
+    # USER-DB helpers
+    # ------------------------------------------------------------------
+
+    async def execute(self, query: str, *args) -> None:
+        """USER-DB'de INSERT/UPDATE/DELETE çalıştır ve commit et."""
+        async with self.user_db.execute(query, args) as _:
+            pass
+        await self.user_db.commit()
+
+    async def fetchone(self, query: str, *args) -> aiosqlite.Row | None:
+        """USER-DB'den tek satır döndür."""
+        async with self.user_db.execute(query, args) as cursor:
+            return await cursor.fetchone()
+
+    async def fetchall(self, query: str, *args) -> list[aiosqlite.Row]:
+        """USER-DB'den tüm satırları döndür."""
+        async with self.user_db.execute(query, args) as cursor:
+            return await cursor.fetchall()
+
+    async def executemany(self, query: str, data: list) -> None:
+        """USER-DB'de toplu INSERT/UPDATE."""
+        await self.user_db.executemany(query, data)
+        await self.user_db.commit()
+
+    # ------------------------------------------------------------------
+    # ADMIN-DB helpers
+    # ------------------------------------------------------------------
+
+    async def log_admin_event(
+        self,
+        guild_id: int,
+        admin_id: int,
+        action_type: str,
+        target_id: int,
+        reason: str = "Belirtilmedi",
+    ) -> None:
+        """
+        Moderasyon eylemini hem Python logging'e hem ADMIN-EVENTS.db'ye yaz.
+
+        Args:
+            guild_id:    Sunucu ID'si
+            admin_id:    Komutu kullanan moderatör/admin ID'si
+            action_type: Eylem türü (örn. "KICK", "BAN", "TIMEOUT")
+            target_id:   Hedef kullanıcı/kanal ID'si
+            reason:      Eylem gerekçesi
+        """
+        # 1) Python logging (discord.log dosyasına gider)
+        log.info(
+            "ADMIN ACTION | guild=%s | %s | admin=%s | target=%s | reason=%s",
+            guild_id,
+            action_type,
+            admin_id,
+            target_id,
+            reason,
+        )
+
+        # 2) ADMIN-EVENTS.db
+        await self.admin_db.execute(
+            """
+            INSERT INTO admin_events (guild_id, admin_id, action_type, target_id, reason)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (str(guild_id), str(admin_id), action_type, str(target_id), reason),
+        )
+        await self.admin_db.commit()
+
+    async def log_db_event(
+        self,
+        guild_id,
+        event_type,
+        setting_key,
+        user_id,
+        details,
+        channel_id=None
+    ) -> None:
+        """
+        USER-DB.db içerisindeki db_event_logs tablosuna genel log atar.
+        details argümanı dict ise otomatik JSON'a çevrilir.
+
+        Args:
+            guild_id:    Sunucu ID'si
+            event_type:  Olay türü (örn. 'msg_delete', 'ses_join')
+            setting_key: db_log_settings tablosundaki ilgili şalter kolonu (None ise her zaman yaz)
+            user_id:     Olayı tetikleyen kullanıcı ID'si
+            details:     Detay bilgisi (dict ise JSON'a çevrilir)
+            channel_id:  İlgili kanal ID'si
+        """
+        # Şalter kontrolü: yalnızca db_log_settings tablosuna bak
+        if setting_key:
+            try:
+                row = await self.fetchone(
+                    "SELECT * FROM db_log_settings WHERE guild_id=?", str(guild_id)
+                )
+                if row:
+                    row_dict = dict(row)
+                    # Şalter kolonu tabloda var ve 1 değilse loglama (varsayılan kapalı mantığı)
+                    if setting_key in row_dict and row_dict[setting_key] != 1:
+                        return
+                else:
+                    # Kayıt yoksa → varsayılan kapalı
+                    return
+            except Exception as e:
+                log.error("log_db_event ayar kontrol hatası: %s", e)
+
+        import json
+        details_str = json.dumps(details, ensure_ascii=False) if isinstance(details, dict) else str(details)
+
+        try:
+            await self.user_db.execute(
+                """
+                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (
+                    str(guild_id),
+                    event_type,
+                    str(user_id) if user_id else None,
+                    details_str,
+                    str(channel_id) if channel_id else None,
+                )
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error("log_db_event hatası: %s", e)
+
+    async def log_db_events_bulk(self, events: list) -> None:
+        """
+        USER-DB.db içerisindeki db_event_logs tablosuna TOPLU (bulk) log atar.
+        Performans için executemany kullanır.
+        
+        events formatı: [(guild_id, event_type, user_id, details, channel_id), ...]
+        Not: setting_key'i optimize etmek için fonksiyon dışında kontrol ettiğinizi varsayar. 
+        Eğer setting_key kontrolü lazımsa fonksiyon dışında yapıp sadece loglanacak olanları buraya gönderin.
+        """
+        import json
+        
+        insert_data = []
+        for ev in events:
+            guild_id, event_type, user_id, details, channel_id = ev
+            details_str = json.dumps(details, ensure_ascii=False) if isinstance(details, dict) else str(details)
+            
+            insert_data.append((
+                str(guild_id),
+                event_type,
+                str(user_id) if user_id else None,
+                details_str,
+                str(channel_id) if channel_id else None
+            ))
+            
+        try:
+            await self.user_db.executemany(
+                """
+                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                insert_data
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"log_db_events_bulk hatası: {e}")
+
+    async def update_user_cache(self, user_id: str, username: str, avatar_url: str | None) -> None:
+        """Kullanıcı adını ve avatarını önbelleğe alır."""
+        try:
+            await self.user_db.execute(
+                """
+                INSERT INTO user_cache (user_id, username, avatar_url)
+                VALUES (?, ?, ?)
+                ON CONFLICT(user_id) DO UPDATE SET
+                    username=excluded.username,
+                    avatar_url=excluded.avatar_url
+                """,
+                (str(user_id), username, avatar_url)
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"update_user_cache hatası: {e}")
+
+    async def update_channel_cache(self, guild_id: str, channel_id: str, channel_name: str) -> None:
+        """Kanal adını önbelleğe alır."""
+        try:
+            await self.user_db.execute(
+                """
+                INSERT INTO channel_cache (channel_id, guild_id, channel_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(channel_id) DO UPDATE SET
+                    guild_id=excluded.guild_id,
+                    channel_name=excluded.channel_name,
+                    updated_at=CURRENT_TIMESTAMP
+                """,
+                (str(channel_id), str(guild_id), channel_name)
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"update_channel_cache hatası: {e}")
+
+    async def bulk_sync_channel_cache(self, guild_id: str, channels: list[tuple[str, str]]) -> None:
+        """Belirtilen sunucunun tüm kanallarını önbelleğe eşitler."""
+        try:
+            data = [(ch_id, guild_id, ch_name) for ch_id, ch_name in channels]
+            await self.user_db.executemany(
+                """
+                INSERT INTO channel_cache (channel_id, guild_id, channel_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(channel_id) DO UPDATE SET
+                    guild_id=excluded.guild_id,
+                    channel_name=excluded.channel_name,
+                    updated_at=CURRENT_TIMESTAMP
+                """,
+                data
+            )
+            
+            # Sunucuda artık var olmayan kanalları temizle
+            # (Silinen kanallar önbellekte kalmasın)
+            current_ids = [ch_id for ch_id, ch_name in channels]
+            if current_ids:
+                placeholders = ','.join('?' * len(current_ids))
+                query = f"DELETE FROM channel_cache WHERE guild_id = ? AND channel_id NOT IN ({placeholders})"
+                await self.user_db.execute(query, [guild_id] + current_ids)
+            else:
+                await self.user_db.execute("DELETE FROM channel_cache WHERE guild_id = ?", (guild_id,))
+                
+            await self.user_db.commit()
+            log.debug(f"bulk_sync_channel_cache: {len(channels)} kanal guild {guild_id} için senkronize edildi.")
+        except Exception as e:
+            log.error(f"bulk_sync_channel_cache hatası: {e}")
+
+    async def update_role_cache(self, guild_id: str, role_id: str, role_name: str) -> None:
+        """Rol adını önbelleğe alır."""
+        try:
+            await self.user_db.execute(
+                """
+                INSERT INTO roles (guild_id, role_id, role_name)
+                VALUES (?, ?, ?)
+                ON CONFLICT(guild_id, role_id) DO UPDATE SET
+                    role_name=excluded.role_name
+                """,
+                (str(guild_id), str(role_id), role_name)
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"update_role_cache hatası: {e}")
+
+    async def sync_user_roles_bulk(self, guild_id: str, data: list) -> None:
+        """
+        Kullanıcıların anlık rollerini toplu olarak günceller.
+        Mevcut sunucudaki tabloyu temizler ve yeni listeyi ekler.
+        data = [(guild_id, user_id, role_id, role_name), ...]
+        """
+        try:
+            await self.user_db.execute("DELETE FROM user_current_roles WHERE guild_id=?", (str(guild_id),))
+            await self.user_db.executemany(
+                "INSERT INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                data
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"sync_user_roles_bulk hatası: {e}")
+
+    async def add_user_role(self, guild_id: str, user_id: str, role_id: str, role_name: str) -> None:
+        try:
+            await self.user_db.execute(
+                "INSERT OR IGNORE INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                (str(guild_id), str(user_id), str(role_id), role_name)
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"add_user_role hatası: {e}")
+
+    async def remove_user_role(self, guild_id: str, user_id: str, role_id: str) -> None:
+        try:
+            await self.user_db.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=? AND role_id=?",
+                (str(guild_id), str(user_id), str(role_id))
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"remove_user_role hatası: {e}")
+
+    async def clear_user_roles(self, guild_id: str, user_id: str) -> None:
+        try:
+            await self.user_db.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=?",
+                (str(guild_id), str(user_id))
+            )
+            await self.user_db.commit()
+        except Exception as e:
+            log.error(f"clear_user_roles hatası: {e}")
+
+    async def fetch_admin_events(
+        self, guild_id: int, target_id: int | None = None, limit: int = 10
+    ) -> list[aiosqlite.Row]:
+        """Bir sunucunun mod eylem geçmişini döndür, isteğe bağlı hedef filtresi ile."""
+        if target_id:
+            async with self.admin_db.execute(
+                """
+                SELECT * FROM admin_events
+                WHERE guild_id=? AND target_id=?
+                ORDER BY timestamp DESC LIMIT ?
+                """,
+                (str(guild_id), str(target_id), limit),
+            ) as cursor:
+                return await cursor.fetchall()
+        else:
+            async with self.admin_db.execute(
+                """
+                SELECT * FROM admin_events
+                WHERE guild_id=?
+                ORDER BY timestamp DESC LIMIT ?
+                """,
+                (str(guild_id), limit),
+            ) as cursor:
+                return await cursor.fetchall()

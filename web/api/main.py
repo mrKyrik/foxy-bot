@@ -33,12 +33,7 @@ app.add_middleware(
         "http://localhost:3000",  # CRA / alternatif
         "http://127.0.0.1:5173",
         "http://127.0.0.1:3000",
-        "http://kyrik.duckdns.org:5173",
-        "http://152.67.86.27:5173",
         "https://kyrik.duckdns.org",
-        "http://kyrik.duckdns.org",
-        "https://152.67.86.27",
-        "http://152.67.86.27",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -54,7 +49,10 @@ DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 DISCORD_CLIENT_ID = os.getenv("DISCORD_CLIENT_ID")
 DISCORD_CLIENT_SECRET = os.getenv("DISCORD_CLIENT_SECRET")
 DISCORD_REDIRECT_URI = os.getenv("DISCORD_REDIRECT_URI")
-JWT_SECRET = os.getenv("JWT_SECRET", "default_secret_key_change_me")
+JWT_SECRET = os.getenv("JWT_SECRET")
+
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET is not set in environment variables!")
 
 security = HTTPBearer()
 
@@ -145,9 +143,9 @@ TOGGLE_COLUMNS = [
 
 
 # Oracle DB Ayarları
-DB_USER = "admin"
-DB_PASSWORD = "$@P%5WCUgMnb"
-DB_DSN = "kumihodb_high"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DSN = os.getenv("DB_DSN")
 WALLET_DIR = os.path.join(BASE_DIR, "core", "wallet")
 
 class SyncOracleCursor:
@@ -263,19 +261,40 @@ class SyncOracleCursor:
             print(f"Fetchall error: {e}")
             return []
             
+oracle_pool = None
+
+@app.on_event("startup")
+def startup_event():
+    global oracle_pool
+    try:
+        oracle_pool = oracledb.create_pool(
+            user=DB_USER,
+            password=DB_PASSWORD,
+            dsn=DB_DSN,
+            min=2,
+            max=20,
+            increment=2,
+            config_dir=WALLET_DIR,
+            wallet_location=WALLET_DIR,
+            wallet_password=DB_PASSWORD
+        )
+        print("Oracle DB Sync Pool created successfully.")
+    except Exception as e:
+        print(f"Failed to create Oracle DB pool: {e}")
+
+@app.on_event("shutdown")
+def shutdown_event():
+    global oracle_pool
+    if oracle_pool:
+        oracle_pool.close()
+        print("Oracle DB Sync Pool closed.")
+
 class SyncOracleConnection:
     def __init__(self):
         try:
-            self.conn = oracledb.connect(
-                user=DB_USER,
-                password=DB_PASSWORD,
-                dsn=DB_DSN,
-                config_dir=WALLET_DIR,
-                wallet_location=WALLET_DIR,
-                wallet_password=DB_PASSWORD
-            )
+            self.conn = oracle_pool.acquire() if oracle_pool else None
         except Exception as e:
-            print(f"Oracle Connection Error: {e}")
+            print(f"Oracle Connection Acquire Error: {e}")
             self.conn = None
             
     def cursor(self):
@@ -288,8 +307,9 @@ class SyncOracleConnection:
             self.conn.commit()
             
     def close(self):
-        if self.conn:
-            self.conn.close()
+        if self.conn and oracle_pool:
+            oracle_pool.release(self.conn)
+            self.conn = None
 
 def get_db_connection(db_path=None):
     return SyncOracleConnection()
@@ -385,6 +405,8 @@ async def discord_callback(request: Request):
     data = await request.json()
     code = data.get("code")
     redirect_uri = data.get("redirect_uri") or DISCORD_REDIRECT_URI
+    code_verifier = data.get("code_verifier")
+    
     if not code:
         raise HTTPException(status_code=400, detail="Code eksik")
         
@@ -396,6 +418,8 @@ async def discord_callback(request: Request):
         "code": code,
         "redirect_uri": redirect_uri
     }
+    if code_verifier:
+        token_data["code_verifier"] = code_verifier
     
     headers = {
         "Content-Type": "application/x-www-form-urlencoded",

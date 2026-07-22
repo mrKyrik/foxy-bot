@@ -19,9 +19,9 @@ class DBRow(dict):
 
 log = logging.getLogger(__name__)
 
-DB_USER = "admin"
-DB_PASSWORD = "$@P%5WCUgMnb"
-DB_DSN = "kumihodb_high"
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DSN = os.getenv("DB_DSN")
 WALLET_DIR = os.path.join(os.path.dirname(__file__), "wallet")
 
 class Database:

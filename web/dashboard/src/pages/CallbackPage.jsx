@@ -12,8 +12,18 @@ const CallbackPage = () => {
 
   useEffect(() => {
     const code = searchParams.get('code');
+    const state = searchParams.get('state');
+    
     if (!code) {
       setError("Yetkilendirme kodu bulunamadı.");
+      return;
+    }
+
+    const savedState = sessionStorage.getItem('oauth_state');
+    const codeVerifier = sessionStorage.getItem('pkce_verifier');
+
+    if (savedState && state !== savedState) {
+      setError("Güvenlik hatası: State parametresi eşleşmiyor (CSRF şüphesi). Lütfen tekrar giriş yapın.");
       return;
     }
 
@@ -22,9 +32,12 @@ const CallbackPage = () => {
         const redirectUri = `${window.location.protocol}//${window.location.host}/auth/callback`;
         const res = await axios.post(`${API_BASE_URL}/auth/discord/callback`, { 
           code,
-          redirect_uri: redirectUri
+          redirect_uri: redirectUri,
+          code_verifier: codeVerifier
         });
         if (res.data.token) {
+          sessionStorage.removeItem('pkce_verifier');
+          sessionStorage.removeItem('oauth_state');
           localStorage.setItem('kumiho_token', res.data.token);
           // Reload to initialize contexts with new token
           window.location.href = '/'; 

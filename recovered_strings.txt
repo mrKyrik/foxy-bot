@@ -1,0 +1,1647 @@
+): <#1525020777433530378>"}2026-07-16 18:51:131525020777433530378
+31331495415826075881584
+larGet a random feet image.publicDE
+log role addY
+    bank            INTEGER DEFAULT 0,
+m: `f.inventory [@user]`publicye
+1424129369541972102rol-test
+tyom1507723513182818544
+coinflipE
+db mod roleY
+db mod channel
+2026-07-04 12:14:419V
+larYeet someone.publict_
+    action_type TEXT NOT NULL,
+log invite create
+Otableadmin_eventsadmin_eventsGCREATE TABLE admin_events (
+im ve EkonomiAdd a channel to the XP ignore list.ownerX
+tableweb_actionsweb_actions:CREATE TABLE web_actions (
+timeout~
+31494456063729078294summon_form{"form_id": "testtt", "target_channel_id": "1495384331596857455"}completed2026-07-13 12:07:38
+db server update
+33rol-form149445606372907829414977070198203352543
+level multiplier_removeGeli
+im ve Ekonomimine i
+3463986864036249611507723513182818544
+nsfw feetE
+1527368264865415280@
+larView a user's avatar.public9
+6013444244290928641424129369541972102
+    guild_id TEXT,
+1494456063729078294highlow
+zel Odalar2026-07-04 12:01:119T
+botunbanY
+1494456063729078294(
+vdisconnect
+331517089297679908905foxy-bot2026-07-16 18:17:041494456063729078294P
+    mod_id    TEXT    NOT NULL,
+log mod channel
+userinfo
+netim ve Ayarlardblog i
+CREATE TABLE level_rewards (
+    guild_id   TEXT,
+3#331495394968767041626
+7970455762188370221524905773417631754
+indexsqlite_autoindex_role_permissions_1role_permissions
+klama yok.public9
+1508555909641801820~
+ilim2026-07-03 15:06:368G
+1522688387415539952L
+vmuteModerasyonKullan
+vurusu Yap
+#3/iritaf-test1494456063729078294itirafla
+1494456063729078294$
+2026-07-16 18:17:051507723513182818544Rw
+    is_locked   INTEGER DEFAULT 0,
+14944560637290782944
+1494456063729078294cooldowns[]%
+nukeModerasyonnuke i
+3+331495384331596857455
+level channel set
+im ve EkonomiDisable level up announcements.ownerY
+m: `f.ticket log <#channel>`publicM
+    ses_join_on     INTEGER DEFAULT 1,
+klama yok.public|
+automod antizalgo/
+ncellendi: <#1527383061635797113>
+imSets the server suggestions channel. Usage: `f.suggest channel #kanal`ownerJ
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+;1494456063729078294cooldowns["1494456063729078294"]
+    guild_id    TEXT    NOT NULL,
+33331527368264865415280
+1527383061635797113
+klama yok.public4
+db ticket closeY
+ticket addP
+indexsqlite_autoindex_levels_1levels
+1516034120898318378
+    fish_cooldown   REAL    DEFAULT 0.0,
+14944560637290782945
+1494456063729078294!
+1520340654276739142?
+automod whitelist remove2
+    msg_delete_on    INTEGER DEFAULT 1,
+ Oda Olu
+7221698086525992981507723513182818544
+    reason    TEXT,
+7410494646171730821494456063729078294
+14944607671336304840
+3-331496216617263173754
+15150649986642125211507723513182818544%
+im ve Ekonomiprofile i
+seviye2026-07-16 18:17:041494456063729078294G*
+ncellendi: <#1527368264865415280>
+    reason        TEXT
+3+31522938775817289879Kyrik'in Odas
+33331507725319111708692Sesli Sohbet 4'
+;1494456063729078294status["1494456063729078294"]
+1494456063729078294mine[]
+lemini g
+1494456063729078294beg
+sindexidx_economy_guildeconomyECREATE INDEX idx_economy_guild ON economy(guild_id)c?
+ belirtilen s
+genel2026-07-16 18:17:041494456063729078294IB
+1494456065117523980C
+331495397804410011838kurallar2026-07-16 18:17:041494456063729078294J,
+2026-07-16 18:17:041494456063729078294M<
+larNSFW commands group.public.C
+imManage giveaways in the server.owner=
+m: `f.divorce`public
+14798620911028184561494456063729078294
+level xp_rate set
+klama yok.public3
+ Sesli Sohbetler 
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1527368264865415280"}completed2026-07-16 18:18:42
+13644816899964969371507723513182818544&
+12822159676440576751494456063729078294
+1522708139307438170M
+im ve Ekonomiroulette i
+1494456063729078294title
+31494456063729078294summon_form{"form_id": "testform2", "target_channel_id": "1495397804410011838"}completed2026-07-13 11:26:41
+tablelog_settingslog_settings0CREATE TABLE log_settings (
+1494456063729078294divorce[]
+db invite useY
+larRemoves rage points from a user. Usage: `f.rage remove @user <amount>`publicC$
+vuru-log2026-07-16 18:17:041494456063729078294O$
+    channel_id TEXT NOT NULL
+3C31522688387415539952bot deniyorum bo
+CREATE TABLE economy_extras (
+6013444244290928641507723513182818544U
+log mod channelY
+1495443840402854058*
+Yetkili: <@155149108183695360> (`155149108183695360`)2026-07-16 18:20:17
+1524907096607293542p
+15150649986642125211494456063729078294
+cooldownsGeli
+3;331527347075963027638
+    srv_update_on   INTEGER DEFAULT 1,
+31331527030519081074869Etkinlik Ses 
+takemoney
+log voice joinY
+11094728140183511441494456063729078294.
+2026-06-24 11:55:57/
+imSubmit a suggestion to the server.publicG
+31424129370469171284Genel2026-06-21 10:42:507
+1522320235879731271G
+im ve Ekonomicooldowns i
+31494456063729078294summon_form{"form_id": "testtt", "target_channel_id": "1494460339897630870"}pending2026-07-13
+create_channelModerasyoncreate_channel i
+level reward_remove
+14606751490944575781424129369541972102
+    PRIMARY KEY (user_id, guild_id, item_id)
+3!klnfsd1494456063729078294gsdkfnksld"
+erShows the main command interface or detailed info on a single command.public
+    hunt_cooldown   REAL    DEFAULT 0.0,
+log warnY
+rn: #FF0000publicP
+31494456063729078294summon_form{"form_id": "testtt", "target_channel_id": "1495384331596857455"}completed2026-07-13 11:58:52
+    form_id     TEXT NOT NULL,
+kara-liste
+3#331517089405406285854
+    status        TEXT DEFAULT 'pending',
+3)31522773239036907643
+3-31522930649776914474
+    rob_cooldown    REAL    DEFAULT 0.0,
+netim ve AyarlarSynchronize user roles with the database.ownerH6
+3477364618832117761507723513182818544
+m2026-07-16 18:17:041494456063729078294N8
+): <#1503292081492459620>"}2026-06-30 17:52:091503292081492459620
+perk titleGeli
+8407009744065659391507723513182818544
+    ses_switch_on   INTEGER DEFAULT 1,
+1522934401061752912U
+1494456063729078294
+152405614489973559514566794464960226732026-07-07 14:15:011524056146850087005R
+db voice streamY
+im ve EkonomiList all XP multipliers.ownerR
+m: `f.use [parametreler]`public
+level ignore_remove
+db role addY
+3078071377136189481507723513182818544-
+37331521764226514026536
+yeler yazamas
+log modY
+tiraf Forumu1520191226769444996
+Bekleme Kanal
+kickModerasyonKullan
+n nedirl
+        action_type TEXT NOT NULL,
+tirdi (Kat
+3+31522930723512914121Kyrik'in Odas
+3#331526113579282075658(
+m: `f.water [parametreler]`public<t
+1525174291296030750i
+1494460668018163883
+    form_id     TEXT,
+db app acceptY
+indexsqlite_autoindex_private_voice_hubs_1private_voice_hubs>
+zel Odalar2026-07-04 11:37:57>O
+1494456063729078294 
+    username    TEXT,
+3)331494456065117523979Ses Kanallar
+ [sebep]`owner
+2026-07-16 18:17:051507723513182818544
+31494456063729078294summon_form{"form_id": "testform2", "target_channel_id": "1495384331596857455"}completed2026-07-13 11:35:07
+3684383636631060481507723513182818544E
+larBlush.public&]
+sterir.publicr
+6013444244290928641524905773417631754Q
+331524478296618958958ses2026-07-16 18:17:041494456063729078294>a
+Utablelevel_rewardslevel_rewards
+1507723513182818544srv_emojiEmoji Eklendi: emoji_22
+    reason      TEXT,
+Yetkili: <@601344424429092864> (`601344424429092864`)2026-07-16 18:36:02
+level rank_bg
+1522948571526070282^
+larGet a random cat picture.publicA8
+larGet a random joke.publicC
+8326808780353045081424129369541972102
+ Destek MerkeziSorunuz mu var? Destek ekibimizle ileti
+rage remove%
+larHigh-five someone.public
+CREATE TABLE warns (
+            level    INTEGER,
+highfive\
+33331527023366232346795
+1494456063729078294buy
+    uyari_channel   TEXT,
+n neler9
+9323403687652476601494456063729078294
+netim ve AyarlarUnban a user from using the bot.public=!
+db text deleteY
+farm harvestw
+3-331526270484990398494
+        )9
+    last_message_time  REAL    DEFAULT 0.0,
+1524840646911983676c
+ sunucudan banlar.owner6z
+6013444244290928641494456063729078294
+Yetkili: <@1514724443824328744> (`1514724443824328744`)2026-07-16 18:51:13
+1519030093337329664
+1527023366232346795
+tableragepointsragepoints-CREATE TABLE ragepoints (
+    davet_channel   TEXT,
+    mod_channel_on   INTEGER DEFAULT 1,
+1494456063729078294form_sil'$
+log warn remove
+3!331494460668018163883ticket-log2026-07-16 18:17:041494456063729078294
+3+331521765879203889212
+    PRIMARY KEY (user_id, guild_id, role_id)
+1494460339897630870&
++tableprivate_voice_roomsprivate_voice_rooms?CREATE TABLE private_voice_rooms (
+indexsqlite_autoindex_user_cache_1user_cache7
+    details     TEXT,
+1507723513182818544srv_emojiEmoji Eklendi: emoji_23
+log ticket
+larPlay a trivia question.public
+331527387026020630668TICKETLAR2026-07-16 18:50:441507723513182818544G
+ Sohbet Muhabbet kanallar
+mtableprivate_voice_hubsprivate_voice_hubs=CREATE TABLE private_voice_hubs (
+CREATE TABLE pending_actions (
+3)31424129370469171282Ses Kanallar
+3+31522938638055510086Kyrik'in Odas
+ticket addTopluluk ve Etkile
+m: `f.crime (45min cooldown)`public
+level multiplier_add
+    PRIMARY KEY (guild_id, user_id, role_id)
+log server emojiY
+    reason TEXT,
+1494456063729078294beg[]
+db app reject
+    target_id   TEXT    NOT NULL,
+1524478296618958958b
+genel-forum2026-07-16 18:17:041494456063729078294
+erDelete an existing forum channel.ownerc
+im ve EkonomiRemove a role reward for a level.ownerY
+level ignore_addGeli
+1507723513182818544app_create601344424429092864{"username": "601344424429092864", "text": "
+1494456063729078294C
+;1494456063729078294water["1494456063729078294"]
+    whitelist   TEXT DEFAULT '[]',
+m: `f.fish (requires Fishing Rod)`public2S
+timeoutModerasyonKullan
+1525175882799513763j
+B!31494460767133630484sunucu-log2026-06-30 15:10:26
+larPlay Rock Paper Scissors.publicH*
+indexsqlite_autoindex_active_tickets_1active_tickets<
+1495396894774395022
+3'331503292864073830480
+31494456063729078294summon_form{"form_id": "klnfsd", "target_channel_id": "1520191492528803890"}completed2026-07-13 12:13:36
+1494456063729078294marry[]
+db ticketY
+in ticket a
+1424129370469171283
+log ticket createY
+larLaugh.public3;
+1511411979238113552
+1494456063729078294form_olustur&*
+#rol-form1494456063729078294Harika! Peki yetene
+m: `f.purge [parametreler]`ownerI|
+    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP
+y331507723513182818544msg_delete1109481528523755560{"username": "alwleyy", "avatar_url": "https://cdn.discordapp.com/avatars/1109481528523755560/e906b559d1c4dc8acb5e85eacfa24634.png?size=1024", "content": "
+3=331511411979238113552
+14944560637290782949
+3!31522708139307438170hjsakldfhl2026-07-03 20:58:31EL
+    invite_create_on INTEGER DEFAULT 1,
+11311920023404544321494456063729078294
+level multiplier_addGeli
+level xp_rate setGeli
+itiraf-form1494456063729078294
+1527387144858112192
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 17:39:48
+im ve Ekonomiwork i
+    guild_id TEXT NOT NULL,
+;1494456063729078294pay["1494456063729078294"]
+log app create
+: <#1503292081492459620>"}2026-06-30 17:52:501503292081492459620
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 17:37:23
+2026-07-16 18:17:051507723513182818544O
+11094815285237555601507723513182818544
+1494456063729078294crime[]!
+rage list&
+scratchGeli
+    xp            INTEGER DEFAULT 0,
+2026-07-16 18:17:051507723513182818544U
+db_event_logs
+1495443185697292389=
+kurallar2026-07-16 18:17:041494456063729078294I
+    user_id     TEXT PRIMARY KEY,
+            guild_id TEXT,
+1507723514084462653s
+level channel setGeli
+im ve Ekonomileaderboard i
+log server perm
+15273871448581121926013444244290928642026-07-16 18:51:131527387146351022152
+3+31522943558989123624Kyrik'in Odas
+1494456063729078294balance
+    ticket_close_on  INTEGER DEFAULT 1,
+automod whitelist add3
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 17:48:03
+tiraf Forumu\n\n**
+1494456063729078294d
+m: `f.slots <bet | all>`publicvj
+givemoneyY
+1526269294407712790
+r.ownerM
+klama yok.public=
+suggest denyTopluluk ve Etkile
+1507723513182818544~
+1494456063729078294balance[]
+vmoveModerasyonKullan
+    role_id   TEXT,
+1494456063729078294deposit
+    app_accept_on    INTEGER DEFAULT 1,
+2026-07-04 12:44:319\
+8127224637668721041507723513182818544
+    permission_name TEXT,
+db voice switch
+1494456063729078294profile[]!
+        is_enabled INTEGER DEFAULT 1,
+    channel_id  TEXT NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:05:25
+2026-07-16 18:17:051507723513182818544T~
+    unban_timestamp REAL,
+im ve EkonomiList all level role rewards.ownerJ
+    srv_emoji_on     INTEGER DEFAULT 1,
+31517082583916085290yes2026-06-24 11:55:573
+3K331519030093337329664
+m: `f.shop`public0`
+completed
+    mod_role_on      INTEGER DEFAULT 1,
+im ve Ekonomibalance i
+    mod_msg_on      INTEGER DEFAULT 1,
+level multiplier_list
+1495455610869911592
+-log2026-07-16 18:17:041494456063729078294D.
+m: `f.scratch`publicvi
+im ve Ekonomidaily i
+larMeasures the love between two users.publice'
+7554092708871537451507723513182818544
+larGet a random meme from Reddit.publicG(
+331524841178615517387
+1494456063729078294status!
+indexsqlite_autoindex_level_ignores_1level_ignores#
+14944560637290782941
+1507723513182818544z
+m: `f.level [parametreler]`publicD
+35331527347349544763483
+rage set'
+1495444902010425484)
+10050981474308137871507723513182818544
+m: `f.pay @user <amount>`public
+N)331495454925822492875
+divorceGeli
+1517089297679908905
+im ve Ekonomislots i
+31507723513182818544summon_form{"form_id": "tyom-rol", "target_channel_id": "1527383061635797113"}completed2026-07-16 18:35:24
+rage setE
+leaderboardy
+1494456063729078294B
+indexsqlite_autoindex_eco_bans_1eco_bans
+im ve Ekonomideposit i
+n susturmas
+37331520340654276739142
+1507723513182818544t
+vdeafenModerasyonKullan
+1495418894599454720A
+1526248051054870528
+m: `f.profile [@user]`publicpq
+log text delete
+1525020777433530378f
+    prefix          TEXT    DEFAULT 'f.',
+im ve Ekonomiwithdraw i
+m: `f.leaderboard`public
+;1494456063729078294rob["1494456063729078294"]
+forum_olusturDi
+testtt1494456063729078294testN
+ siler. Kullan
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1527368264865415280"}completed2026-07-16 17:38:53
+1494456063729078294roulette[] 
+    ticket_channel  TEXT,
+1494460580852007053
+    PRIMARY KEY (guild_id, user_id)
+14944560637290782942
+larCuddle with someone.publicmI
+    role_id  TEXT,
+formlar2026-07-16 18:17:041494456063729078294D4
+tablesaved_rolessaved_roles
+tableadmin_notesadmin_notes
+ ses kanal
+    role_id         TEXT,
+1494456063729078294/
+331527350017097076921admin-bot2026-07-16 18:17:051507723513182818544R
+2026-07-16 18:17:051507723513182818544Nu
+db text editY
+3A331524907096607293545how-can-you-sleep-at-night2026-07-16 18:17:051524905773417631754Bp
+3-331516148516878028891
+    claimed_by TEXT,
+2026-07-16 18:17:051507723513182818544Q
+1522926428973437100P
+2026-07-16 18:17:051524905773417631754?o
+automodModerasyonManage auto-moderation settings.owner;+
+db invite create
+    channel_id  TEXT PRIMARY KEY,
+larSets a user's rage points. Usage: `f.rage set @user <amount>`publicB&
+1494456063729078294inventory
+1494456063729078294;
+rankGeli
+db warn removeY
+        guild_id TEXT NOT NULL,
+14954429184488244005
+1494456063729078294scratch
+1522312249149095986F
+;1494456063729078294scratch["1494456063729078294"]
+1494456063729078294form_mesaji_gonder% 
+3I331524905774399225939how-do-you-even-sleep-at-night2026-07-16 18:17:051524905773417631754Il
+331494462741770010694hapishane2026-07-16 18:17:041494456063729078294M"
+1507725235993055384{
+form_roles
+log mod msgY
+%tabletemp_banstemp_bans(CREATE TABLE temp_bans (
+    status TEXT DEFAULT 'pending',
+karne2026-07-16 18:17:041494456063729078294J+
+1507723513182818544
+35331521530436277244004
+indexsqlite_autoindex_suggestion_config_1suggestion_config,
+    admin_id    TEXT    NOT NULL,
+    ses_camera_on    INTEGER DEFAULT 1,
+    avatar_url  TEXT,
+im ve EkonomiCheck your or someone else's rank.publicN
+klama yok.public7
+giveaway
+    message_count INTEGER DEFAULT 0,
+1495412838116753468$
+1522934403632992280S
+1494456063729078294harvest"
+automod antispam-
+log text
+    event_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+larMeasure how autistic someone is.publicA)
+331495455610869911592davet-log2026-07-16 18:17:041494456063729078294H
+m: `f.balance [@user]`public*<
+ Mudae ve Owo kanallar
+1494456063729078294,
+    guild_id      TEXT,
+suggest channelTopluluk ve Etkile
+klama yok.publicn
+3'331526269294407712790
+    banned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+im ve Ekonomiharvest i
+31522312249149095986kahperik2026-07-02 18:45:238E
+db server
+larLet the bot choose between options.publicQ5
+31522661585720578188kahpekaan2026-07-03 17:53:30EH
+log server roleY
+1522967400163573832`
+1494456063729078294c
+3-331494456065117523978Metin Kanallar
+1495415826075881584
+9316158870421627181494456063729078294
+m: `f.nuke [parametreler]`owner:
+3=331495443185697292389
+33rol-form149445606372907829414954244319949662083
+4456065117523981>"}2026-06-30 17:53:191494456065117523981
+331494456063729078294ses_camera_on601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Kamera a
+farm waterGeli
+31494456063729078294summon_form{"form_id": "testtt", "target_channel_id": "1495397751188619315"}completed2026-07-13 12:08:07
+im ve EkonomiManage level up announcement channels.publicJ
+1516148516878028891
+suggest considerTopluluk ve Etkile
+1955264224990330891507723513182818544
+giveaway endTopluluk ve Etkile
+db warn add
+3/31517138664566685756kyriks-bot-chanel2026-06-24 11:55:57-
+;1494456063729078294crime["149445606372907829!"
+turuldu: <#1527387144858112192>
+netim ve AyarlarBan a user from the economy system.public:
+modlogsModerasyonSunucunun mod eylem ge
+log invite use
+    guild_id    TEXT NOT NULL,
+331495396894774395022Y
+.)31495397723472400576yetkili-sohbet2026-06-30 15:10:26
+33tyom-rol150772351318281854415104005496301201663
+7970455762188370221494456063729078294
+larHug someone.public
+log server update
+    msg_delete_on   INTEGER DEFAULT 1,
+1495451910738804877%
+    user_id    TEXT PRIMARY KEY,
+im ve Ekonomiuse i
+m: `f.work`publicCH
+            role_id  TEXT,
+delete_channel
+level channelGeli
+db warn addY
+    PRIMARY KEY (guild_id, role_id)
+sync_rolesY
+3=331495412566136983662
+m: `f.sell <item_id> [amount | all]`public*b
+blackjackGeli
+im ve Ekonomistatus i
+blackjackh
+dailyGeli
+Eski: seviye
+1517082583916085290
+sesli-kurallar
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1527368264865415280"}completed2026-07-16 18:01:35
+utableprivate_voice_settingsprivate_voice_settingsACREATE TABLE private_voice_settings (
+        added_by TEXT NOT NULL,
+1522967356073185311_
+3!331527382223798538390server log2026-07-16 18:31:391507723513182818544N
+31516034120898318378log-test2026-06-24 11:55:577
+klama yok.public<
+1507723514084462654t
+1494456063729078294-
+3531522967350780104866
+indexsqlite_autoindex_user_current_roles_1user_current_roles
+im ve Ekonomiplant i
+3)331524840646911983676+|Oda Olu
+sync_roles7
+larGet a random hentai image.public7D
+, log_message_id TEXT, live_data TEXT)SA
+1495405807070740711
+level reward_add
+ytablerolesroles
+2026-07-16 18:17:051507723513182818544S
+)315223035120E
+1494456063729078294slots
+1494456063729078294marry
+9tableeconomy_extraseconomy_extras
+log appY
+db server emojiY
+    PRIMARY KEY (guild_id, form_id)
+14290841182552760921494456063729078294M
+1503292081492459620
+2026-07-16 18:17:051507723513182818544D
+3K331507723514084462654
+zel Odalar2026-07-04 14:58:242`
+31494456063729078294summon_form{"form_id": "testform2", "target_channel_id": "1495384331596857455"}completed2026-07-13 11:25:52
+larMock a user's message.public
+): <#1527387144858112192>"}2026-07-16 18:51:131527387144858112192
+14954149469332481604
+profiler
+m: `f.vmove @kullan
+    user_id     TEXT,
+31516090393958027456TICKETLAR2026-06-24 11:55:572
+    padlock_active  INTEGER DEFAULT 0,
+    category_id TEXT
+1494456063729078294highlow[]#
+zel Oda2026-07-16 18:17:041494456063729078294Lc
+1494456063729078294use[]#
+1494456063729078294harvest#
+11282140167628431461494456063729078294
+db warnY
+netim2026-07-16 18:17:041494456063729078294S
+    PRIMARY KEY (guild_id, role_id, permission_name)
+tts2026-07-16 18:17:041494456063729078294F
+31522681353701691403blu2026-07-03 19:12:053I
+1495384331596857455'
+log server role
+db server updateY
+m: `f.vdisconnect @kullan
+highfiveE
+perk title
+7800641516445368621494456063729078294
+CREATE TABLE economy (
+1494456063729078294"
+log warn add
+1494456063729078294#
+2026-07-16 18:17:041494456063729078294P
+    channel_id  TEXT
+14606751490944575781494456063729078294
+    guild_id   TEXT PRIMARY KEY,
+    event_type  TEXT    NOT NULL,
+1494456065117523978
+31331507731128222748789
+1494460636514619564/
+m: `f.color [parametreler]`publicK
+1495397669890293772!
+    srv_role_on      INTEGER DEFAULT 1,
+indexsqlite_autoindex_roles_1roles
+;331507723513182818544ticket_close601344424429092864{"username": "601344424429092864", "text": "Bilet Kapat
+1524905773417631754n
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1527368264865415280"}completed2026-07-16 17:48:37
+larDance.publicma
+im ve Ekonomidivorce i
+larKiss someone.public9J
+1521765879203889212
+1424129370469171284
+3#331526200523147968613i
+;1494456063729078294plant["1494456063729078294"]
+klama yok.public>
+larAsk the magic 8ball a question.publicK
+Yetkili: <@601344424429092864> (`601344424429092864`)2026-07-16 18:35:42
+Gtableeconomyeconomy
+levelGeli
+kurallar
+10621216717854474941494456063729078294'
+7644461933580779721494456063729078294"
+    banned_at  DATETIME DEFAULT CURRENT_TIMESTAMP
++tableprivate_voice_roomsprivate_voice_rooms?CREATE 
+3/331495444780564480000
+1507723513182818544s
+imEnds an active giveaway early. Usage: `f.giveaway end <message_id>`owner^
+    srv_role_on     INTEGER DEFAULT 1,
+3/331526269984458805378
+    warn_add_on      INTEGER DEFAULT 1,
+7817813183584010341494456063729078294
+im ve Ekonomirob i
+    level         INTEGER DEFAULT 0,
+3+31522945639099535440Kyrik'in Odas
+indexsqlite_autoindex_level_rewards_1level_rewards!
+givemoney
+1494456063729078294divorce
+level rank_bgGeli
+log voice streamY
+1507723513182818544srv_emojiEmoji Eklendi: emoji_33
+suggest consider
+gelenler2026-07-16 18:17:041494456063729078294B;
+1507723513182818544srv_emojiEmoji Eklendi: emoji_32
+ sunucudan atar.owner
+    role_id     TEXT NOT NULL,
+1520191226769444996.
+3531522934401061752912
+ log sistemi paneli. Web dashboard i
+nsfw rule34H
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:07:21
+1496980989937975346"
+indexsqlite_autoindex_guild_settings_1
+divorcei
+1494456063729078294A
+3+331495390324632191086
+1495412566136983662
+1494456063729078294plant[]#
+    srv_update_on    INTEGER DEFAULT 1,
+leaderboard_xpGeli
+indexsqlite_autoindex_log_settings_1log_settings1
+'331494456063729078294ses_stream_off601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Ekran Payla
+larGet a random interesting fact.publicP7
+profileGeli
+test1494456063729078294test4
+Destek Kanal
+1494456063729078294leaderboard
+3)31522320235879731271garip bir g
+1507723514084462655u
+Ytablesqlite_sequencesqlite_sequence
+log server updateY
+automod antiprofanity.
+    submitter_id TEXT,
+    channel_id TEXT,
+1507723513182818544tyom-rol
+giveaway rerollTopluluk ve Etkile
+37331507723514084462656Sesli Sohbet 1'  
+3#331495397751188619315yetkili-bot2026-07-16 18:17:041494456063729078294E
+: <#1525020777433530378>"}2026-07-16 18:51:121525020777433530378
+%31495451733000978452
+1521530436277244004
+35331510396487585103942Sesli Sohbet 5' 
+331494460392469172224ses-log2026-07-16 18:17:041494456063729078294V=
+inventoryf
+nsfw feetF
+    question_text TEXT NOT NULL,
+m: `f.plant [parametreler]`public
+farm plantGeli
+log voice switchY
+1522967350780104866a
+    daily_cooldown  REAL    DEFAULT 0.0,
+    mod_channel_on  INTEGER DEFAULT 1,
+14179073669758976611494456063729078294
+ticket setupQ
+1495397751188619315
+1527364570606338250
+im ve Ekonomiinventory i
++tablepending_offline_formspending_offline_forms/CREATE TABLE pending_offline_forms (
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+marryGeli
+    , guild_id TEXT DEFAULT 'GLOBAL')
+tlayacak bir sosyal medya pilatformun var m
+larGives ragebait points to a user.publicB#
+1494456063729078294scratch[]
+1522943109489492059Z
+;tablesuggestion_configsuggestion_config+CREATE TABLE suggestion_config (
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:04:27
+log inviteY
+    guild_id  TEXT,
+itiraflar
+        command_name TEXT NOT NULL,
+imRemoves a member from a ticket channel. Usage: `f.ticket remove <@user>`owner>N
+13923548986491535671507723513182818544
+    wallet          INTEGER DEFAULT 200,
+ktablelevel_ignoreslevel_ignores"CREATE TABLE level_ignores (
+1494456063729078294pay
+331494456063729078294ses_join601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Kanala Kat
+    guild_id    TEXT PRIMARY KEY,
+larMake the bot say something.public9 
+1495390325995470869:
+31494456063729078294summon_form{"form_id": "iritaf-test", "target_channel_id": "1520191492528803890"}completed2026-07-13 11:10:01
+    is_hidden   INTEGER DEFAULT 0,
+3/331495412838116753468
+1494456063729078294?
+1494456063729078294plant
+    msg_edit_on     INTEGER DEFAULT 1,
+1tableform_questionsform_questions&CREATE TABLE form_questions (
+indexsqlite_autoindex_saved_roles_1saved_roles
+log role removeY
+vunmuteModerasyonKullan
+1507723513182818544|
+    quantity INTEGER DEFAULT 0,
+withdrawB
+1507723513182818544v
+1507723513182818544srv_emojiEmoji Eklendi: emoji_27
+1507724534118223872x
+banModerasyonKullan
+log role remove
+boosterlar2026-07-16 18:17:041494456063729078294G#
+db role removeY
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:29:56
+1524905774399225939n
+larSlap someone.public/>
+farm harvestGeli
+1527368264865415280
+3!331494460636514619564uyar
+db voice switchY
+35331507724278542372887Sesli Sohbet 2' 
+1494456063729078294status[]
+    question_id INTEGER PRIMARY KEY AUTOINCREMENT,
+3%331494456065117523980
+ilim2026-07-03 19:40:02-K
+1507723513182818544tyom
+2026-07-16 18:17:051507723513182818544V
+1494456063729078294rob
+giveaway end
+    welcome_channel TEXT,
+create_channel
+1510396487585103942
+;1494456063729078294divorce["1494456063729078294"]
+1494456063729078294antilink$
+2026-07-16 18:17:051507723513182818544I
+kemmel_bot2026-06-24 11:55:578
+    guild_id        TEXT,
+roller2026-07-16 18:17:041494456063729078294M'
+3%331495451733000978452
+15262005231479686139
+33rol-form149445606372907829414954224670769152713
+3'31517082647308927067asdsaasdasdas2026-06-21 10:42:50
+31494456063729078294summon_form{"form_id": "rol-form", "target_channel_id": "1495442918448824400"}completed2026-07-13 12:54:22
+larPat someone.public0K
+    publish_mode TEXT1
+m: `f.beg`public.L
+    rol_channel     TEXT
+level ignore_removeGeli
+    user_id   TEXT    NOT NULL,
+zel Kanallar2026-07-07 06:26:481494456063729078294;
+log app rejectY
+indexsqlite_autoindex_economy_extras_1economy_extras
+!tabledb_event_logsdb_event_logs5CREATE TABLE db_event_logs (
+1524907096607293545q
+33rol-form149445606372907829414954246652360130983
+db voice join
+im ve EkonomiSet the channel for level up announcements.ownerQ
+m: `f.clearwarn`ownerg
+db role remove
+31494456063729078294summon_form{"form_id": "testtt", "target_channel_id": "1494460339897630870"}completed2026-07-13 11:59:20
+log warn removeY
+331495396530562011259Destek2026-07-16 18:17:041494456063729078294
+: <#1503292081492459620>"}2026-06-30 17:52:091503292081492459620
+1522943558989123624[
+ | Genel 22026-07-16 18:17:041494456063729078294Oi
+1495390324632191086<
+ verir ve veritaban
+ | Genel 02026-07-16 18:17:041494456063729078294Nf
+db text edit
+    user_id            TEXT,
+m: `f.warns [parametreler]`owner:
+2026-07-16 18:17:051507723513182818544Q|
+1527387026020630668
+11280056312830526441494456063729078294
+db ticket close
+    timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    farm_time          REAL    DEFAULT 0.0,
+netim ve AyarlarA
+1494456063729078294use
+    message_id    TEXT,
+    channel_id TEXT NOT NULL,
+2026-07-16 18:17:051507723513182818544f
+n nedir. merak etme ismin g
+7638172391365673061494456063729078294G
+level reward_removeGeli
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:07:00
+sayi-saymaca
+CREATE TABLE role_permissions (
+5938779887776563211494456063729078294P
+        note TEXT NOT NULL,
+farmGeli
+2026-07-16 18:17:041494456063729078294I 
+%tableform_rolesform_roles'CREATE TABLE form_roles (
+nsfw hentaiE
+1494456063729078294mine
+neri-formu2026-07-16 18:17:041494456063729078294L1
+tabledb_log_settingsdb_log_settings3CREATE TABLE db_log_settings (
+    farm_watered       INTEGER DEFAULT 0,
+alterlerinin durumunu g
+m: `f.roulette <red|black|green|0-36> <bet | all>`public
+    action_id INTEGER PRIMARY KEY AUTOINCREMENT,
+indexsqlite_autoindex_bot_bans_1bot_bans
+3-31522967356073185311
+    srv_perm_on     INTEGER DEFAULT 1,
+3%331495420542331781241
+indexsqlite_autoindex_temp_bans_1temp_bans)
+#3/itiraf-form1494456063729078294
+1494456063729078294.
+Mtableinventoryinventory
+331527382690993672282forum-log2026-07-16 18:33:301507723513182818544H
+3C31522603184361570507bot deniyorum bo
+3-tyom1507723513182818544
+m: `f.cooldowns`public~r
+1507723513182818544{
+1494456063729078294mod_channelKanal Olu
+1524905773417631754o
+nsfw bdsmE
+    text          TEXT,
+1495397804410011838-
+im ve EkonomiManage the server XP rate.publicq
+): <#1494456065117523981>"}2026-06-30 17:52:091494456065117523981
+im ve Ekonomipay i
+log ticket create
+im ve EkonomiView the voice XP leaderboard.publicL~
+    channel_id TEXT
+farm plantv
+tirir. Kullan
+automod antilinkModerasyonEnable or disable the anti-link filter.ownerM/
+m: `f.hunt (requires Hunting Rifle)`public0V
+larGet an NSFW bdsm image.public@F
+14953977234724005761
+13737469640296407941494456063729078294
+2026-07-16 18:17:051507723513182818544K
+1527350017097076921
+netim ve Ayarlarlog i
+1507723513182818544w
+log ticketY
+m: `f.daily`public@
+im ve Ekonomifish i
+    ticket_create_on INTEGER DEFAULT 1,
+ticket2026-07-16 18:17:041494456063729078294G&
+log warn addY
+gidenler2026-07-16 18:17:041494456063729078294K9
+ tamamen temizler. Kullan
+rol-form1494456063729078294Rol Talep1520191226769444996
+m: `f.blackjack <bet | all>`public
+log text edit
+m: `f.dblog [parametreler]`publicy
+    warn_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    PRIMARY KEY (guild_id, ticket_id)
+    ses_switch_on    INTEGER DEFAULT 1,
+netim ve AyarlarGive economy money to a user (Admin).publict
+3+331526269199956185199
+1495396133965398057
+1522938621299130518V
+Etableuser_cacheuser_cache6CREATE TABLE user_cache (
+    item_id  TEXT,
+    guild_id  TEXT    NOT NULL,
+ [sebep]`ownerk
+1522926196650672178O
+3!331494460767133630484sunucu-log2026-07-16 18:17:041494456063729078294H/
+1524045560796156006
+7644461933580779721424129369541972102
+1494456063729078294sell[]
+    channel_id   TEXT PRIMARY KEY,
+331524907096607293542
+2026-07-16 18:17:041494456063729078294K(
+larFlip a coin.public;:
+im ve Ekonomiblackjack i
+1507723513182818544srv_emojiEmoji Eklendi: emoji_21
+db textY
+331527383061635797113ticket2026-07-16 18:34:591507723513182818544G
+m: `f.marry @user (requires Engagement Ring)`publicyo
+31331499754927218757723
+larPunch someone.public0R
+152404556079615600613805212027490182352026-07-07 13:32:581524045564306522256Q
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:05:45
+14954515566388880489
+2026-07-16 18:17:051507723513182818544Sv
+2026-07-16 18:17:051507723513182818544Z
+imDenies a suggestion. Usage: `f.suggest deny <id> [reason]`ownero
+    ses_stream_on   INTEGER DEFAULT 1,
+im ve Ekonomicolor i
+larPoke someone.public
+3)331495397723472400576yetkili-sohbet2026-07-16 18:17:041494456063729078294H0
+leaderboard_voice
+itablepending_actionspending_actions
+1494456063729078294work[]
+3-331507723514084462655
+7410494646171730821507723513182818544
+    user_limit  INTEGER DEFAULT 0,
+level rank_color
+level multiplier_listGeli
+tur2026-07-16 18:17:041494456063729078294Ab
+3)331495442918448824400
+untimeoutModerasyonKullan
+    msg_edit_on      INTEGER DEFAULT 1,
+larCheck the bot's latency.publicI
+nsfw rule34E
+db voiceY
+imRerolls a new winner from an ended giveaway. Usage: `f.giveaway reroll <message_id>`ownerp
+larView a user's banner.public;
+    reason     TEXT,
+1494456063729078294j
+1522303512048832740E
+ncellendi: <#1507723514084462653>
+    channel_name TEXT,
+im ve EkonomiView the text XP leaderboard.public7{
+suggestTopluluk ve Etkile
+vdisconnectModerasyonKullan
+giveaway startTopluluk ve Etkile
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+1527347075963027638
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 17:48:19
+331495443840402854058Ticketlar2026-07-16 18:17:041494456063729078294U)
+izim ve Klipler 
+m: `f.harvest [parametreler]`public
+na kaydeder.ownerl
+level rank_colorGeli
+im ve Ekonomibuy i
+es2026-07-16 18:17:041494456063729078294E>
+1517138664566685756
+tur2026-07-04 14:08:429^
+db invite
+Atableguild_settingsguild_settings
+log roleY
+db mod msgY
+m: `f.create_channel [parametreler]`owner
+        user_id TEXT NOT NULL,
+log textY
+1524905773417631754p
+indexsqlite_autoindex_db_log_settings_1db_log_settings4
+ [sebep]`owneru
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:08:48
+1507723513182818544srv_permKanal 
+2026-07-16 18:17:051507723513182818544]t
+3+31522946207704678522Kyrik'in Odas
+1507723513182818544x
+ticket removeO
+1499754927218757723
+10084464015308308891494456063729078294)
+indexsqlite_autoindex_inventory_1inventory
+    user_id         TEXT,
+imList the configured items.publicG
+;1494456063729078294harvest["1494456063729078294"]
+1494456063729078294water[]
+1494456063729078294slots[]
+Q/331494456065117523981
+35331525020775961333891
+1494456063729078294hunt
+level reward_listGeli
+1522773239036907643N
+2026-07-04 11:59:21:S
+CREATE TABLE guild_settings (
+2026-07-04 12:33:479Y
+35331507724766768009296
+3/331525174291296030750
+    guild_id         TEXT PRIMARY KEY,
+        status TEXT DEFAULT 'pending',
+1524905773417631754q
+    owner_id TEXT NOT NULL,
+1494456392151470150
+takemoneyY
+db voice stream
+CREATE TABLE sqlite_sequence(name,seq)
+in butona t
+    publish_at REAL
+1494456063729078294)
+3-31522934403632992280
+forum_mesajDi
+indexidx_warns_guild_userwarnsDCREATE INDEX idx_warns_guild_user ON warns(guild_id, user_id)
+r. Kullan
+zinleri G
+            PRIMARY KEY (guild_id, level)
+1494456063729078294cooldowns
+1507731128222748789}
+31494456063729078294summon_form{"form_id": "test", "target_channel_id": "1520191492528803890"}completed2026-07-13 11:13:55
+db mod role
+1494456063729078294daily
+\n**Form:** Rol Talep Forum\n\n**Bana yetene
+larRoll a dice.public~=
+netim ve AyarlarSync slash commands to the current guild or globally.public
+    role_add_on      INTEGER DEFAULT 1,
+1526200523147968613l
+indexsqlite_autoindex_private_voice_rooms_1private_voice_rooms@
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1527368264865415280"}completed2026-07-16 17:38:13
+foti2026-07-16 18:17:041494456063729078294O
+larList the bot owners.public5
+14944560637290782941517089297679908905["1495400490891083926"]["1494459120521056317"]1520191226769444996
+level multiplier_remove
+log voice
+    farm_crop          TEXT,
+balanceGeli
+g1494456063729078294title["1494456063729078294","1495402182965596353"]6"
+3E331526248051054870528
+2026-07-04 12:53:549]
+1494456063729078294>
+331494456063729078294ses_camera_off601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Kamera kapatt
+warnModerasyonKullan
+automod whitelist addModerasyonAdd a domain to the anti-link whitelist.ownerY2
+delete_channelModerasyonBir metin kanal
+3+331496980989937975346enshitification2026-07-16 18:17:041494456063729078294S!
+im ve EkonomiKendi Rank arka plan
+CREATE TABLE user_current_roles (
+oda-kurulum5
+1524056144899735595
+1424129370469171282
+    mod_channel     TEXT,
+ecounbanY
+1516090393958027456
+tyom-rol1507723513182818544Rol Talep Forum1527382690993672282
+1494456063729078294rob[]!
+    married_to         TEXT,
+    payload TEXT NOT NULL,
+howaustic*
+: <#1503292081492459620>"}2026-06-30 17:52:421503292081492459620
+level reward_addGeli
+db ticket create
+ekilde ger
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1507723514084462655"}completed2026-07-16 18:05:12
+im ve Ekonomilevel i
+1494456063729078294'
+    ses_stream_on    INTEGER DEFAULT 1,
+1503292864073830480(
+tur2026-07-04 11:57:459R
+    srv_perm_on      INTEGER DEFAULT 1,
+1526270484990398494
+        reason TEXT,
+db server roleY
+    PRIMARY KEY (guild_id, channel_id)
+1507725319111708692|
+3?tyom-rol1507723513182818544Bana yetene
+    user_id   TEXT,
+    form_type   INTEGER DEFAULT 1,
+Atablelevelslevels
+14962166172631737548
+yetenek-forumu2026-07-16 18:17:041494456063729078294K@
+warnsModerasyonwarns i
+1522938638055510086W
+im ve Ekonomicrime i
+log server
+indexsqlite_autoindex_level_rewards_1level_rewards
+ncellendi: <#1527364570606338250>
+tiraflar2026-07-16 18:17:041494456063729078294Oj
+331520191492528803890test2026-07-16 18:17:041494456063729078294M:
+log role
+V!31494460636514619564uyar
+perk color
+1494456063729078294inventory[]
+balance=
+3531522926196650672178
+31494456063729078294summon_form{"form_id": "itiraf-form", "target_channel_id": "1495442918448824400"}completed2026-07-13 12:23:13
+1507723513182818544srv_emojiEmoji Eklendi: emoji_26
+cooldownss
+37331495443064930435253
+db invite createY
+m: `f.vmute @kullan
+1526269984458805378
+331495414946933248160forums2026-07-16 18:17:041494456063729078294S3
+    user_id  TEXT,
+1526232723096600658
+3/331503292081492459620
+m: `f.rob @user`public
+suggest channel
+suggest approveTopluluk ve Etkile
+1494456063729078294form_mesaji_gonder[]4
+CREATE TABLE eco_bans (
+db ticket
+    level    INTEGER,
+highlowGeli
+3'331495451556638888048yetkili-al
+]tablecommand_permissionscommand_permissions
+1494456063729078294form_sil[],%
+1494462741770010694#
+db roleY
+pending_actions
+etablechannel_cachechannel_cache8CREATE TABLE channel_cache (
+perk colorGeli
+1494456063729078294fish
+    suggestion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+1522930723512914121R
+1494456063729078294+
+giveaway start
+2026-07-04 12:15:059W
+37331495418894599454720
+14944560637290782946
+    mod_role_on     INTEGER DEFAULT 1,
+1497672509863100549@
+forum_sil
+3%331495395685204234340Ba
+        allowed_roles TEXT DEFAULT '[]',
+ticket removeTopluluk ve Etkile
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+im ve Ekonomimarry i
+1522930649776914474Q
+31494456063729078294summon_form{"form_id": "klnfsd", "target_channel_id": "1495397751188619315"}completed2026-07-13 12:09:18
+web_actionsons
+giveaway list
+1494456063729078294profile
+log warn
+db server role
+    log_channel     TEXT,
+ #kanal [sebep]`owner8
+2026-07-04 12:15:229X
+3gtestform21494456063729078294
+;1494456063729078294leaderboard["1494456063729078294"]
+2026-07-16 18:17:041494456063729078294L
+log ticket closeY
+14954447805644800006
+1494456063729078294fish[]
+m: `f.deposit <amount | all>`public0?
+im ve EkonomiAdd a role reward for a level.ownera
+db serverY
+automod antispamModerasyonEnable or disable the anti-spam filter.owner;,
+1494456063729078294title[]
+utableprivate_voice_roomsprivate_voice_rooms?CREATE TABLE private_voice_rooms (
+3'31424129370469171283m
+Genel 02026-07-07 06:26:481494456063729078294M
+-log2026-06-30 15:10:26
+db ticket createY
+nderildi\n**Form:** 
+db warn remove
+clearwarn
+2026-07-16 18:17:051507723513182818544Tx
+lence ve Ara
+1494456063729078294l
+m: `f.delete_channel #kanal`owner:
+duyurdum2026-07-16 18:17:041494456063729078294G
+31494456063729078294summon_form{"form_id": "itiraf-form", "target_channel_id": "1526200523147968613"}completed2026-07-15 10:04:54
+1522946207704678522]
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 17:46:24
+1507724566510698726y
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:06:47
+331494460849845309476Loglar2026-07-16 18:17:041494456063729078294
+10641023414202573201494456063729078294
+log app createY
+im ve Ekonomishop i
+m: `f.vundeafen @kullan
+n nedir?(
+coinflip;
+userinfoE
+tur2026-07-04 11:42:58>P
+1507723513182818544}
+): <#1494456065117523981>"}2026-06-30 17:53:021494456065117523981
+imSetup the ticket system.ownerjM
+#331494456063729078294ses_stream_on601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Ekran Payla
+vundeafenModerasyonKullan
+db mod msg
+log ticket close
+1507724766768009296z
+level channel remove
+1494456063729078294withdraw
+1494456063729078294shop
+farm statusx
+log server permY
+331494460339897630870mesaj-log2026-07-16 18:17:041494456063729078294J%
+2026-07-04 11:49:39:Q
+pending_offline_forms
+15207185066292716561494456063729078294S
+1424129370469171281
+1494456063729078294=
+suggestions
+    role_remove_on   INTEGER DEFAULT 1
+im ve EkonomiVirtual crop farm manager.public|s
+im ve EkonomiRemove a channel from the XP ignore list.ownerK
+CREATE TABLE saved_roles (
+3'331497672509863100549yetkili-sesli2026-07-16 18:17:041494456063729078294S?
+forum_olustur
+1495396530562011259
+3/331520505821476159528
+3+331507724566510698726
+db server permY
+fishGeli
+#331494456063729078294msg_delete601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/6013444244290
+rol-test1424129369541972102rol1516034120898318378
+rouletteg
+1507723513182818544srv_emojiEmoji Eklendi: emoji_31
+7970455762188370221424129369541972102
+3+331495390325995470869
+1494456063729078294roulette
+indexsqlite_autoindex_command_permissions_1command_permissions
+1494456063729078294itiraf-form
+1494456063729078294%
+1494456063729078294crime
+    mine_cooldown   REAL    DEFAULT 0.0,
+perkGeli
+1494456063729078294daily[]"
+yetkililer2026-07-16 18:17:041494456063729078294L5
+14566794464960226731494456063729078294
+larMeasure how gay someone is.public:
+149445606J
+    ses_channel     TEXT,
+1507723513182818544mod_channelKanal 
+31494456063729078294summon_form{"form_id": "itiraf-form", "target_channel_id": "1495442918448824400"}completed2026-07-13 12:22:25
+imApproves a suggestion. Usage: `f.suggest approve <id> [reason]`owner
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:17:10
+    invite_use_on    INTEGER DEFAULT 1,
+re boyunca susturur.owneru}
+2026-07-16 18:17:051507723513182818544]
+31494456063729078294summon_form{"form_id": "klnfsd", "target_channel_id": "1495397751188619315"}completed2026-07-13 12:13:16
+web_actions
+etablewarnswarns
+forum_mesaj
+Etkinlikk2026-07-16 18:17:041494456063729078294O6
+withdrawGeli
+    sunucu_channel  TEXT,
+forum_silDi
+level channel removeGeli
+ TicketDestek i
+admin_notes
+im ve EkonomiSet the server global XP multiplier.ownerE
+automod,
+indexsqlite_autoindex_economy_1economy
+3+31522943109489492059Kyrik'in Odas
+31522967400163573832test ses2026-07-04 14:08:44:_
+1494456063729078294gamble
+    mod_msg_on       INTEGER DEFAULT 1,
+klama yok.public~
+    bitrate     INTEGER DEFAULT 64000,
+31520191226769444996loglar2026-06-30 15:10:26
+db voice joinY
+imRun the setup process.ownermP
+n2026-07-02 18:10:40JC
+giveaway listTopluluk ve Etkile
+larSetup the private voice channels system.owner64
+3463986864036249611494456063729078294
+unbanModerasyonKullan
+15182913634883381201494456063729078294
+db role add
+1494460437646016512
+m: `f.withdraw <amount | all>`public<A
+CREATE TABLE bot_bans (
+33rol-form149445606372907829414954228068281263613
+zellikler2026-07-16 18:17:041494456063729078294SA
+indexsqlite_autoindex_private_voice_settings_1private_voice_settingsB
+3-31424129370469171281Metin Kanallar
+1494456063729078294gamble[]
+    app_create_on    INTEGER DEFAULT 1,
+wtableactive_ticketsactive_tickets;CREATE TABLE active_tickets (
+14954517330009784522
+33331507725235993055384Sesli Sohbet 3'
+form_questions
+2026-07-16 18:17:051507723513182818544P}
+1494456063729078294e
+helo2026-07-16 18:17:041494456063729078294F
+331494460580852007053rol-log2026-07-16 18:17:041494456063729078294D
+147986209110281845614944560637290782
+37331495397669890293772
+larList the configured items.publicq%
+m: `f.vunmute @kullan
+gambleGeli
+1517089405406285854B
+1520191492528803890;
+31507723513182818544summon_form{"form_id": "tyom", "target_channel_id": "1507723514084462655"}completed2026-07-16 17:40:12
+clearwarnModerasyonSistemdeki clearwarn kay
+log role add
+8039525848291737811494456063729078294
+1494460392469172224>
+log serverY
+1495394968767041626 
+farm statusGeli
+qtablesuggestionssuggestions*CREATE TABLE suggestions (
+nemli oda' 
+    points   INTEGER DEFAULT 0,
+suggest deny
+db text delete
+1522934445508788276T
+bot-kanal
+1494456063729078294leaderboard[]!
+1494456063729078294withdraw[]!
+CREATE TABLE command_permissions (
+    guild_id        TEXT PRIMARY KEY,
+2026-07-16 18:17:051507723513182818544M
+1494456063729078294&
+1524905774588100739o
+scratchj
+331494460437646016512mod-log2026-07-16 18:17:041494456063729078294J
+im ve Ekonomihunt i
+larSearch for rule34 images.public?G
+33rol-form149445606372907829414954222374597468683
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:13:02
+larBite someone.publicBQ
+level ignore_add
+howausticE
+31494456063729078294summon_form{"form_id": "testform2", "target_channel_id": "1520191492528803890"}completed2026-07-13 11:26:21
+n2026-07-02 19:17:072F
+: <#1503292081492459620>"}2026-06-30 17:52:551503292081492459620
+1494456063729078294harvest[] !
+1507723513182818544srv_emojiEmoji Eklendi: emoji_30
+3?rol-test1424129369541972102bu rol
+    auto_approve INTEGER DEFAULT 1,
+CREATE TABLE levels (
+33rol-test142412936954197210214241294200749425053
+2026-07-04 12:34:089Z
+    user_id       TEXT,
+leaderboardGeli
+14175723409041040281424129369541972102>
+m sunucuya selam\n"}2026-07-16 18:19:17
+    hub_id      TEXT,
+1494456063729078294sell
+im ve EkonomiAdd an XP multiplier to a role.ownerQ
+im ve EkonomiRemove an XP multiplier from a role.ownerQ
+m: `f.status [parametreler]`public
+    warn_remove_on   INTEGER DEFAULT 1,
+2026-07-16 18:17:051507723513182818544N
+indexsqlite_autoindex_custom_forms_1custom_forms%
+1494456063729078294color
+1507723513182818544srv_emojiEmoji Eklendi: emoji_24
+m: `f.title [parametreler]`public
+1521087051586469959,
+    embed_json TEXT,
+1527382690993672282
+3-331527364570606338250
+13805212027490182351494456063729078294
+;1494456063729078294marry["1494456063729078294"]
+level xp_rate
+CREATE TABLE admin_notes (
+m: `f.buy <item_id>`public*^
+331527387144858112192man2026-07-16 18:51:131494456063729078294G
+;1494456063729078294color["1495487780229349406"]"$
+11627975205487984841507723513182818544 
+1527347349544763483
+3+31522934445508788276Kyrik'in Odas
+klama yok.public:
+larTickle someone.public0X
+-331494456063729078294ses_switch_join601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Kanal De
+-331494456063729078294ses_switch_leave601344424429092864{"username": "thekyrik", "avatar_url": "https://cdn.discordapp.com/avatars/601344424429092864/eddec9243ddd1ae0eaf7f19090587ec4.png?size=1024", "text": "Kanal De
+tablebot_bansbot_bans
+netim ve AyarlarVeritaban
+1494456063729078294blackjack
+2026-07-04 12:42:159[
+    work_cooldown   REAL    DEFAULT 0.0,
+33rol-test14241293695419721021505595467176607885
+resimleriniz
+1517082647308927067
+3+31522938846826860544Kyrik'in Odas
+1494456063729078294blackjack[]"
+2026-07-16 18:17:051507723513182818544Q{
+1494456063729078294@
+    action_target TEXT,
+1494456063729078294deposit[]!
+33rol-test142412936954197210215095965826584454053
+log app reject
+2026-06-24 11:55:57:
+gif-odas
+leaderboard_voiceGeli
+\nBilet ID: 001-thekyrik"}2026-07-16 18:50:531527387026985451591
+    owner_id    TEXT,
+tablelevel_rewardslevel_rewards CREATE TABLE level_rewards (
+klama yok.public8
+automod antiprofanityModerasyonEnable or disable the anti-profanity filter.ownerK-
+3Q331526232723096600658
+1494460849845309476
+log mod roleY
+hikaye-anlatma
+1494456063729078294pay[]
+n nedir**\nt
+log voice stream
+1526268918094762075
+highlown
+3)31522303512048832740garip bir g
+untimeout
+14954430649304352533
+rouletteGeli
+im ve Ekonomisell i
+imMarks suggestion as under consideration. Usage: `f.suggest consider <id> [reason]`owner
+331524905774588100739.2026-07-16 18:17:051524905773417631754\n
+1507724278542372887w
+ | Genel 12026-07-16 18:17:041494456063729078294I
+log voiceY
+    role_name TEXT,
+37331495403255562244106
+1522661585720578188I
+tur2026-07-16 18:51:131494456063729078294Re
+1507723513182818544y
+1507723514084462656v
+1494456063729078294f
+2026-07-04 12:14:32>U
+39331507724534118223872
+1494456065117523979
+1494456063729078294hunt[]
+1522938775817289879X
+tiraf Forumu0
+larCry.public9\
+39331508555909641801820
+1507723513182818544srv_emojiEmoji Eklendi: emoji_29
+14501624215104431731494456063729078294@-
+2026-07-16 18:17:041494456063729078294H
+klnfsd14944F
+ | zeideon2026-07-04 01:17:124M
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+3/331525175882799513763
+nda susturur. Kullan
+rage removeE
+Yetkili: <@1109481528523755560> (`1109481528523755560`)2026-07-16 18:05:05
+1331507723513182818544app_create601344424429092864{"username": "601344424429092864", "text": "
+1494456063729078294b
+3;331495444902010425484
+31494456063729078294summon_form{"form_id": "testform2", "target_channel_id": "1495384331596857455"}completed2026-07-13 11:35:28
+Utablerole_permissionsrole_permissions
+    FOREIGN KEY (guild_id, form_id) REFERENCES custom_forms(guild_id, form_id) ON DELETE CASCADE
+m: `f.mine (requires Steel Pickaxe)`public3Z
+db app create
+erCreate a new forum channel.ownerL
+1522938846826860544Y
+larGet information about the bot.publicF"
+oda-kurulumE
+1494456063729078294buy[]
+1526113579282075658
+1494456063729078294<
+1522603184361570507H
+sellGeli
+3#331495396133965398057
+leaderboard_xp|
+1507723513182818544srv_emojiEmoji Eklendi: emoji_20
+3+331494456392151470150
+slotsGeli
+)2026-07-16 18:17:051507723513182818544M
++tablepending_offline_formspending_offline_forms/
+    custom_title_text  TEXT,
+depositGeli
++indexidx_admin_events_guild_targetadmin_eventsHCREATE INDEX idx_admin_events_guild_target ON admin_events(guild_id, target_id)C:
+vundeafen
+log mod msg
+giveawayTopluluk ve Etkile
+'2026-07-16 18:17:051507723513182818544Q
+giveaway reroll
+1494456063729078294color[]
+larWave at someone.public4Y
+tla**\ntest\n"}2026-07-16 18:50:211527382690993672282
+zel Odalar2026-07-16 18:17:041494456063729078294Gd
+log voice switch
+    basvuru_channel TEXT,
+automod antizalgoModerasyonEnable or disable the anti-zalgo filter.ownerU.
+    PRIMARY KEY (user_id, guild_id)
+log app accept
+1495395685204234340
+1520505821476159528
+deposit@
+im ve Ekonomiscratch i
+1525020775961333891e
+larView detailed information about a user.publicP
+log app acceptY
+1507723513182818544u
+indexsqlite_autoindex_ragepoints_1ragepoints.
+ka bir ses kanal
+3+31522948571526070282Kyrik'in Odas
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        PRIMARY KEY (guild_id, command_name)
+14944560637290782940
+klama yok.public6
+level xp_rateGeli
+level reward_list
+    banlist     TEXT DEFAULT '[]'
+ [sebep]`ownerv
+    msg_channel     TEXT,
+2026-07-16 18:17:051507723513182818544`
+indexsqlite_autoindex_channel_cache_1channel_cache9
+db server emoji
+larBoop someone.public
+1507723513182818544srv_emojiEmoji Eklendi: emoji_28
+1494456063729078294water 
+db server perm
+im ve EkonomiKendi Rank tema rengini de
+larGet a random dog picture.public;9
+n diye kitledim merak etmeyin", "mod_user_id": null, "mod_username": null}2026-07-16 18:19:541527368264865415280
+tirir. Mesaja bir resim eklemelisin!public
+db voice
+log voice join
+3K331507723514084462653
+db app accept
+    room_name   TEXT,
+log server emoji
+automod whitelist removeModerasyonRemove a domain from the anti-link whitelist.owner
+zel Odalar2026-07-04 11:37:578N
+db invite use
+2026-07-16 18:17:041494456063729078294
+oindexidx_levels_guildlevelsFCREATE INDEX idx_levels_guild ON levels(guild_id)W@
+2026-07-16 18:17:051507723513182818544My
+rage listE
+mineGeli
+    author_id     TEXT,
+1494456063729078294rol-form
+automod antilink0
+imAdds a member to an existing ticket. Usage: `f.ticket add <@user>`ownervO
+14944560637290782943
+3%331521087051586469959
+3!331495405807070740711
+huntGeli
+2026-07-16 18:17:051507723513182818544P
+netim ve AyarlarTake economy money from a user (Admin).publicW
+1495403255562244106
+inventoryGeli
+im ve EkonomiManage and activate your purchased perks.publicB
+m: `f.highlow <bet | all>`public
+farm wateru
+larMeasure someone's IQ.publicQ3
+ Klavyeden Uzakta2026-07-16 18:17:041494456063729078294N
+venli bir 
+log invite createY
+sterir.owner{
+CREATE TABLE inventory (
+karakter-tan
+;1494456063729078294profile["1494456063729078294"]
+Yetkili: <@601344424429092864> (`601344424429092864`)2026-07-16 18:35:53
+m: `f.set <parametre>`public;
+admin_eventsB
+331520191226769444996loglar2026-07-16 18:17:041494456063729078294F-
+1507723513182818544srv_emojiEmoji Eklendi: emoji_25
+    log_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    title       TEXT NOT NULL,
+im ve Ekonomiwater i
+: <#1503292081492459620>"}2026-06-30 17:52:291503292081492459620
+1522681353701691403K
+netim ve AyarlarSistemdeki set ayar
+1521764226514026536
+3]331526268918094762075
+3-331525020777433530378
+larLick someone.public0U
+33rol-form149445606372907829414954229387346576283
+1494456063729078294*
+n ses susturmas
+3tablecustom_formscustom_forms$CREATE TABLE custom_forms (
+log text editY
+    publish_mode TEXT,
+db app rejectY
+log text deleteY
+ecounban
+        target_user_id TEXT NOT NULL,
+botunban"
+indexsqlite_autoindex_guild_settings_1guild_settings
+Yetkili: <@155149108183695360> (`155149108183695360`)2026-07-16 18:19:38
+db mod channelY
+purgeModerasyonpurge i
+3+31522938621299130518Pishi'in Odas
+    ticket_id TEXT,
+3%331495451910738804877ba
+netim ve AyarlarUnban a user from the economy system.publicN
+db inviteY
+im ve Ekonomititle i
+owo2026-07-16 18:17:041494456063729078294V
+Mtableuser_current_rolesuser_current_roles
+level channel
+1527382223798538390
+automod whitelist1
+automod whitelistModerasyonConfigure the link whitelist.ownerK0
+shopGeli
+im ve Ekonomigamble i
+ndan atar. Kullan
+nsfw bdsmG
+1494456063729078294shop[]
+    ses_join_on      INTEGER DEFAULT 1,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+m: `f.vdeafen @kullan
+14944560637290782948
+1494456063729078294i
+log invite useY
+1495420542331781241+
+    guild_id     TEXT NOT NULL,
+neri-formu2026-06-30 15:10:26
+3531522926428973437100
+imStarts a server giveaway in the current channel.ownerH
+ticket setupTopluluk ve Etkile
+ctableeco_banseco_bans
+ Genel Kanallar 
+1526269199956185199
+log invite
+    PRIMARY KEY (guild_id, level)
+    timestamp   DATETIME DEFAULT CURRENT_TIMESTAMP
+1494456063729078294work
+CREATE TABLE roles (
+110555759141481681815077235131828185446
+log setY
+workGeli
+im ve Ekonomihighlow i
+klama yok.public5
+    action_id   INTEGER PRIMARY KEY AUTOINCREMENT,
+    status TEXT DEFAULT 'open',
+ neden istiyorsun
+suggest approve
+erCreate a new post (thread) in a forum channel.owner
+14606751490944575781507723513182818544
+klipleriniz
+m: `f.gamble <heads|tails> <bet | all>`public|k
+): <#1503292081492459620>"}2026-06-30 17:53:021503292081492459620
+1522945639099535440\
+netim ve AyarlarBan a user from using the bot.publicp
+klama yok.public;
+tirdi (Ayr
+crimeGeli
+2026-07-16 18:17:051507723513182818544R
+    app_reject_on    INTEGER DEFAULT 1,
+2026-07-16 18:17:051507723513182818544Rz
+    guild_id           TEXT,
+SQLite format 3
+db app createY
+im ve Ekonomibeg i
+    action_type TEXT    NOT NULL,
+1524841178615517387d
+    srv_emoji_on    INTEGER DEFAULT 1,
+ticketTopluluk ve Etkile
+log mod role
+1494456063729078294:
+1527030519081074869
