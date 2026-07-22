@@ -257,13 +257,451 @@ class TicketDetailedSettingsDropdown(discord.ui.Select):
                 await interaction.edit_original_response(content="✅ Ticket paneli bu kanala gönderildi!", embed=None, view=None)
             else:
                 await interaction.edit_original_response(content="❌ Tickets modülü yüklenmemiş!", embed=None, view=None)
-        elif val == "web":
+        elif sys_type == "form":
+            embed.title = "📋 Başvuru Sistemi Kurulumu"
+            embed.description = "Yetkili alım ve destek başvuru formlarını kurabilirsiniz."
+            view = FormSetupView(self.bot)
+            await interaction.edit_original_response(embed=embed, view=view)
+        elif sys_type == "suggestion":
+            embed.title = "💡 Öneri Sistemi Kurulumu"
+            embed.description = "Üyelerin fikirlerini belirteceği öneri kanalını kurabilirsiniz."
+            view = SuggestionSetupView(self.bot)
+            await interaction.edit_original_response(embed=embed, view=view)
+        elif sys_type == "automod":
+            embed.title = "🛡️ Otomoderasyon Sistemi Kurulumu"
+            embed.description = "Spam, küfür ve reklam korumalarını yapılandırabilirsiniz."
+            view = AutoModSetupView(self.bot)
+            await interaction.edit_original_response(embed=embed, view=view)
+        elif sys_type == "forum":
+            embed.title = "💬 Forum Sistemi Kurulumu"
+            embed.description = "Sunucu forumunu (Soru-Cevap vb.) tek tuşla kurabilirsiniz."
+            view = ForumSetupView(self.bot)
+            await interaction.edit_original_response(embed=embed, view=view)
+        elif sys_type == "giveaway":
+            embed.title = "🎉 Çekiliş Sistemi Kurulumu"
+            embed.description = "Çekiliş kanalı ve altyapısını kurabilirsiniz."
+            view = GiveawaySetupView(self.bot)
+            await interaction.edit_original_response(embed=embed, view=view)
+        elif sys_type == "web":
             embed = discord.Embed(
                 title="🌐 Web Dashboard",
                 description="Destek rolü, transcript gibi gelişmiş ayarları Web Dashboard üzerinden yapabilirsiniz.",
                 color=discord.Color.blurple()
             )
             await interaction.edit_original_response(embed=embed, view=None)
+
+
+class VoiceSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(VoiceDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        category = await guild.create_category("🎙️ Özel Odalar", reason="Özel Ses Hızlı Kurulum")
+        hub_channel = await guild.create_voice_channel(name="➕ Oda Oluştur", category=category)
+        
+        await self.bot.db.execute("INSERT OR REPLACE INTO private_voice_hubs (guild_id, hub_id, category_id) VALUES (?, ?, ?)", 
+                                  str(guild.id), str(hub_channel.id), str(category.id))
+                                  
+        embed = discord.Embed(
+            title="🎙️ Özel Ses Odaları",
+            description="✅ Hızlı kurulum tamamlandı!\n\nKullanıcılar `➕ Oda Oluştur` kanalına katıldığında otomatik olarak kendilerine ait yönetilebilir odalar açılacaktır.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("DELETE FROM private_voice_hubs WHERE guild_id=?", str(interaction.guild.id))
+        embed = discord.Embed(
+            title="🗑️ Özel Ses Sistemi Sıfırlandı",
+            description="Özel ses odası (hub) bağlantısı veritabanından silindi.",
+            color=discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class VoiceDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Özel Ses)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Özel oda varsayılan limiti, varsayılan bitrate gibi ince ayarları Web Dashboard üzerinden yapabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class LevelSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(LevelDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        level_channel = await guild.create_text_channel(name="🎉・seviye-atlama", reason="Seviye Hızlı Kurulum")
+        
+        await self.bot.db.execute(
+            "INSERT INTO level_settings (guild_id, level_channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET level_channel_id=excluded.level_channel_id",
+            str(guild.id), str(level_channel.id)
+        )
+                                  
+        embed = discord.Embed(
+            title="📈 Seviye (Leveling) Sistemi",
+            description="✅ Hızlı kurulum tamamlandı!\n\nSeviye atlama bildirim kanalı oluşturuldu. Kullanıcılar mesaj yazdıkça veya seste durdukça XP kazanacaklar.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("DELETE FROM level_settings WHERE guild_id=?", str(interaction.guild.id))
+        await self.bot.db.execute("DELETE FROM level_rewards WHERE guild_id=?", str(interaction.guild.id))
+        await self.bot.db.execute("DELETE FROM level_ignores WHERE guild_id=?", str(interaction.guild.id))
+        
+        embed = discord.Embed(
+            title="🗑️ Seviye Sistemi Sıfırlandı",
+            description="Seviye genel ayarları, rol ödülleri ve engellenen kanallar veritabanından tamamen silindi. (Üyelerin kazandığı mevcut XP'ler silinmez).",
+            color=discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class LevelDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Seviye)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Özel rol çarpanları (XP boost), kazanım oranları ve rol ödüllerini Web Dashboard üzerinden detaylıca yapılandırabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class FormSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(FormDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        category = await guild.create_category("📋 Başvurular", reason="Form Hızlı Kurulum")
+        log_channel = await guild.create_text_channel(name="gizli-başvuru-log", category=category)
+        
+        form_id = "yetkili-alim-1"
+        await self.bot.db.execute(
+            "INSERT OR REPLACE INTO custom_forms (form_id, guild_id, title, channel_id, form_type, auto_approve) VALUES (?, ?, ?, ?, ?, ?)",
+            form_id, str(guild.id), "Yetkili Alım Formu", str(log_channel.id), 1, 1
+        )
+        
+        embed = discord.Embed(
+            title="📋 Başvuru (Form) Sistemi",
+            description=f"✅ Hızlı kurulum tamamlandı!\n\nBaşvuruların düşeceği log kanalı: {log_channel.mention}. Yetkili başvuru formu aktif edildi.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("DELETE FROM custom_forms WHERE guild_id=?", str(interaction.guild.id))
+        
+        embed = discord.Embed(
+            title="🗑️ Form Sistemi Sıfırlandı",
+            description="Tüm başvuru formları (yetkili alım, kayıt vb.) veritabanından silindi.",
+            color=discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class FormDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Form)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Form sorularını özelleştirme ve çoklu form panelleri oluşturma gibi detaylı ayarları Web Dashboard üzerinden yapabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class SuggestionSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(SuggestionDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        channel = await guild.create_text_channel(name="💡・öneriler", reason="Öneri Hızlı Kurulum")
+        
+        await self.bot.db.execute(
+            "INSERT INTO suggestion_config (guild_id, channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id",
+            str(guild.id), str(channel.id)
+        )
+        
+        embed = discord.Embed(
+            title="💡 Öneri Sistemi",
+            description=f"✅ Hızlı kurulum tamamlandı!\n\nÖneriler {channel.mention} kanalına düşecek. Üyeler komut kullanarak öneri iletebilir.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("DELETE FROM suggestion_config WHERE guild_id=?", str(interaction.guild.id))
+        
+        embed = discord.Embed(
+            title="🗑️ Öneri Sistemi Sıfırlandı",
+            description="Öneri kanalı ayarı silindi. Yeni öneri alınmayacak.",
+            color=discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class SuggestionDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Öneri)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Öneri kabul/ret mesajları, oto-yanıtlar ve emojileri özelleştirmek için Web Dashboard'u kullanabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class AutoModDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Küfür Koruması", emoji="🤬", value="profanity"),
+            discord.SelectOption(label="Link Koruması", emoji="🔗", value="link"),
+            discord.SelectOption(label="Spam Koruması", emoji="🛡️", value="spam"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (OtoMod Aç/Kapat)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    def _update_automod_status(self, guild_id: str, key: str, status: bool):
+        from core.utils import json_load, json_save
+        from pathlib import Path
+        db_file = Path("Data/automod.json")
+        data = json_load(db_file)
+        
+        if key not in data:
+            data[key] = {}
+            
+        data[key][guild_id] = status
+        json_save(db_file, data)
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        guild_id = str(interaction.guild.id)
+        selected = self.values[0]
+        
+        from core.utils import json_load
+        from pathlib import Path
+        db_file = Path("Data/automod.json")
+        data = json_load(db_file)
+        
+        # Determine current status to toggle
+        target_key = ""
+        if selected == "profanity": target_key = "antiprofanity"
+        elif selected == "link": target_key = "antilink"
+        elif selected == "spam": target_key = "antispam"
+        
+        current_status = False
+        if target_key in data and guild_id in data[target_key]:
+            current_status = data[target_key][guild_id]
+            
+        new_status = not current_status
+        self._update_automod_status(guild_id, target_key, new_status)
+        
+        durum_text = "🟢 Aktif" if new_status else "🔴 Devre Dışı"
+        
+        embed = discord.Embed(
+            title="🛡️ Otomoderasyon Detaylı Ayar",
+            description=f"Seçilen koruma: **{selected.capitalize()}**\nYeni Durum: **{durum_text}**",
+            color=discord.Color.green() if new_status else discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class AutoModSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(AutoModDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum (Max Güvenlik)", style=discord.ButtonStyle.success, emoji="🛡️", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild_id = str(interaction.guild.id)
+        
+        from core.utils import json_load, json_save
+        from pathlib import Path
+        db_file = Path("Data/automod.json")
+        data = json_load(db_file)
+        
+        for k in ["antilink", "antispam", "antiprofanity"]:
+            if k not in data:
+                data[k] = {}
+            data[k][guild_id] = True
+            
+        json_save(db_file, data)
+        
+        embed = discord.Embed(
+            title="🛡️ Otomoderasyon Sistemi",
+            description="✅ Maksimum güvenlik aktifleştirildi!\n\nKüfür, reklam (link) ve spam korumaları açıldı.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🗑️ Korumaları Kapat", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild_id = str(interaction.guild.id)
+        
+        from core.utils import json_load, json_save
+        from pathlib import Path
+        db_file = Path("Data/automod.json")
+        data = json_load(db_file)
+        
+        for k in ["antilink", "antispam", "antiprofanity"]:
+            if k in data and guild_id in data[k]:
+                data[k][guild_id] = False
+                
+        json_save(db_file, data)
+        
+        embed = discord.Embed(
+            title="🛡️ Otomoderasyon Kapatıldı",
+            description="Tüm korumalar devre dışı bırakıldı.",
+            color=discord.Color.red()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class ForumSetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(ForumDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        forum_channel = await guild.create_forum_channel(name="💬・sunucu-forumu", reason="Forum Hızlı Kurulum")
+        
+        embed = discord.Embed(
+            title="💬 Forum Sistemleri",
+            description=f"✅ Hızlı kurulum tamamlandı!\n\nForum kanalı oluşturuldu: {forum_channel.mention}. Üyeleriniz artık burada konular (post) açabilir.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class ForumDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Forum)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Otomatik etiket (tag) zorunlulukları ve konu kilitlenme ayarları gibi detayları Web Dashboard üzerinden yapılandırabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class GiveawaySetupView(discord.ui.View):
+    def __init__(self, bot: commands.Bot):
+        super().__init__(timeout=None)
+        self.bot = bot
+        self.add_item(GiveawayDetailedSettingsDropdown(bot))
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild = interaction.guild
+        
+        channel = await guild.create_text_channel(name="🎉・çekilişler", reason="Çekiliş Hızlı Kurulum")
+        
+        embed = discord.Embed(
+            title="🎉 Çekiliş Sistemi",
+            description=f"✅ Hızlı kurulum tamamlandı!\n\nÇekilişler için {channel.mention} kanalı oluşturuldu. Çekiliş başlatmak için `f.giveaway` komutlarını kullanabilirsiniz.",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+
+class GiveawayDetailedSettingsDropdown(discord.ui.Select):
+    def __init__(self, bot: commands.Bot):
+        options = [
+            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
+        ]
+        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Çekiliş)...", min_values=1, max_values=1, options=options, row=2)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        embed = discord.Embed(
+            title="🌐 Web Dashboard",
+            description="Çekiliş yöneticisi rolleri (Giveaway Manager) ve çekilişe katılması yasaklanan rolleri (Blacklist) Web Dashboard üzerinden ayarlayabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
 
 
 class SetupDropdown(discord.ui.Select):
