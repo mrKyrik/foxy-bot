@@ -257,32 +257,7 @@ class TicketDetailedSettingsDropdown(discord.ui.Select):
                 await interaction.edit_original_response(content="✅ Ticket paneli bu kanala gönderildi!", embed=None, view=None)
             else:
                 await interaction.edit_original_response(content="❌ Tickets modülü yüklenmemiş!", embed=None, view=None)
-        elif sys_type == "form":
-            embed.title = "📋 Başvuru Sistemi Kurulumu"
-            embed.description = "Yetkili alım ve destek başvuru formlarını kurabilirsiniz."
-            view = FormSetupView(self.bot)
-            await interaction.edit_original_response(embed=embed, view=view)
-        elif sys_type == "suggestion":
-            embed.title = "💡 Öneri Sistemi Kurulumu"
-            embed.description = "Üyelerin fikirlerini belirteceği öneri kanalını kurabilirsiniz."
-            view = SuggestionSetupView(self.bot)
-            await interaction.edit_original_response(embed=embed, view=view)
-        elif sys_type == "automod":
-            embed.title = "🛡️ Otomoderasyon Sistemi Kurulumu"
-            embed.description = "Spam, küfür ve reklam korumalarını yapılandırabilirsiniz."
-            view = AutoModSetupView(self.bot)
-            await interaction.edit_original_response(embed=embed, view=view)
-        elif sys_type == "forum":
-            embed.title = "💬 Forum Sistemi Kurulumu"
-            embed.description = "Sunucu forumunu (Soru-Cevap vb.) tek tuşla kurabilirsiniz."
-            view = ForumSetupView(self.bot)
-            await interaction.edit_original_response(embed=embed, view=view)
-        elif sys_type == "giveaway":
-            embed.title = "🎉 Çekiliş Sistemi Kurulumu"
-            embed.description = "Çekiliş kanalı ve altyapısını kurabilirsiniz."
-            view = GiveawaySetupView(self.bot)
-            await interaction.edit_original_response(embed=embed, view=view)
-        elif sys_type == "web":
+        elif val == "web":
             embed = discord.Embed(
                 title="🌐 Web Dashboard",
                 description="Destek rolü, transcript gibi gelişmiş ayarları Web Dashboard üzerinden yapabilirsiniz.",
@@ -730,8 +705,72 @@ class SetupDropdown(discord.ui.Select):
                 color=discord.Color.blurple()
             )
             await interaction.response.edit_message(embed=embed, view=LogSetupView(self.bot))
+        elif sys_type == "ticket":
+            embed = discord.Embed(
+                title="🎫 Ticket Sistemi Kurulumu",
+                description="Destek talepleri sistemini kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import TicketSetupView
+            await interaction.response.edit_message(embed=embed, view=TicketSetupView(self.bot))
+        elif sys_type == "voice":
+            embed = discord.Embed(
+                title="🎙️ Özel Ses Odaları Kurulumu",
+                description="Kullanıcıların kendi ses odalarını oluşturabileceği sistemi kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import VoiceSetupView
+            await interaction.response.edit_message(embed=embed, view=VoiceSetupView(self.bot))
+        elif sys_type == "level":
+            embed = discord.Embed(
+                title="📈 Seviye Sistemi Kurulumu",
+                description="XP ve seviye atlama duyuru sistemini kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import LevelSetupView
+            await interaction.response.edit_message(embed=embed, view=LevelSetupView(self.bot))
+        elif sys_type == "form":
+            embed = discord.Embed(
+                title="📋 Başvuru Sistemi Kurulumu",
+                description="Yetkili alım ve destek başvuru formlarını kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import FormSetupView
+            await interaction.response.edit_message(embed=embed, view=FormSetupView(self.bot))
+        elif sys_type == "suggestion":
+            embed = discord.Embed(
+                title="💡 Öneri Sistemi Kurulumu",
+                description="Üyelerin fikirlerini belirteceği öneri kanalını kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import SuggestionSetupView
+            await interaction.response.edit_message(embed=embed, view=SuggestionSetupView(self.bot))
+        elif sys_type == "automod":
+            embed = discord.Embed(
+                title="🛡️ Otomoderasyon Sistemi Kurulumu",
+                description="Spam, küfür ve reklam korumalarını yapılandırabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import AutoModSetupView
+            await interaction.response.edit_message(embed=embed, view=AutoModSetupView(self.bot))
+        elif sys_type == "forum":
+            embed = discord.Embed(
+                title="💬 Forum Sistemi Kurulumu",
+                description="Sunucu forumunu (Soru-Cevap vb.) tek tuşla kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import ForumSetupView
+            await interaction.response.edit_message(embed=embed, view=ForumSetupView(self.bot))
+        elif sys_type == "giveaway":
+            embed = discord.Embed(
+                title="🎉 Çekiliş Sistemi Kurulumu",
+                description="Çekiliş kanalı ve altyapısını kurabilirsiniz.",
+                color=discord.Color.blurple()
+            )
+            from Commands.administration.setup import GiveawaySetupView
+            await interaction.response.edit_message(embed=embed, view=GiveawaySetupView(self.bot))
         else:
-            await interaction.response.send_message(f"Bu modül ({sys_type}) yapım aşamasındadır!", ephemeral=True)
+            await interaction.response.send_message(f"Bu modül ({sys_type}) henüz yüklenmedi!", ephemeral=True)
 
 
 class SetupMainView(discord.ui.View):
