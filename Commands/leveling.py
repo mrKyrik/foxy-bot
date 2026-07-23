@@ -21,6 +21,7 @@ import os
 import random
 import time
 import asyncio
+import uuid
 
 import discord
 from discord.ext import commands, tasks
@@ -755,42 +756,42 @@ class Leveling(commands.Cog):
     # GLOBAL PROFILES (BANNERS & COLORS)
     @level_group.command(name="rank_bg")
     @kumiho_check("public")
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def level_rank_bg(self, ctx: commands.Context):
-        """Kendi Rank arka planını değiştirir. Mesaja bir resim eklemelisin!"""
-        if not ctx.message.attachments:
-            return await ctx.send("❌ Arka plan ayarlamak için bu komutla birlikte bir resim yüklemelisin (attachment)!")
-            
-        attachment = ctx.message.attachments[0]
-        if not attachment.content_type or not attachment.content_type.startswith("image/"):
-            return await ctx.send("❌ Lütfen geçerli bir görsel dosyası yükle (PNG, JPG vb.).")
-            
-        # 5 MB Limit
-        if attachment.size > 5 * 1024 * 1024:
-            return await ctx.send("❌ Yüklediğin görsel çok büyük! Lütfen **5 MB**'dan daha küçük bir dosya yükle.")
-            
-        await ctx.send("⏳ Görsel işleniyor, lütfen bekle...", delete_after=5)
+        """Kendi Rank arka planını web üzerinden değiştirmeni sağlayan geçici bir link oluşturur."""
+        token = str(uuid.uuid4())
+        expires_at = int(time.time()) + 900 # 15 mins
         
         try:
-            image_bytes = await attachment.read()
-            img = Image.open(io.BytesIO(image_bytes)).convert("RGBA")
-            
-            # Fit to 900x250
-            img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
-            
-            # Save as PNG
-            bg_path = f"Data/banners/{ctx.author.id}.png"
-            img.save(bg_path, "PNG", optimize=True)
-            
-            # Insert into DB just to be safe (color_hex is preserved if exists)
-            await self.db.execute(
-                "INSERT INTO global_profiles (user_id) VALUES (?) ON CONFLICT(user_id) DO NOTHING",
-                str(ctx.author.id)
+            # Try self.db first, fallback to self.bot.db
+            db = getattr(self, "db", getattr(self.bot, "db", None))
+            if not db:
+                return await ctx.send("❌ Veritabanı bağlantısı bulunamadı.")
+                
+            await db.execute(
+                "INSERT INTO upload_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
+                (token, str(ctx.author.id), expires_at)
             )
-            
-            await ctx.send(f"✅ Rank kartı arka planın başarıyla güncellendi! Görmek için `{ctx.prefix}rank` yazabilirsin.")
+            await db.commit()
         except Exception as e:
-            log.error(f"Failed to process banner for {ctx.author.id}: {e}")
-            await ctx.send("❌ Görsel işlenirken bir hata oluştu.")
+            log.error(f"Failed to generate upload token for {ctx.author.id}: {e}")
+            return await ctx.send("❌ Link oluşturulurken bir hata oluştu.")
+            
+        link = f"https://kyrik.duckdns.org/upload/{token}"
+        embed = discord.Embed(
+            title="🖼️ Rank Arkaplan Yükleme",
+            description=f"Aşağıdaki butona tıklayarak resim yükleme ve kırpma işlemini gerçekleştirebilirsin.\n\n⚠️ **Bu link tek kullanımlıktır ve 15 dakika içinde süresi dolacaktır.**",
+            color=discord.Color.blue()
+        )
+        
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label="Arkaplan Seç", url=link, emoji="🖼️"))
+        
+        try:
+            await ctx.author.send(embed=embed, view=view)
+            await ctx.send("✅ Arkaplan yükleme linkin DM üzerinden gönderildi!")
+        except discord.Forbidden:
+            await ctx.send(content=ctx.author.mention, embed=embed, view=view, delete_after=60)
 
     @level_group.command(name="rank_color")
     @kumiho_check("public")

@@ -13,6 +13,7 @@ import FormManagementPage from './pages/FormManagementPage';
 import PanelAuthPage from './pages/PanelAuthPage';
 
 import CallbackPage from './pages/CallbackPage';
+import BannerUpload from './pages/BannerUpload';
 
 import { GuildProvider } from './GuildContext';
 import './index.css';
@@ -23,6 +24,7 @@ function App() {
   if (!authToken) {
     return (
       <Routes>
+        <Route path="/upload/:token" element={<BannerUpload />} />
         <Route path="/auth/callback" element={<CallbackPage />} />
         <Route path="*" element={<LoginPage />} />
       </Routes>
@@ -32,6 +34,7 @@ function App() {
   return (
     <GuildProvider>
       <Routes>
+        <Route path="/upload/:token" element={<BannerUpload />} />
         {/* Genel Yönetim Sayfaları (Main Layout) */}
         <Route path="/" element={<MainLayout setAuthToken={setAuthToken} />}>
           <Route index element={<OverviewPage />} />

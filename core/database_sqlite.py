@@ -124,6 +124,13 @@ CREATE TABLE IF NOT EXISTS levels (
     PRIMARY KEY (user_id, guild_id)
 );
 
+-- Web üzerinden görsel yüklemek için geçici tokenler
+CREATE TABLE IF NOT EXISTS upload_tokens (
+    token       TEXT PRIMARY KEY,
+    user_id     TEXT NOT NULL,
+    expires_at  INTEGER NOT NULL
+);
+
 -- Sunucu terk eden üyelerin rollerini sakla
 CREATE TABLE IF NOT EXISTS saved_roles (
     user_id  TEXT,

@@ -10,10 +10,18 @@ import oracledb
 import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Depends
+from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, File, Form
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import sqlite3
+import time
+import io
+try:
+    from PIL import Image, ImageOps
+except ImportError:
+    Image = None
+    ImageOps = None
 from typing import Optional
 
 class PrivateVoiceSettingsUpdate(BaseModel):
@@ -1603,6 +1611,63 @@ def delete_panel_auth(guild_id: str, target_id: str, _: dict = Depends(verify_ow
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+@app.post("/api/upload-banner")
+async def upload_banner(token: str = Form(...), file: UploadFile = File(...)):
+    if not Image:
+        raise HTTPException(status_code=500, detail="Pillow not installed on server")
+        
+    conn = sqlite3.connect(MAIN_DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = ?", (token,))
+    row = cursor.fetchone()
+    
+    if not row:
+        conn.close()
+        raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
+        
+    user_id = row['user_id']
+    expires_at = row['expires_at']
+    
+    if time.time() > expires_at:
+        cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
+        conn.commit()
+        conn.close()
+        raise HTTPException(status_code=401, detail="Token süresi dolmuş.")
+        
+    # Atomic delete
+    cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
+    conn.commit()
+    
+    # Process image
+    content = await file.read()
+    if len(content) > 5 * 1024 * 1024:
+        conn.close()
+        raise HTTPException(status_code=413, detail="Dosya çok büyük (Maks 5MB)")
+        
+    try:
+        img = Image.open(io.BytesIO(content)).convert("RGBA")
+        img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
+        
+        banner_dir = os.path.join(BASE_DIR, "Data", "banners")
+        os.makedirs(banner_dir, exist_ok=True)
+        bg_path = os.path.join(banner_dir, f"{user_id}.png")
+        img.save(bg_path, "PNG", optimize=True)
+        
+        # Insert into global_profiles if not exists
+        cursor.execute("INSERT INTO global_profiles (user_id) VALUES (?) ON CONFLICT(user_id) DO NOTHING", (user_id,))
+        conn.commit()
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")
+        
+    conn.close()
+    return {"status": "success", "message": "Arka plan başarıyla güncellendi."}
 
 if __name__ == "__main__":
     import uvicorn
