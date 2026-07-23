@@ -1654,14 +1654,10 @@ async def upload_banner(token: str = Form(...), file: UploadFile = File(...)):
         img = Image.open(io.BytesIO(content)).convert("RGBA")
         img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
         
-        banner_dir = os.path.join(BASE_DIR, "Data", "banners")
+        banner_dir = os.path.join(os.path.dirname(BASE_DIR), "foxy-bg")
         os.makedirs(banner_dir, exist_ok=True)
         bg_path = os.path.join(banner_dir, f"{user_id}.png")
         img.save(bg_path, "PNG", optimize=True)
-        
-        # Insert into global_profiles if not exists
-        cursor.execute("INSERT INTO global_profiles (user_id) VALUES (?) ON CONFLICT(user_id) DO NOTHING", (user_id,))
-        conn.commit()
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")

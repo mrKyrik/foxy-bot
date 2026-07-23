@@ -44,7 +44,8 @@ def _generate_levelup_card_sync(member_name: str, avatar_bytes: bytes, new_level
         return None
         
     width, height = 800, 250
-    bg_path = f"Data/banners/{user_id}.png"
+    bg_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "foxy-bg")
+    bg_path = os.path.join(bg_dir, f"{user_id}.png")
     if os.path.exists(bg_path):
         try:
             card = Image.open(bg_path).convert("RGBA")
@@ -506,7 +507,8 @@ class Leveling(commands.Cog):
             width, height = 900, 250
             
             # Load Background
-            bg_path = f"Data/banners/{member.id}.png"
+            bg_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "..", "foxy-bg")
+            bg_path = os.path.join(bg_dir, f"{member.id}.png")
             if os.path.exists(bg_path):
                 try:
                     card = Image.open(bg_path).convert("RGBA")
