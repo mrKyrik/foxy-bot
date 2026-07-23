@@ -20,6 +20,7 @@ import platform
 import os
 import random
 import time
+import asyncio
 
 import discord
 from discord.ext import commands, tasks
@@ -36,6 +37,146 @@ except ImportError:
 def _get_xp_needed(level: int) -> int:
     return 100 * (level ** 2) + 100
 
+def _generate_levelup_card_sync(member_name: str, avatar_bytes: bytes, new_level: int, user_id: str) -> io.BytesIO:
+    if not _PILLOW:
+        return None
+        
+    width, height = 800, 250
+    bg_path = f"Data/banners/{user_id}.png"
+    if os.path.exists(bg_path):
+        try:
+            card = Image.open(bg_path).convert("RGBA")
+            if card.size != (width, height):
+                card = ImageOps.fit(card, (width, height), method=Image.Resampling.LANCZOS)
+        except Exception:
+            card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+    else:
+        card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
+
+    overlay = Image.new("RGBA", (width, height), (0, 0, 0, 150))
+    card = Image.alpha_composite(card, overlay)
+    draw = ImageDraw.Draw(card)
+
+    av_size = 180
+    if avatar_bytes:
+        av_img = Image.open(io.BytesIO(avatar_bytes)).resize((av_size, av_size), Image.Resampling.LANCZOS).convert("RGBA")
+    else:
+        av_img = Image.new("RGBA", (av_size, av_size), (0, 200, 255, 255))
+
+    mask = Image.new("L", (av_size, av_size), 0)
+    ImageDraw.Draw(mask).ellipse((0, 0, av_size, av_size), fill=255)
+    ax, ay = 35, (height - av_size) // 2
+    card.paste(av_img, (ax, ay), mask)
+    draw.ellipse((ax - 3, ay - 3, ax + av_size + 3, ay + av_size + 3), outline=(16, 185, 129, 255), width=6)
+
+    try:
+        if platform.system() == "Windows":
+            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 55)
+            font_sub = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 35)
+        else:
+            font_title = ImageFont.truetype("arial.ttf", 55)
+            font_sub = ImageFont.truetype("arial.ttf", 35)
+    except Exception:
+        font_title = font_sub = ImageFont.load_default()
+
+    draw.text((250, 70), "LEVEL UP!", fill=(16, 185, 129), font=font_title)
+    draw.text((250, 140), f"{member_name} \nSeviye {new_level} ulaştı!", fill=(255, 255, 255), font=font_sub)
+
+    buf = io.BytesIO()
+    card.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
+
+def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: str) -> io.BytesIO:
+    if not _PILLOW:
+        return None
+        
+    width = 850
+    row_height = 70
+    padding = 20
+    header_height = 80
+    height = header_height + (len(lb_data) * row_height) + padding
+    
+    card = Image.new("RGBA", (width, height), (36, 39, 46, 255))
+    draw = ImageDraw.Draw(card)
+
+    try:
+        if platform.system() == "Windows":
+            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 40)
+            font_rank = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 24)
+            font_name = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 26)
+            font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 20)
+        else:
+            font_title = ImageFont.truetype("arial.ttf", 40)
+            font_rank = ImageFont.truetype("arial.ttf", 24)
+            font_name = ImageFont.truetype("arial.ttf", 26)
+            font_small = ImageFont.truetype("arial.ttf", 20)
+    except Exception:
+        font_title = font_rank = font_name = font_small = ImageFont.load_default()
+
+    title_text = f"{guild_name} - {'XP' if lb_type == 'xp' else 'Ses'} Sıralaması"
+    draw.text((width//2, 40), title_text, fill=(255, 255, 255), font=font_title, anchor="mm")
+
+    y_offset = header_height
+    for idx, row in enumerate(lb_data):
+        rank = row["rank"]
+        
+        # Color mapping for top 3
+        if rank == 1: rank_color = (0, 255, 255)
+        elif rank == 2: rank_color = (255, 215, 0)
+        elif rank == 3: rank_color = (0, 255, 0)
+        else: rank_color = (180, 180, 180)
+        
+        # Draw background alternating row
+        if idx % 2 == 1:
+            draw.rectangle([10, y_offset, width - 10, y_offset + row_height], fill=(47, 49, 54, 255))
+            
+        # Avatar
+        av_size = 50
+        ax, ay = 30, y_offset + (row_height - av_size) // 2
+        
+        if row.get("avatar_bytes"):
+            try:
+                av_img = Image.open(io.BytesIO(row["avatar_bytes"])).resize((av_size, av_size), Image.Resampling.LANCZOS).convert("RGBA")
+            except Exception:
+                av_img = Image.new("RGBA", (av_size, av_size), (0, 200, 255, 255))
+        else:
+            av_img = Image.new("RGBA", (av_size, av_size), (0, 200, 255, 255))
+            
+        mask = Image.new("L", (av_size, av_size), 0)
+        ImageDraw.Draw(mask).ellipse((0, 0, av_size, av_size), fill=255)
+        card.paste(av_img, (ax, ay), mask)
+        
+        # Rank and Name
+        draw.text((100, y_offset + 20), f"#{rank}", fill=rank_color, font=font_rank)
+        draw.text((160, y_offset + 18), str(row["name"]), fill=(255, 255, 255), font=font_name)
+        
+        # Progress Bar
+        bar_x, bar_y = 400, y_offset + 25
+        bar_w, bar_h = 250, 20
+        draw.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=10, fill=(32, 34, 37, 255))
+        
+        if row.get("ratio", 0) > 0:
+            fill_w = int(bar_w * min(row["ratio"], 1.0))
+            if fill_w > 0:
+                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=10, fill=rank_color)
+                
+        # Progress text
+        if "progress_text" in row:
+            draw.text((bar_x + bar_w - 5, bar_y - 20), row["progress_text"], fill=rank_color, font=font_small, anchor="ra")
+            
+        # Level text
+        if "level" in row:
+            draw.text((700, y_offset + 20), f"Lvl {row['level']}", fill=(255, 255, 255), font=font_name)
+        else:
+            draw.text((700, y_offset + 20), f"{row.get('voice_hrs', '0')} Saat", fill=(255, 255, 255), font=font_name)
+            
+        y_offset += row_height
+
+    buf = io.BytesIO()
+    card.save(buf, format="PNG")
+    buf.seek(0)
+    return buf
 
 class Leveling(commands.Cog):
     category = "Gelişim ve Ekonomi"
@@ -176,12 +317,6 @@ class Leveling(commands.Cog):
                 leftover_xp, new_level, user_id_str, guild_id_str
             )
             
-            embed = discord.Embed(
-                title="🎉 Level Up!",
-                description=f"Tebrikler {member.mention}, **{new_level}** seviyesine ulaştın!",
-                color=discord.Color.green(),
-            )
-            
             channel_id = self._get_setting(guild_id_str, "channel_id", None)
             target_channel = None
             if channel_id:
@@ -192,9 +327,36 @@ class Leveling(commands.Cog):
             
             if target_channel:
                 try:
-                    await target_channel.send(content=member.mention, embed=embed)
-                except Exception:
-                    pass
+                    # Generate Image
+                    avatar_bytes = None
+                    try:
+                        avatar_bytes = await member.display_avatar.replace(size=256, static_format="png").read()
+                    except Exception:
+                        pass
+                    
+                    buf = await asyncio.to_thread(
+                        _generate_levelup_card_sync,
+                        member.display_name,
+                        avatar_bytes,
+                        new_level,
+                        str(member.id)
+                    )
+                    
+                    if buf:
+                        await target_channel.send(
+                            content=f"🎉 Tebrikler {member.mention}, **{new_level}** seviyesine ulaştın!",
+                            file=discord.File(buf, filename="levelup.png")
+                        )
+                    else:
+                        # Fallback if Pillow is disabled
+                        embed = discord.Embed(
+                            title="🎉 Level Up!",
+                            description=f"Tebrikler {member.mention}, **{new_level}** seviyesine ulaştın!",
+                            color=discord.Color.green(),
+                        )
+                        await target_channel.send(content=member.mention, embed=embed)
+                except Exception as e:
+                    log.error(f"Level up message failed: {e}")
 
             if guild_id_str in self.level_rewards and new_level in self.level_rewards[guild_id_str]:
                 role_id = self.level_rewards[guild_id_str][new_level]
@@ -650,7 +812,7 @@ class Leveling(commands.Cog):
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     @kumiho_check("public")
     async def lb_xp(self, ctx: commands.Context) -> None:
-        """View the text XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_xp`"""
+        """View the XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_xp`"""
         rows = await self.db.fetchall(
             "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC",
             str(ctx.guild.id),
@@ -659,7 +821,7 @@ class Leveling(commands.Cog):
             return await ctx.send("❌ No XP profiles in this server yet.")
 
         view = LeaderboardView(ctx, rows, lb_type="xp")
-        await ctx.send(embed=view.format_page(), view=view)
+        await view.start()
 
     @commands.command(name="leaderboard_voice", aliases=["lb_vc", "lbvc", "sestop", "ses_top", "ses_rank"])
     @commands.cooldown(1, 5.0, commands.BucketType.user)
@@ -674,7 +836,7 @@ class Leveling(commands.Cog):
             return await ctx.send("❌ Bu sunucuda henüz kaydedilmiş ses süresi yok.")
 
         view = LeaderboardView(ctx, rows, lb_type="voice")
-        await ctx.send(embed=view.format_page(), view=view)
+        await view.start()
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, ctx: commands.Context, rows: list[dict], lb_type: str = "xp", per_page: int = 10):
@@ -685,49 +847,84 @@ class LeaderboardView(discord.ui.View):
         self.per_page = per_page
         self.current_page = 0
         self.total_pages = max(1, (len(rows) - 1) // per_page + 1)
+        self.message = None
         self.update_buttons()
 
     def update_buttons(self):
         self.prev_btn.disabled = self.current_page == 0
         self.next_btn.disabled = self.current_page == self.total_pages - 1
 
-    def format_page(self):
+    async def get_page_content(self):
         start = self.current_page * self.per_page
         end = start + self.per_page
         page_rows = self.rows[start:end]
         
-        if self.lb_type == "voice":
-            embed = discord.Embed(title="🎙️ Sunucu Ses Sıralaması", color=discord.Color.brand_green())
-            desc = ""
-            for idx, row in enumerate(page_rows, start + 1):
-                m = self.ctx.guild.get_member(int(row["user_id"]))
-                name = m.mention if m else f"ID: {row['user_id']}"
+        lb_data = []
+        for idx, row in enumerate(page_rows, start + 1):
+            m = self.ctx.guild.get_member(int(row["user_id"]))
+            name = m.display_name if m else f"Bilinmeyen (ID: {row['user_id']})"
+            
+            avatar_bytes = None
+            if m:
+                try:
+                    avatar_bytes = await m.display_avatar.replace(size=64, static_format="png").read()
+                except Exception:
+                    pass
+            
+            data_dict = {
+                "rank": idx,
+                "name": name,
+                "avatar_bytes": avatar_bytes
+            }
+            
+            if self.lb_type == "voice":
                 mins = row.get("voice_time", 0)
                 h = mins // 60
-                m_left = mins % 60
-                time_str = f"{h}s {m_left}dk" if h > 0 else f"{m_left}dk"
-                desc += f"**#{idx}** {name} — `{time_str}`\n"
-        else:
-            embed = discord.Embed(title="🏆 Server XP Leaderboard", color=discord.Color.gold())
-            desc = ""
-            for idx, row in enumerate(page_rows, start + 1):
-                m = self.ctx.guild.get_member(int(row["user_id"]))
-                name = m.mention if m else f"ID: {row['user_id']}"
-                # Approximate total XP earned
-                total = row["xp"] + sum(_get_xp_needed(l) for l in range(row["level"]))
-                desc += f"**#{idx}** {name} — Level `{row['level']}` (`{total:,} total XP`)\n"
+                data_dict["voice_hrs"] = str(h)
+                data_dict["ratio"] = min(mins / 600, 1.0) # Arbitrary max scale for voice progress
+                data_dict["progress_text"] = f"{mins} Dakika"
+            else:
+                level = row.get("level", 0)
+                xp = row.get("xp", 0)
+                needed = _get_xp_needed(level)
+                data_dict["level"] = level
+                data_dict["ratio"] = xp / needed if needed > 0 else 0
+                data_dict["progress_text"] = f"{xp} / {needed} XP"
+                
+            lb_data.append(data_dict)
+            
+        buf = await asyncio.to_thread(
+            _generate_leaderboard_image_sync,
+            lb_data,
+            self.ctx.guild.name,
+            self.lb_type
+        )
         
-        embed.description = desc
-        embed.set_footer(text=f"Sayfa {self.current_page + 1}/{self.total_pages} | {self.ctx.author.name} tarafından istendi", icon_url=self.ctx.author.display_avatar.url)
-        return embed
+        if buf:
+            return discord.File(buf, filename="leaderboard.png")
+        return None
+
+    async def start(self):
+        msg = await self.ctx.send("⏳ Tablo yükleniyor...", delete_after=10)
+        file = await self.get_page_content()
+        if file:
+            self.message = await self.ctx.send(
+                content=f"Sayfa {self.current_page + 1}/{self.total_pages}",
+                file=file,
+                view=self
+            )
+        else:
+            await self.ctx.send("❌ Resim oluşturulamadı. Pillow kurulu mu?")
 
     @discord.ui.button(emoji="⬅️", style=discord.ButtonStyle.primary, custom_id="prev")
     async def prev_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("❌ Bu menüyü sen açmadın.", ephemeral=True)
+        await interaction.response.defer()
         self.current_page -= 1
         self.update_buttons()
-        await interaction.response.edit_message(embed=self.format_page(), view=self)
+        file = await self.get_page_content()
+        await interaction.edit_original_response(content=f"Sayfa {self.current_page + 1}/{self.total_pages}", attachments=[file], view=self)
 
     @discord.ui.button(emoji="🔍", label="Beni Bul", style=discord.ButtonStyle.secondary, custom_id="find_me")
     async def find_me_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -743,17 +940,21 @@ class LeaderboardView(discord.ui.View):
         if user_index == -1:
             return await interaction.response.send_message("❌ Henüz sıralamada değilsin.", ephemeral=True)
             
+        await interaction.response.defer()
         self.current_page = user_index // self.per_page
         self.update_buttons()
-        await interaction.response.edit_message(embed=self.format_page(), view=self)
+        file = await self.get_page_content()
+        await interaction.edit_original_response(content=f"Sayfa {self.current_page + 1}/{self.total_pages}", attachments=[file], view=self)
 
     @discord.ui.button(emoji="➡️", style=discord.ButtonStyle.primary, custom_id="next")
     async def next_btn(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.ctx.author.id:
             return await interaction.response.send_message("❌ Bu menüyü sen açmadın.", ephemeral=True)
+        await interaction.response.defer()
         self.current_page += 1
         self.update_buttons()
-        await interaction.response.edit_message(embed=self.format_page(), view=self)
+        file = await self.get_page_content()
+        await interaction.edit_original_response(content=f"Sayfa {self.current_page + 1}/{self.total_pages}", attachments=[file], view=self)
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Leveling(bot))

@@ -24,12 +24,12 @@ from core.utils import json_load, json_save
 log = logging.getLogger(__name__)
 
 DB_FILE = Path("Data/automod.json")
-_DEFAULT = lambda: {"antilink": {}, "antispam": {}, "antiprofanity": {}, "whitelist": {}}
+_DEFAULT = lambda: {"antilink": {}, "antispam": {}, "antiprofanity": {}, "whitelist": {}, "log_channels": {}, "ignored_roles": {}}
 
 
 def _load() -> dict:
     data = json_load(DB_FILE)
-    for key in ("antilink", "antispam", "antiprofanity", "antizalgo", "whitelist"):
+    for key in ("antilink", "antispam", "antiprofanity", "antizalgo", "whitelist", "log_channels", "ignored_roles"):
         data.setdefault(key, {})
     return data
 
@@ -78,6 +78,17 @@ class AutoMod(commands.Cog):
             return
         await self.on_message(after)
 
+    async def _send_log(self, guild: discord.Guild, data: dict, embed: discord.Embed):
+        g_id = str(guild.id)
+        if g_id in data.get("log_channels", {}):
+            channel_id = data["log_channels"][g_id]
+            channel = guild.get_channel(int(channel_id))
+            if channel:
+                try:
+                    await channel.send(embed=embed)
+                except Exception:
+                    pass
+
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
         if message.author.bot or not message.guild:
@@ -89,6 +100,12 @@ class AutoMod(commands.Cog):
         data = _load()
         g_id = str(message.guild.id)
         u_id = str(message.author.id)
+        
+        # Check ignored roles
+        if g_id in data.get("ignored_roles", {}):
+            ignored_role_id = data["ignored_roles"][g_id]
+            if any(str(r.id) == str(ignored_role_id) for r in message.author.roles):
+                return
 
         # ── 1. ANTISPAM ──────────────────────────────────────────────
         if data["antispam"].get(g_id, False):
@@ -110,6 +127,12 @@ class AutoMod(commands.Cog):
                     await message.channel.send(
                         f"❌ {message.author.mention} has been muted for 10 minutes due to spamming."
                     )
+                    embed = discord.Embed(
+                        title="🛡️ AutoMod: Spam Algılandı",
+                        description=f"**Kullanıcı:** {message.author.mention}\n**Eylem:** 10 Dakika Susturma",
+                        color=discord.Color.red()
+                    )
+                    await self._send_log(message.guild, data, embed)
                 except Exception:
                     await message.channel.send(
                         f"❌ {message.author.mention}, please stop spamming!"
@@ -143,6 +166,12 @@ class AutoMod(commands.Cog):
                             f"❌ {message.author.mention}, links/invites are not allowed!",
                             delete_after=5,
                         )
+                        embed = discord.Embed(
+                            title="🔗 AutoMod: Link/Reklam Algılandı",
+                            description=f"**Kullanıcı:** {message.author.mention}\n**Kanal:** {message.channel.mention}\n**İçerik:** `{content}`",
+                            color=discord.Color.red()
+                        )
+                        await self._send_log(message.guild, data, embed)
                     except Exception:
                         pass
                     return
@@ -151,14 +180,20 @@ class AutoMod(commands.Cog):
         if data["antiprofanity"].get(g_id, False):
             content_lower = message.content.lower()
             clean_content = re.sub(r'[\W_]+', '', content_lower)
-            triggered = any(w in clean_content for w in self.bad_words)
-            if triggered:
+            word = next((w for w in self.bad_words if w in clean_content), None)
+            if word:
                 try:
                     await message.delete()
                     await message.channel.send(
-                        f"❌ {message.author.mention}, profanity is strictly forbidden!",
+                        f"❌ {message.author.mention}, please watch your language!",
                         delete_after=5,
                     )
+                    embed = discord.Embed(
+                        title="🤬 AutoMod: Küfür/Kötü Söz Algılandı",
+                        description=f"**Kullanıcı:** {message.author.mention}\n**Kanal:** {message.channel.mention}\n**Kelime:** `{word}`",
+                        color=discord.Color.red()
+                    )
+                    await self._send_log(message.guild, data, embed)
                 except Exception:
                     pass
                 return
@@ -172,6 +207,12 @@ class AutoMod(commands.Cog):
                         f"❌ {message.author.mention}, zalgo text is not allowed!",
                         delete_after=5,
                     )
+                    embed = discord.Embed(
+                        title="⚠️ AutoMod: Zalgo Algılandı",
+                        description=f"**Kullanıcı:** {message.author.mention}\n**Kanal:** {message.channel.mention}",
+                        color=discord.Color.red()
+                    )
+                    await self._send_log(message.guild, data, embed)
                 except Exception:
                     pass
                 return
@@ -192,13 +233,14 @@ class AutoMod(commands.Cog):
 
     async def _toggle(self, ctx: commands.Context, key: str, action: str) -> None:
         if action.lower() not in ("enable", "disable"):
-            return await ctx.send(f"Usage: `{ctx.prefix}automod {key} <enable|disable>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod {key} <enable|disable>`", color=discord.Color.blue()))
         data = _load()
         state = action.lower() == "enable"
         data[key][str(ctx.guild.id)] = state
         json_save(DB_FILE, data)
-        state_text = "enabled" if state else "disabled"
-        await ctx.send(f"✅ AutoMod **{key}** has been **{state_text}**.")
+        state_text = "Aktif" if state else "Devre Dışı"
+        color = discord.Color.green() if state else discord.Color.red()
+        await ctx.send(embed=discord.Embed(title="🛡️ AutoMod Güncellendi", description=f"AutoMod **{key}** sistemi **{state_text}** bırakıldı.", color=color))
 
     @automod_group.command(name="antilink")
     @kumiho_check("owner")
@@ -212,7 +254,7 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod antilink enable`
         """
         if not action:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod antilink <enable|disable>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod antilink <enable|disable>`", color=discord.Color.blue()))
         await self._toggle(ctx, "antilink", action)
 
     @automod_group.command(name="antispam")
@@ -227,7 +269,7 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod antispam enable`
         """
         if not action:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod antispam <enable|disable>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod antispam <enable|disable>`", color=discord.Color.blue()))
         await self._toggle(ctx, "antispam", action)
 
     @automod_group.command(name="antiprofanity")
@@ -242,7 +284,7 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod antiprofanity enable`
         """
         if not action:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod antiprofanity <enable|disable>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod antiprofanity <enable|disable>`", color=discord.Color.blue()))
         await self._toggle(ctx, "antiprofanity", action)
 
     @automod_group.command(name="antizalgo")
@@ -257,7 +299,7 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod antizalgo enable`
         """
         if not action:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod antizalgo <enable|disable>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod antizalgo <enable|disable>`", color=discord.Color.blue()))
         await self._toggle(ctx, "antizalgo", action)
 
     @automod_group.group(name="whitelist", invoke_without_command=True)
@@ -270,9 +312,7 @@ class AutoMod(commands.Cog):
         **Usage:** `{prefix}automod whitelist <add|remove> <domain>`
         **Required Permission:** Server Owner or Administrator
         """
-        await ctx.send(
-            f"Usage: `{ctx.prefix}automod whitelist <add|remove> <domain>` (e.g. google.com)"
-        )
+        await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod whitelist <add|remove> <domain>`\nÖrnek: `google.com`", color=discord.Color.blue()))
 
     @whitelist_group.command(name="add")
     @kumiho_check("owner")
@@ -286,7 +326,7 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod whitelist add google.com`
         """
         if not domain:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist add <domain>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod whitelist add <domain>`", color=discord.Color.blue()))
         data = _load()
         g_id = str(ctx.guild.id)
         domain = domain.lower().strip()
@@ -294,9 +334,9 @@ class AutoMod(commands.Cog):
         if domain not in data["whitelist"][g_id]:
             data["whitelist"][g_id].append(domain)
             json_save(DB_FILE, data)
-            await ctx.send(f"✅ Whitelisted domain `{domain}`.")
+            await ctx.send(embed=discord.Embed(title="✅ Eklendi", description=f"`{domain}` adresi beyaz listeye (whitelist) eklendi.", color=discord.Color.green()))
         else:
-            await ctx.send(f"❌ `{domain}` is already whitelisted.")
+            await ctx.send(embed=discord.Embed(title="❌ Zaten Mevcut", description=f"`{domain}` zaten beyaz listede bulunuyor.", color=discord.Color.red()))
 
     @whitelist_group.command(name="remove")
     @kumiho_check("owner")
@@ -310,16 +350,16 @@ class AutoMod(commands.Cog):
         **Example:** `{prefix}automod whitelist remove google.com`
         """
         if not domain:
-            return await ctx.send(f"Usage: `{ctx.prefix}automod whitelist remove <domain>`")
+            return await ctx.send(embed=discord.Embed(title="ℹ️ Kullanım", description=f"`{ctx.prefix}automod whitelist remove <domain>`", color=discord.Color.blue()))
         data = _load()
         g_id = str(ctx.guild.id)
         domain = domain.lower().strip()
         if g_id in data["whitelist"] and domain in data["whitelist"][g_id]:
             data["whitelist"][g_id].remove(domain)
             json_save(DB_FILE, data)
-            await ctx.send(f"✅ Removed `{domain}` from the whitelist.")
+            await ctx.send(embed=discord.Embed(title="✅ Kaldırıldı", description=f"`{domain}` adresi beyaz listeden (whitelist) çıkarıldı.", color=discord.Color.green()))
         else:
-            await ctx.send(f"❌ `{domain}` is not in the whitelist.")
+            await ctx.send(embed=discord.Embed(title="❌ Bulunamadı", description=f"`{domain}` adresi beyaz listede bulunmuyor.", color=discord.Color.red()))
 
 
 async def setup(bot: commands.Bot) -> None:

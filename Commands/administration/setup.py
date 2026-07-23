@@ -224,19 +224,85 @@ class LogSetupView(discord.ui.View):
         await interaction.response.edit_message(embed=embed, view=SetupMainView(self.bot))
 
 
+class TicketCategorySelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'TicketSetupView'):
+        super().__init__(
+            placeholder="📁 Biletlerin Açılacağı Kategoriyi Seç",
+            channel_types=[discord.ChannelType.category],
+            min_values=1, max_values=1, row=0
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.category_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
+class TicketLogSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'TicketSetupView'):
+        super().__init__(
+            placeholder="📝 Ticket Log Kanalını Seç",
+            channel_types=[discord.ChannelType.text],
+            min_values=1, max_values=1, row=1
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.log_channel_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
+class TicketSupportRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, parent_view: 'TicketSetupView'):
+        super().__init__(
+            placeholder="🛡️ Yetkili (Destek) Rolünü Seç",
+            min_values=1, max_values=1, row=2
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.support_role_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
 class TicketSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_item(TicketDetailedSettingsDropdown(bot))
+        self.category_id: str | None = None
+        self.log_channel_id: str | None = None
+        self.support_role_id: str | None = None
+        
+        self.add_item(TicketCategorySelect(self))
+        self.add_item(TicketLogSelect(self))
+        self.add_item(TicketSupportRoleSelect(self))
 
-    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def update_save_button(self, interaction: discord.Interaction):
+        save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]
+        if self.category_id and self.log_channel_id and self.support_role_id:
+            save_btn.disabled = False
+            save_btn.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="💾 Kaydet", style=discord.ButtonStyle.secondary, emoji="💾", row=3, disabled=True)
+    async def save_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("INSERT OR IGNORE INTO ticket_settings (guild_id) VALUES (?)", str(interaction.guild.id))
+        await self.bot.db.execute("UPDATE ticket_settings SET category_id=?, log_channel_id=?, support_role_id=? WHERE guild_id=?", 
+                                  self.category_id, self.log_channel_id, self.support_role_id, str(interaction.guild.id))
+        embed = discord.Embed(
+            title="🎫 Ticket Sistemi",
+            description=f"✅ Özel kurulum tamamlandı!\n\n**Kategori:** <#{self.category_id}>\n**Log Kanalı:** <#{self.log_channel_id}>\n**Yetkili Rolü:** <@&{self.support_role_id}>",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.primary, emoji="✨", row=3)
     async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild = interaction.guild
         
         category = await guild.create_category("🎫 Ticket Sistemi", reason="Ticket Hızlı Kurulum")
-        # Ticket kategorisini üyelerin görmesine gerek yok, ticketlar özel olacak
         await category.set_permissions(guild.default_role, view_channel=False)
         log_channel = await guild.create_text_channel(name="📁・ticket-log", category=category)
         
@@ -246,12 +312,12 @@ class TicketSetupView(discord.ui.View):
                                   
         embed = discord.Embed(
             title="🎫 Ticket Sistemi",
-            description="✅ Hızlı kurulum tamamlandı!\n\nTicket kategorisi ve log kanalı oluşturuldu. Panel kurulumu için `f.ticket setup` komutunu kullanabilir veya detaylı ayarlardan paneli gönderebilirsiniz.",
+            description="✅ Hızlı kurulum tamamlandı!\n\nTicket kategorisi ve log kanalı oluşturuldu.",
             color=discord.Color.green()
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.bot.db.execute("DELETE FROM ticket_settings WHERE guild_id=?", str(interaction.guild.id))
@@ -262,54 +328,86 @@ class TicketSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-class TicketDetailedSettingsDropdown(discord.ui.Select):
-    def __init__(self, bot: commands.Bot):
-        options = [
-            discord.SelectOption(label="Destek Paneli Gönder", description="Ticket açma panelini bulunduğunuz kanala atar", emoji="📩", value="send_panel"),
-            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
-        ]
-        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Ticket)...", min_values=1, max_values=1, options=options, row=2)
-        self.bot = bot
+    @discord.ui.button(label="📩 Destek Paneli Gönder", style=discord.ButtonStyle.secondary, emoji="📩", row=4)
+    async def send_panel(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        from Commands.tickets import TicketOpenView
+        settings = await self.bot.db.fetchone("SELECT panel_title, panel_desc FROM ticket_settings WHERE guild_id=?", str(interaction.guild.id))
+        title = settings["panel_title"] if settings and settings["panel_title"] else "🎟️ Destek Merkezi"
+        desc = settings["panel_desc"] if settings and settings["panel_desc"] else "Sorunuz mu var? Destek ekibimizle iletişime geçmek için butona tıklayın."
+        
+        embed = discord.Embed(
+            title=title,
+            description=desc,
+            color=discord.Color.blurple(),
+        )
+        tickets_cog = self.bot.get_cog("Tickets")
+        if tickets_cog:
+            view = TicketOpenView(tickets_cog)
+            await interaction.channel.send(embed=embed, view=view)
+            await interaction.edit_original_response(content="✅ Ticket paneli bu kanala gönderildi!", embed=None, view=None)
+        else:
+            await interaction.edit_original_response(content="❌ Tickets modülü yüklenmemiş!", embed=None, view=None)
+
+
+class VoiceHubSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'VoiceSetupView'):
+        super().__init__(
+            placeholder="🎙️ Oda Oluşturma (Hub) Kanalı Seç",
+            channel_types=[discord.ChannelType.voice],
+            min_values=1, max_values=1, row=0
+        )
+        self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        val = self.values[0]
-        await interaction.response.defer()
-        if val == "send_panel":
-            from Commands.tickets import TicketOpenView
-            settings = await self.bot.db.fetchone("SELECT panel_title, panel_desc FROM ticket_settings WHERE guild_id=?", str(interaction.guild.id))
-            title = settings["panel_title"] if settings and settings["panel_title"] else "🎟️ Destek Merkezi"
-            desc = settings["panel_desc"] if settings and settings["panel_desc"] else "Sorunuz mu var? Destek ekibimizle iletişime geçmek için butona tıklayın."
-            
-            embed = discord.Embed(
-                title=title,
-                description=desc,
-                color=discord.Color.blurple(),
-            )
-            # Ticket cog has TicketOpenView, it takes cog as argument.
-            # We can pass dummy cog or get the actual cog
-            tickets_cog = self.bot.get_cog("Tickets")
-            if tickets_cog:
-                view = TicketOpenView(tickets_cog)
-                await interaction.channel.send(embed=embed, view=view)
-                await interaction.edit_original_response(content="✅ Ticket paneli bu kanala gönderildi!", embed=None, view=None)
-            else:
-                await interaction.edit_original_response(content="❌ Tickets modülü yüklenmemiş!", embed=None, view=None)
-        elif val == "web":
-            embed = discord.Embed(
-                title="🌐 Web Dashboard",
-                description="Destek rolü, transcript gibi gelişmiş ayarları Web Dashboard üzerinden yapabilirsiniz.",
-                color=discord.Color.blurple()
-            )
-            await interaction.edit_original_response(embed=embed, view=None)
+        self.parent_view.hub_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
+class VoiceCategorySelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'VoiceSetupView'):
+        super().__init__(
+            placeholder="📁 Odaların Açılacağı Kategoriyi Seç",
+            channel_types=[discord.ChannelType.category],
+            min_values=1, max_values=1, row=1
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.category_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
 
 
 class VoiceSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_item(VoiceDetailedSettingsDropdown(bot))
+        self.hub_id: str | None = None
+        self.category_id: str | None = None
+        
+        self.add_item(VoiceHubSelect(self))
+        self.add_item(VoiceCategorySelect(self))
 
-    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def update_save_button(self, interaction: discord.Interaction):
+        save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]
+        if self.hub_id and self.category_id:
+            save_btn.disabled = False
+            save_btn.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="💾 Kaydet", style=discord.ButtonStyle.secondary, emoji="💾", row=2, disabled=True)
+    async def save_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute("INSERT OR REPLACE INTO private_voice_hubs (guild_id, hub_id, category_id) VALUES (?, ?, ?)", 
+                                  str(interaction.guild.id), self.hub_id, self.category_id)
+        embed = discord.Embed(
+            title="🎙️ Özel Ses Odaları",
+            description=f"✅ Özel kurulum tamamlandı!\n\n**Hub Kanalı:** <#{self.hub_id}>\n**Kategori:** <#{self.category_id}>",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.primary, emoji="✨", row=2)
     async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild = interaction.guild
@@ -327,7 +425,7 @@ class VoiceSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger, emoji="🗑️", row=2)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.bot.db.execute("DELETE FROM private_voice_hubs WHERE guild_id=?", str(interaction.guild.id))
@@ -339,31 +437,71 @@ class VoiceSetupView(discord.ui.View):
         await interaction.edit_original_response(embed=embed, view=None)
 
 
-class VoiceDetailedSettingsDropdown(discord.ui.Select):
-    def __init__(self, bot: commands.Bot):
-        options = [
-            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
-        ]
-        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Özel Ses)...", min_values=1, max_values=1, options=options, row=2)
-        self.bot = bot
+class LevelNotificationSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'LevelSetupView'):
+        super().__init__(
+            placeholder="📢 Seviye Atlama Bildirim Kanalını Seç",
+            channel_types=[discord.ChannelType.text],
+            min_values=1, max_values=1, row=0
+        )
+        self.parent_view = parent_view
 
     async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        embed = discord.Embed(
-            title="🌐 Web Dashboard",
-            description="Özel oda varsayılan limiti, varsayılan bitrate gibi ince ayarları Web Dashboard üzerinden yapabilirsiniz.",
-            color=discord.Color.blurple()
+        self.parent_view.channel_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
+class LevelIgnoreSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'LevelSetupView'):
+        super().__init__(
+            placeholder="🚫 XP Kazanılmayacak Kanalları Seç (Opsiyonel)",
+            channel_types=[discord.ChannelType.text, discord.ChannelType.category],
+            min_values=1, max_values=10, row=1
         )
-        await interaction.edit_original_response(embed=embed, view=None)
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.ignored_channels = [str(c.id) for c in self.values]
+        await self.parent_view.update_save_button(interaction)
 
 
 class LevelSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_item(LevelDetailedSettingsDropdown(bot))
+        self.channel_id: str | None = None
+        self.ignored_channels: list[str] = []
+        
+        self.add_item(LevelNotificationSelect(self))
+        self.add_item(LevelIgnoreSelect(self))
 
-    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def update_save_button(self, interaction: discord.Interaction):
+        save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]
+        if self.channel_id:
+            save_btn.disabled = False
+            save_btn.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="💾 Kaydet", style=discord.ButtonStyle.secondary, emoji="💾", row=2, disabled=True)
+    async def save_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        await self.bot.db.execute(
+            "INSERT INTO level_settings (guild_id, level_channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET level_channel_id=excluded.level_channel_id",
+            str(interaction.guild.id), self.channel_id
+        )
+        if self.ignored_channels:
+            await self.bot.db.execute("DELETE FROM level_ignores WHERE guild_id=?", str(interaction.guild.id))
+            for c_id in self.ignored_channels:
+                await self.bot.db.execute("INSERT OR IGNORE INTO level_ignores (guild_id, channel_id) VALUES (?, ?)", str(interaction.guild.id), c_id)
+        
+        embed = discord.Embed(
+            title="📈 Seviye (Leveling) Sistemi",
+            description=f"✅ Özel kurulum tamamlandı!\n\n**Bildirim Kanalı:** <#{self.channel_id}>\n**Engellenen Kanal Sayısı:** {len(self.ignored_channels)}\n*(Rol ödüllerini yönetmek için Web Panelini ziyaret edebilirsiniz)*",
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.primary, emoji="✨", row=2)
     async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild = interaction.guild
@@ -382,7 +520,7 @@ class LevelSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger, emoji="🗑️", row=2)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.bot.db.execute("DELETE FROM level_settings WHERE guild_id=?", str(interaction.guild.id))
@@ -457,27 +595,76 @@ class FormQuestionsModal(discord.ui.Modal, title="Soruları Belirle (Max 5)"):
         questions_json = json.dumps(self.state.questions)
         
         try:
+            # Form ana ayarları
             await self.bot.db.execute(
                 """INSERT INTO custom_forms 
-                (form_id, guild_id, title, form_type, channel_id, action_target, auto_approve, roles, questions)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                (form_id, guild_id, title, form_type, channel_id, action_target, auto_approve)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(form_id, guild_id) DO UPDATE SET
                 title=excluded.title, form_type=excluded.form_type, channel_id=excluded.channel_id,
-                action_target=excluded.action_target, auto_approve=excluded.auto_approve, 
-                roles=excluded.roles, questions=excluded.questions""",
+                action_target=excluded.action_target, auto_approve=excluded.auto_approve""",
                 self.state.form_id, self.state.guild_id, self.state.title, self.state.form_type,
-                self.state.channel_id, self.state.action_target, self.state.auto_approve,
-                roles_json, questions_json
+                self.state.channel_id, self.state.action_target, self.state.auto_approve
             )
+            
+            # Mevcut soruları temizle ve yenilerini ekle
+            await self.bot.db.execute("DELETE FROM form_questions WHERE guild_id=? AND form_id=?", self.state.guild_id, self.state.form_id)
+            for q in self.state.questions:
+                await self.bot.db.execute("INSERT INTO form_questions (guild_id, form_id, question_text) VALUES (?, ?, ?)", self.state.guild_id, self.state.form_id, q)
+                
+            # Eğer rol formuysa, form_roles içine kaydetmeli (ama şuan json array string olarak başka bir yöntemle de yönetiliyor olabilir)
+            # Kumiho'nun form_roles yapısı yok gibi, rolleri form_type=2 ise action_target içine json olarak kaydedebiliriz veya ayrı tablo yok.
+            # Web panel API tarafını incelediğimde, roller genellikle 'roles' adında ek bir tabloda tutulmaz, form json içinde döner.
+            # Ancak API payload'ına bakarsak roles form'a bağlanıyor. Şimdilik action_target'e json string olarak kaydedeceğiz.
+            if self.state.form_type == 2:
+                await self.bot.db.execute("UPDATE custom_forms SET action_target=? WHERE guild_id=? AND form_id=?", roles_json, self.state.guild_id, self.state.form_id)
             
             embed = discord.Embed(
                 title="✅ Form Başarıyla Oluşturuldu!",
-                description=f"**{self.state.title}** (`{self.state.form_id}`) başarıyla sisteme kaydedildi.\nWeb Panelinden formu yönetebilir veya `/form` komutuyla test edebilirsiniz.",
+                description=f"**{self.state.title}** (`{self.state.form_id}`) başarıyla sisteme kaydedildi.\nWeb Panelinden formu yönetebilir veya aşağıdaki menüden formu bir kanala gönderebilirsiniz (Summon).",
                 color=discord.Color.green()
             )
-            await interaction.response.edit_message(embed=embed, view=None)
+            await interaction.response.edit_message(embed=embed, view=FormSummonView(self.state.form_id, self.state.title, self.bot))
         except Exception as e:
             await interaction.response.send_message(f"❌ Kayıt sırasında bir hata oluştu: {e}", ephemeral=True)
+
+class FormSummonView(discord.ui.View):
+    def __init__(self, form_id: str, title: str, bot: commands.Bot):
+        super().__init__(timeout=120)
+        self.form_id = form_id
+        self.title_text = title
+        self.bot = bot
+        
+        select = discord.ui.ChannelSelect(
+            channel_types=[discord.ChannelType.text],
+            placeholder="Formun Gönderileceği (Summon) Kanalı Seçin",
+            min_values=1, max_values=1
+        )
+        select.callback = self.summon_callback
+        self.add_item(select)
+
+    async def summon_callback(self, interaction: discord.Interaction):
+        target_channel_id = str(interaction.data["values"][0])
+        await interaction.response.defer()
+        
+        import json
+        import uuid
+        action_id = str(uuid.uuid4())
+        payload = json.dumps({"form_id": self.form_id, "target_channel_id": target_channel_id})
+        
+        try:
+            await self.bot.db.execute(
+                "INSERT INTO web_actions (action_id, guild_id, action_type, payload, status) VALUES (?, ?, ?, ?, ?)",
+                action_id, str(interaction.guild.id), "summon_form", payload, "pending"
+            )
+            embed = discord.Embed(
+                title="📤 Form Gönderiliyor",
+                description=f"**{self.title_text}** formu <#{target_channel_id}> kanalına gönderilmesi için sıraya eklendi.\n\nForm mesajı birkaç saniye içinde o kanalda belirecektir!",
+                color=discord.Color.green()
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
+        except Exception as e:
+            await interaction.edit_original_response(content=f"❌ Hata oluştu: {e}", view=None)
 
 class FormStep3View(discord.ui.View):
     def __init__(self, state: FormWizardState, bot: commands.Bot):
@@ -668,13 +855,51 @@ class FormDetailedSettingsDropdown(discord.ui.Select):
         await interaction.edit_original_response(embed=embed, view=None)
 
 
+class SuggestionChannelSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'SuggestionSetupView'):
+        super().__init__(
+            placeholder="💡 Önerilerin Atılacağı Kanalı Seç",
+            channel_types=[discord.ChannelType.text],
+            min_values=1, max_values=1, row=0
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.channel_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
 class SuggestionSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
         self.bot = bot
-        self.add_item(SuggestionDetailedSettingsDropdown(bot))
+        self.channel_id: str | None = None
+        
+        self.add_item(SuggestionChannelSelect(self))
 
-    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.success, emoji="✨", row=1)
+    async def update_save_button(self, interaction: discord.Interaction):
+        save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]
+        if self.channel_id:
+            save_btn.disabled = False
+            save_btn.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="💾 Kaydet", style=discord.ButtonStyle.secondary, emoji="💾", row=1, disabled=True)
+    async def save_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        if self.channel_id:
+            await self.bot.db.execute(
+                "INSERT INTO suggestion_config (guild_id, channel_id) VALUES (?, ?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id",
+                str(interaction.guild.id), self.channel_id
+            )
+            embed = discord.Embed(
+                title="💡 Öneri Sistemi",
+                description=f"✅ Özel kurulum tamamlandı!\nÖneriler <#{self.channel_id}> kanalına gönderilecek.",
+                color=discord.Color.green()
+            )
+            await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="✨ Hızlı Kurulum", style=discord.ButtonStyle.primary, emoji="✨", row=1)
     async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild = interaction.guild
@@ -693,7 +918,7 @@ class SuggestionSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-    @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.bot.db.execute("DELETE FROM suggestion_config WHERE guild_id=?", str(interaction.guild.id))
@@ -702,24 +927,6 @@ class SuggestionSetupView(discord.ui.View):
             title="🗑️ Öneri Sistemi Sıfırlandı",
             description="Öneri kanalı ayarı silindi. Yeni öneri alınmayacak.",
             color=discord.Color.red()
-        )
-        await interaction.edit_original_response(embed=embed, view=None)
-
-
-class SuggestionDetailedSettingsDropdown(discord.ui.Select):
-    def __init__(self, bot: commands.Bot):
-        options = [
-            discord.SelectOption(label="Web Dashboard Ayarları", description="Gelişmiş ayarlar web panelindedir", emoji="🌐", value="web"),
-        ]
-        super().__init__(placeholder="⚙️ Detaylı Ayarlar (Öneri)...", min_values=1, max_values=1, options=options, row=2)
-        self.bot = bot
-
-    async def callback(self, interaction: discord.Interaction):
-        await interaction.response.defer()
-        embed = discord.Embed(
-            title="🌐 Web Dashboard",
-            description="Öneri kabul/ret mesajları, oto-yanıtlar ve emojileri özelleştirmek için Web Dashboard'u kullanabilirsiniz.",
-            color=discord.Color.blurple()
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
@@ -779,13 +986,81 @@ class AutoModDetailedSettingsDropdown(discord.ui.Select):
         await interaction.edit_original_response(embed=embed, view=None)
 
 
+class AutoModLogSelect(discord.ui.ChannelSelect):
+    def __init__(self, parent_view: 'AutoModSetupView'):
+        super().__init__(
+            placeholder="📝 AutoMod Log Kanalını Seç (Opsiyonel)",
+            channel_types=[discord.ChannelType.text],
+            min_values=1, max_values=1, row=0
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.log_channel_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+class AutoModWhitelistRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, parent_view: 'AutoModSetupView'):
+        super().__init__(
+            placeholder="🛡️ Beyaz Liste (Whitelist) Rolünü Seç",
+            min_values=1, max_values=1, row=1
+        )
+        self.parent_view = parent_view
+
+    async def callback(self, interaction: discord.Interaction):
+        self.parent_view.whitelist_role_id = str(self.values[0].id)
+        await self.parent_view.update_save_button(interaction)
+
+
 class AutoModSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
         self.bot = bot
+        self.log_channel_id: str | None = None
+        self.whitelist_role_id: str | None = None
+        
+        self.add_item(AutoModLogSelect(self))
+        self.add_item(AutoModWhitelistRoleSelect(self))
         self.add_item(AutoModDetailedSettingsDropdown(bot))
 
-    @discord.ui.button(label="✨ Hızlı Kurulum (Max Güvenlik)", style=discord.ButtonStyle.success, emoji="🛡️", row=1)
+    async def update_save_button(self, interaction: discord.Interaction):
+        save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]
+        if self.log_channel_id or self.whitelist_role_id:
+            save_btn.disabled = False
+            save_btn.style = discord.ButtonStyle.success
+        await interaction.response.edit_message(view=self)
+
+    @discord.ui.button(label="💾 Kaydet", style=discord.ButtonStyle.secondary, emoji="💾", row=3, disabled=True)
+    async def save_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        guild_id = str(interaction.guild.id)
+        
+        from core.utils import json_load, json_save
+        from pathlib import Path
+        db_file = Path("Data/automod.json")
+        data = json_load(db_file)
+        
+        if self.log_channel_id:
+            data.setdefault("log_channels", {})[guild_id] = self.log_channel_id
+        if self.whitelist_role_id:
+            data.setdefault("ignored_roles", {})[guild_id] = self.whitelist_role_id
+            
+        json_save(db_file, data)
+        
+        desc = "✅ Özel kurulum tamamlandı!"
+        if self.log_channel_id:
+            desc += f"\n**Log Kanalı:** <#{self.log_channel_id}>"
+        if self.whitelist_role_id:
+            desc += f"\n**Whitelist Rolü:** <@&{self.whitelist_role_id}>"
+            
+        embed = discord.Embed(
+            title="🛡️ Otomoderasyon Sistemi",
+            description=desc,
+            color=discord.Color.green()
+        )
+        await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="✨ Max Güvenlik", style=discord.ButtonStyle.primary, emoji="✨", row=3)
     async def quick_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild_id = str(interaction.guild.id)
@@ -809,7 +1084,7 @@ class AutoModSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
-    @discord.ui.button(label="🗑️ Korumaları Kapat", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
+    @discord.ui.button(label="🗑️", style=discord.ButtonStyle.danger, emoji="🗑️", row=3)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         guild_id = str(interaction.guild.id)
@@ -819,15 +1094,15 @@ class AutoModSetupView(discord.ui.View):
         db_file = Path("Data/automod.json")
         data = json_load(db_file)
         
-        for k in ["antilink", "antispam", "antiprofanity"]:
+        for k in ["antilink", "antispam", "antiprofanity", "log_channels", "ignored_roles"]:
             if k in data and guild_id in data[k]:
-                data[k][guild_id] = False
+                del data[k][guild_id]
                 
         json_save(db_file, data)
         
         embed = discord.Embed(
-            title="🛡️ Otomoderasyon Kapatıldı",
-            description="Tüm korumalar devre dışı bırakıldı.",
+            title="🗑️ Otomoderasyon Kapatıldı",
+            description="Tüm korumalar ve log/whitelist ayarları devre dışı bırakıldı.",
             color=discord.Color.red()
         )
         await interaction.edit_original_response(embed=embed, view=None)

@@ -101,5 +101,106 @@ class Permissions(commands.Cog):
             
         await interaction.response.send_message(embed=embed)
 
+    @app_commands.command(name="komut-kapat", description="Belirtilen komutu sunucu genelinde kapatır.")
+    @app_commands.default_permissions(administrator=True)
+    @kumiho_check("owner")
+    async def komut_kapat(self, interaction: discord.Interaction, komut_adi: str):
+        cmd = self.bot.get_command(komut_adi)
+        if not cmd:
+            app_cmd = discord.utils.get(self.bot.tree.get_commands(), name=komut_adi)
+            if not app_cmd:
+                return await interaction.response.send_message(f"❌ `{komut_adi}` adında bir komut bulunamadı.", ephemeral=True)
+        
+        await self.bot.db.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+                            VALUES (?, ?, 0, '[]')
+                            ON CONFLICT(guild_id, command_name) 
+                            DO UPDATE SET is_enabled=0''', str(interaction.guild.id), komut_adi)
+        
+        await interaction.response.send_message(embed=discord.Embed(
+            title="🚫 Komut Kapatıldı",
+            description=f"`{komut_adi}` komutu sunucu genelinde tamamen devre dışı bırakıldı.",
+            color=discord.Color.red()
+        ))
+
+    @app_commands.command(name="komut-ac", description="Kapatılmış bir komutu sunucu genelinde tekrar aktif eder.")
+    @app_commands.default_permissions(administrator=True)
+    @kumiho_check("owner")
+    async def komut_ac(self, interaction: discord.Interaction, komut_adi: str):
+        cmd = self.bot.get_command(komut_adi)
+        if not cmd:
+            app_cmd = discord.utils.get(self.bot.tree.get_commands(), name=komut_adi)
+            if not app_cmd:
+                return await interaction.response.send_message(f"❌ `{komut_adi}` adında bir komut bulunamadı.", ephemeral=True)
+                
+        await self.bot.db.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+                            VALUES (?, ?, 1, '[]')
+                            ON CONFLICT(guild_id, command_name) 
+                            DO UPDATE SET is_enabled=1''', str(interaction.guild.id), komut_adi)
+        
+        await interaction.response.send_message(embed=discord.Embed(
+            title="✅ Komut Açıldı",
+            description=f"`{komut_adi}` komutu sunucu genelinde tekrar aktif edildi.",
+            color=discord.Color.green()
+        ))
+
+    panel_yetki_group = app_commands.Group(name="panel-yetki", description="Web paneli erişim yetkilerini yönetin")
+
+    @panel_yetki_group.command(name="ekle", description="Belirli bir role veya üyeye web panel yetkisi verir.")
+    @app_commands.default_permissions(administrator=True)
+    @kumiho_check("owner")
+    @app_commands.choices(seviye=[
+        app_commands.Choice(name="Okuma (Read)", value="read"),
+        app_commands.Choice(name="Yazma/Düzenleme (Write)", value="write")
+    ])
+    async def panel_yetki_ekle(self, interaction: discord.Interaction, hedef: discord.Mentionable, seviye: app_commands.Choice[str]):
+        hedef_id = str(hedef.id)
+        hedef_type = "role" if isinstance(hedef, discord.Role) else "user"
+        
+        await self.bot.db.execute('''INSERT INTO panel_access_controls (guild_id, target_id, target_type, permission_level)
+                     VALUES (?, ?, ?, ?)
+                     ON CONFLICT(guild_id, target_id)
+                     DO UPDATE SET permission_level = excluded.permission_level, target_type = excluded.target_type''',
+                  str(interaction.guild.id), hedef_id, hedef_type, seviye.value)
+                  
+        embed = discord.Embed(
+            title="🛡️ Panel Yetkisi Verildi",
+            description=f"{hedef.mention} için web paneli yetkisi tanımlandı.\n**Seviye:** `{seviye.name}`",
+            color=discord.Color.green()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @panel_yetki_group.command(name="sil", description="Belirli bir rolün veya üyenin web panel yetkisini kaldırır.")
+    @app_commands.default_permissions(administrator=True)
+    @kumiho_check("owner")
+    async def panel_yetki_sil(self, interaction: discord.Interaction, hedef: discord.Mentionable):
+        await self.bot.db.execute("DELETE FROM panel_access_controls WHERE guild_id = ? AND target_id = ?", 
+                                  str(interaction.guild.id), str(hedef.id))
+        
+        embed = discord.Embed(
+            title="🗑️ Panel Yetkisi Kaldırıldı",
+            description=f"{hedef.mention} için web paneli yetkisi başarıyla silindi.",
+            color=discord.Color.red()
+        )
+        await interaction.response.send_message(embed=embed)
+
+    @panel_yetki_group.command(name="listele", description="Web panel yetkisi olan kişi ve rolleri listeler.")
+    @app_commands.default_permissions(administrator=True)
+    @kumiho_check("owner")
+    async def panel_yetki_listele(self, interaction: discord.Interaction):
+        rows = await self.bot.db.fetchall("SELECT target_id, target_type, permission_level FROM panel_access_controls WHERE guild_id = ?", str(interaction.guild.id))
+        if not rows:
+            return await interaction.response.send_message(embed=discord.Embed(
+                title="🛡️ Panel Yetkileri",
+                description="ℹ️ Bu sunucu için ayarlanmış özel bir web paneli yetkisi bulunmuyor.",
+                color=discord.Color.blue()
+            ))
+            
+        embed = discord.Embed(title="🛡️ Web Paneli Yetkileri", color=discord.Color.blue())
+        for target_id, target_type, perm_level in rows:
+            mention = f"<@&{target_id}>" if target_type == "role" else f"<@{target_id}>"
+            embed.add_field(name=f"Yetki: {perm_level.capitalize()}", value=mention, inline=False)
+            
+        await interaction.response.send_message(embed=embed)
+
 async def setup(bot):
     await bot.add_cog(Permissions(bot))
