@@ -22,6 +22,7 @@ import random
 import time
 import asyncio
 import uuid
+import sqlite3
 
 import discord
 from discord.ext import commands, tasks
@@ -763,16 +764,16 @@ class Leveling(commands.Cog):
         expires_at = int(time.time()) + 900 # 15 mins
         
         try:
-            # Try self.db first, fallback to self.bot.db
-            db = getattr(self, "db", getattr(self.bot, "db", None))
-            if not db:
-                return await ctx.send("❌ Veritabanı bağlantısı bulunamadı.")
-                
-            await db.execute(
+            # Use sqlite3 directly to share with FastAPI
+            db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kumiho.db")
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute(
                 "INSERT INTO upload_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
                 (token, str(ctx.author.id), expires_at)
             )
-            await db.commit()
+            conn.commit()
+            conn.close()
         except Exception as e:
             log.error(f"Failed to generate upload token for {ctx.author.id}: {e}")
             return await ctx.send("❌ Link oluşturulurken bir hata oluştu.")
