@@ -164,6 +164,10 @@ class SyncOracleCursor:
     def description(self):
         return self.cursor.description
 
+    @property
+    def rowcount(self):
+        return self.cursor.rowcount
+
     def _translate_query(self, query: str) -> str:
         if "LIMIT " in query.upper():
             query = re.sub(r'(?i)\bLIMIT\s+1\b', 'FETCH FIRST 1 ROWS ONLY', query)
