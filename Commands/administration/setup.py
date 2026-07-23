@@ -8,15 +8,15 @@ from core.checks import kumiho_check
 log = logging.getLogger(__name__)
 
 LOG_CATEGORIES = {
-    "text": {"title": "📝 Mesaj Log Ayarları", "toggles": {"msg_delete_on": "Silinen Mesaj", "msg_edit_on": "Düzenlenen Mesaj"}},
-    "voice": {"title": "🎙️ Ses Log Ayarları", "toggles": {"ses_join_on": "Sese Katıl/Çık", "ses_switch_on": "Kanal Değiş", "ses_stream_on": "Kamera/Yayın"}},
-    "mod": {"title": "🛡️ Moderatör Log Ayarları", "toggles": {"mod_role_on": "Rol Verme/Alma", "mod_channel_on": "Kanal İşlemleri", "mod_msg_on": "Mesaj Silme"}},
-    "server": {"title": "⚙️ Sunucu Log Ayarları", "toggles": {"srv_update_on": "Sunucu Ayar", "srv_emoji_on": "Emoji Ekle/Çıkar", "srv_role_on": "Toplu Rol", "srv_perm_on": "İzinler"}},
-    "warn": {"title": "⚠️ Uyarı Log Ayarları", "toggles": {"warn_add_on": "Uyarı Ekleme", "warn_remove_on": "Uyarı Silme"}},
-    "ticket": {"title": "🎫 Ticket Log Ayarları", "toggles": {"ticket_create_on": "Ticket Açma", "ticket_close_on": "Ticket Kapatma"}},
-    "app": {"title": "📋 Başvuru Log Ayarları", "toggles": {"app_create_on": "Başvuru Yapma", "app_accept_on": "Başvuru Kabul", "app_reject_on": "Başvuru Red"}},
-    "invite": {"title": "💌 Davet Log Ayarları", "toggles": {"invite_create_on": "Davet Oluşturma", "invite_use_on": "Davet Kullanma"}},
-    "role": {"title": "🎭 Rol Log Ayarları", "toggles": {"role_add_on": "Rol Verme", "role_remove_on": "Rol Alma"}}
+    "text": {"title": "📝 Mesaj Log Ayarları", "channel_col": "msg_channel", "toggles": {"msg_delete_on": "Silinen Mesaj", "msg_edit_on": "Düzenlenen Mesaj"}},
+    "voice": {"title": "🎙️ Ses Log Ayarları", "channel_col": "ses_channel", "toggles": {"ses_join_on": "Sese Katıl/Çık", "ses_switch_on": "Kanal Değiş", "ses_stream_on": "Kamera/Yayın"}},
+    "mod": {"title": "🛡️ Moderatör Log Ayarları", "channel_col": "mod_channel", "toggles": {"mod_role_on": "Rol Verme/Alma", "mod_channel_on": "Kanal İşlemleri", "mod_msg_on": "Mesaj Silme"}},
+    "server": {"title": "⚙️ Sunucu Log Ayarları", "channel_col": "sunucu_channel", "toggles": {"srv_update_on": "Sunucu Ayar", "srv_emoji_on": "Emoji Ekle/Çıkar", "srv_role_on": "Toplu Rol", "srv_perm_on": "İzinler"}},
+    "warn": {"title": "⚠️ Uyarı Log Ayarları", "channel_col": "uyari_channel", "toggles": {"warn_add_on": "Uyarı Ekleme", "warn_remove_on": "Uyarı Silme"}},
+    "ticket": {"title": "🎫 Ticket Log Ayarları", "channel_col": "ticket_channel", "toggles": {"ticket_create_on": "Ticket Açma", "ticket_close_on": "Ticket Kapatma"}},
+    "app": {"title": "📋 Başvuru Log Ayarları", "channel_col": "basvuru_channel", "toggles": {"app_create_on": "Başvuru Yapma", "app_accept_on": "Başvuru Kabul", "app_reject_on": "Başvuru Red"}},
+    "invite": {"title": "💌 Davet Log Ayarları", "channel_col": "davet_channel", "toggles": {"invite_create_on": "Davet Oluşturma", "invite_use_on": "Davet Kullanma"}},
+    "role": {"title": "🎭 Rol Log Ayarları", "channel_col": "rol_channel", "toggles": {"role_add_on": "Rol Verme", "role_remove_on": "Rol Alma"}}
 }
 
 class LogToggleView(discord.ui.View):
@@ -24,6 +24,15 @@ class LogToggleView(discord.ui.View):
         super().__init__(timeout=None)
         self.bot = bot
         self.category_key = category_key
+        self.current_row = current_row
+        
+        channel_select = discord.ui.ChannelSelect(
+            channel_types=[discord.ChannelType.text],
+            placeholder="Bu kategori için log kanalını seçin...",
+            min_values=1, max_values=1, row=0
+        )
+        channel_select.callback = self.channel_callback
+        self.add_item(channel_select)
         
         cat_data = LOG_CATEGORIES[category_key]["toggles"]
         for col_name, label in cat_data.items():
@@ -31,7 +40,8 @@ class LogToggleView(discord.ui.View):
             btn = discord.ui.Button(
                 label=f"{label} ({'AÇIK' if state else 'KAPALI'})", 
                 style=discord.ButtonStyle.success if state else discord.ButtonStyle.danger,
-                custom_id=col_name
+                custom_id=col_name,
+                row=1
             )
             btn.callback = self.make_callback(btn, col_name, state)
             self.add_item(btn)
@@ -39,6 +49,28 @@ class LogToggleView(discord.ui.View):
         back_btn = discord.ui.Button(label="🔙 Log Paneline Dön", style=discord.ButtonStyle.secondary, row=4)
         back_btn.callback = self.back_callback
         self.add_item(back_btn)
+
+    async def channel_callback(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        selected_channel_id = str(interaction.data["values"][0])
+        channel_col = LOG_CATEGORIES[self.category_key]["channel_col"]
+        
+        await self.bot.db.execute(f"UPDATE log_settings SET {channel_col}=? WHERE guild_id=?", selected_channel_id, str(interaction.guild.id))
+        try:
+            await self.bot.db.execute(f"UPDATE db_log_settings SET {channel_col}=? WHERE guild_id=?", selected_channel_id, str(interaction.guild.id))
+        except: pass
+
+        row_db = await self.bot.db.fetchone("SELECT * FROM log_settings WHERE guild_id=?", str(interaction.guild.id))
+        new_view = LogToggleView(self.bot, self.category_key, dict(row_db) if row_db else {})
+        
+        embed = interaction.message.embeds[0]
+        if "Aktif Kanal" in embed.description:
+            lines = embed.description.split("\n")
+            embed.description = "\n".join([l for l in lines if not l.startswith("**Aktif Kanal:**")]) + f"\n**Aktif Kanal:** <#{selected_channel_id}>"
+        else:
+            embed.description += f"\n\n**Aktif Kanal:** <#{selected_channel_id}>"
+            
+        await interaction.edit_original_response(embed=embed, view=new_view)
 
     def make_callback(self, button, col_name, state):
         async def callback(interaction: discord.Interaction):
@@ -90,12 +122,17 @@ class LogDetailedSettingsDropdown(discord.ui.Select):
             
         view = LogToggleView(self.bot, val, dict(row_db) if row_db else {})
         
+        channel_col = LOG_CATEGORIES[val]["channel_col"]
+        active_channel_id = row_db.get(channel_col, None) if row_db else None
+        active_channel_text = f"\n\n**Aktif Kanal:** <#{active_channel_id}>" if active_channel_id else "\n\n**Aktif Kanal:** Ayarlanmamış"
+
         embed = discord.Embed(
             title=LOG_CATEGORIES[val]["title"],
-            description="Aşağıdaki butonlara tıklayarak ilgili logları açıp kapatabilirsiniz.",
+            description="Aşağıdaki menüden kanalı seçebilir veya butonlara tıklayarak ilgili logları açıp kapatabilirsiniz." + active_channel_text,
             color=discord.Color.blurple()
         )
         await interaction.edit_original_response(embed=embed, view=view)
+
 
 
 class LogSetupView(discord.ui.View):
@@ -378,6 +415,196 @@ class LevelDetailedSettingsDropdown(discord.ui.Select):
         await interaction.edit_original_response(embed=embed, view=None)
 
 
+class FormWizardState:
+    def __init__(self, guild_id: str):
+        self.guild_id = guild_id
+        self.form_id = ""
+        self.title = ""
+        self.form_type = 1
+        self.channel_id = None
+        self.action_target = None
+        self.auto_approve = 0
+        self.roles = []
+        self.questions = []
+
+class FormQuestionsModal(discord.ui.Modal, title="Soruları Belirle (Max 5)"):
+    def __init__(self, state: FormWizardState, bot: commands.Bot):
+        super().__init__()
+        self.state = state
+        self.bot = bot
+
+        self.q1 = discord.ui.TextInput(label="1. Soru (Zorunlu)", required=True, placeholder="Örn: Yaşınız kaç?", max_length=100)
+        self.add_item(self.q1)
+        self.q2 = discord.ui.TextInput(label="2. Soru (İsteğe Bağlı)", required=False, max_length=100)
+        self.add_item(self.q2)
+        self.q3 = discord.ui.TextInput(label="3. Soru (İsteğe Bağlı)", required=False, max_length=100)
+        self.add_item(self.q3)
+        self.q4 = discord.ui.TextInput(label="4. Soru (İsteğe Bağlı)", required=False, max_length=100)
+        self.add_item(self.q4)
+        self.q5 = discord.ui.TextInput(label="5. Soru (İsteğe Bağlı)", required=False, max_length=100)
+        self.add_item(self.q5)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        import json
+        questions = [self.q1.value]
+        if self.q2.value: questions.append(self.q2.value)
+        if self.q3.value: questions.append(self.q3.value)
+        if self.q4.value: questions.append(self.q4.value)
+        if self.q5.value: questions.append(self.q5.value)
+        
+        self.state.questions = questions
+        roles_json = json.dumps(self.state.roles)
+        questions_json = json.dumps(self.state.questions)
+        
+        try:
+            await self.bot.db.execute(
+                """INSERT INTO custom_forms 
+                (form_id, guild_id, title, form_type, channel_id, action_target, auto_approve, roles, questions)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(form_id, guild_id) DO UPDATE SET
+                title=excluded.title, form_type=excluded.form_type, channel_id=excluded.channel_id,
+                action_target=excluded.action_target, auto_approve=excluded.auto_approve, 
+                roles=excluded.roles, questions=excluded.questions""",
+                self.state.form_id, self.state.guild_id, self.state.title, self.state.form_type,
+                self.state.channel_id, self.state.action_target, self.state.auto_approve,
+                roles_json, questions_json
+            )
+            
+            embed = discord.Embed(
+                title="✅ Form Başarıyla Oluşturuldu!",
+                description=f"**{self.state.title}** (`{self.state.form_id}`) başarıyla sisteme kaydedildi.\nWeb Panelinden formu yönetebilir veya `/form` komutuyla test edebilirsiniz.",
+                color=discord.Color.green()
+            )
+            await interaction.response.edit_message(embed=embed, view=None)
+        except Exception as e:
+            await interaction.response.send_message(f"❌ Kayıt sırasında bir hata oluştu: {e}", ephemeral=True)
+
+class FormStep3View(discord.ui.View):
+    def __init__(self, state: FormWizardState, bot: commands.Bot):
+        super().__init__(timeout=300)
+        self.state = state
+        self.bot = bot
+        self.update_components()
+
+    def update_components(self):
+        self.clear_items()
+        
+        log_select = discord.ui.ChannelSelect(
+            channel_types=[discord.ChannelType.text],
+            placeholder="Sonuçların/Logların Düşeceği Kanalı Seçin...",
+            min_values=1, max_values=1, row=0
+        )
+        log_select.callback = self.log_channel_callback
+        self.add_item(log_select)
+        
+        if self.state.form_type == 4:
+            pub_select = discord.ui.ChannelSelect(
+                channel_types=[discord.ChannelType.text],
+                placeholder="İtirafların/Gönderilerin Yayınlanacağı Kanal...",
+                min_values=1, max_values=1, row=1
+            )
+            pub_select.callback = self.pub_channel_callback
+            self.add_item(pub_select)
+            
+            btn_label = "✅ Oto-Onay Açık" if self.state.auto_approve else "❌ Oto-Onay Kapalı"
+            btn_style = discord.ButtonStyle.success if self.state.auto_approve else discord.ButtonStyle.danger
+            oto_btn = discord.ui.Button(label=btn_label, style=btn_style, row=3)
+            oto_btn.callback = self.toggle_auto_approve
+            self.add_item(oto_btn)
+            
+        elif self.state.form_type == 2:
+            role_select = discord.ui.RoleSelect(
+                placeholder="Verilecek Rolleri Seçin (Max 25)",
+                min_values=1, max_values=25, row=1
+            )
+            role_select.callback = self.role_callback
+            self.add_item(role_select)
+            
+            btn_label = "✅ Oto-Rol Açık" if self.state.auto_approve else "❌ Oto-Rol Kapalı"
+            btn_style = discord.ButtonStyle.success if self.state.auto_approve else discord.ButtonStyle.danger
+            oto_btn = discord.ui.Button(label=btn_label, style=btn_style, row=3)
+            oto_btn.callback = self.toggle_auto_approve
+            self.add_item(oto_btn)
+            
+        next_btn = discord.ui.Button(label="➡️ Devam: Soruları Belirle", style=discord.ButtonStyle.primary, row=4)
+        next_btn.callback = self.next_step
+        self.add_item(next_btn)
+
+    async def log_channel_callback(self, interaction: discord.Interaction):
+        self.state.channel_id = str(interaction.data["values"][0])
+        await interaction.response.defer()
+
+    async def pub_channel_callback(self, interaction: discord.Interaction):
+        self.state.action_target = str(interaction.data["values"][0])
+        await interaction.response.defer()
+        
+    async def role_callback(self, interaction: discord.Interaction):
+        self.state.roles = [str(r) for r in interaction.data["values"]]
+        await interaction.response.defer()
+        
+    async def toggle_auto_approve(self, interaction: discord.Interaction):
+        self.state.auto_approve = 0 if self.state.auto_approve == 1 else 1
+        self.update_components()
+        await interaction.response.edit_message(view=self)
+
+    async def next_step(self, interaction: discord.Interaction):
+        if not self.state.channel_id:
+            return await interaction.response.send_message("❌ Lütfen Sonuç/Log kanalını seçin!", ephemeral=True)
+        if self.state.form_type == 4 and not self.state.action_target:
+            return await interaction.response.send_message("❌ Lütfen yayın kanalını seçin!", ephemeral=True)
+        if self.state.form_type == 2 and not self.state.roles:
+            return await interaction.response.send_message("❌ Lütfen en az bir rol seçin!", ephemeral=True)
+            
+        modal = FormQuestionsModal(self.state, self.bot)
+        await interaction.response.send_modal(modal)
+
+class FormTypeSelectView(discord.ui.View):
+    def __init__(self, state: FormWizardState, bot: commands.Bot):
+        super().__init__(timeout=300)
+        self.state = state
+        self.bot = bot
+        
+        options = [
+            discord.SelectOption(label="Normal Başvuru Formu", description="Loglanır, onay/ret edilebilir.", emoji="📝", value="1"),
+            discord.SelectOption(label="Rol Seçimli Form", description="Başvurana seçili rolleri verir.", emoji="🎭", value="2"),
+            discord.SelectOption(label="Otomatik Yayın Formu", description="İtiraf sistemi vb.", emoji="📢", value="4"),
+        ]
+        select = discord.ui.Select(placeholder="Form Tipini Seçin...", min_values=1, max_values=1, options=options)
+        select.callback = self.select_callback
+        self.add_item(select)
+        
+    async def select_callback(self, interaction: discord.Interaction):
+        self.state.form_type = int(interaction.data["values"][0])
+        
+        embed = discord.Embed(
+            title="⚙️ Adım 3: Kanallar ve Ayarlar",
+            description="Sonuç log kanalını ve form tipine özel diğer ayarları seçin.",
+            color=discord.Color.gold()
+        )
+        await interaction.response.edit_message(embed=embed, view=FormStep3View(self.state, self.bot))
+
+class FormInitModal(discord.ui.Modal, title="Adım 1: Temel Bilgiler"):
+    def __init__(self, bot: commands.Bot):
+        super().__init__()
+        self.bot = bot
+        self.form_id = discord.ui.TextInput(label="Form ID (Örn: mod-1)", placeholder="Benzersiz ID girin (boşluksuz)", max_length=50)
+        self.add_item(self.form_id)
+        
+        self.title_input = discord.ui.TextInput(label="Form Başlığı", placeholder="Örn: Moderatör Alım Formu", max_length=100)
+        self.add_item(self.title_input)
+        
+    async def on_submit(self, interaction: discord.Interaction):
+        state = FormWizardState(str(interaction.guild.id))
+        state.form_id = self.form_id.value.replace(" ", "-").lower()
+        state.title = self.title_input.value
+        
+        embed = discord.Embed(
+            title="⚙️ Adım 2: Form Tipi",
+            description=f"Form ID: `{state.form_id}`\nBaşlık: **{state.title}**\n\nOluşturmak istediğiniz formun türünü seçin.",
+            color=discord.Color.gold()
+        )
+        await interaction.response.send_message(embed=embed, view=FormTypeSelectView(state, self.bot), ephemeral=True)
+
 class FormSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
@@ -404,6 +631,11 @@ class FormSetupView(discord.ui.View):
             color=discord.Color.green()
         )
         await interaction.edit_original_response(embed=embed, view=None)
+
+    @discord.ui.button(label="🛠️ Özel Form Oluştur", style=discord.ButtonStyle.primary, emoji="🛠️", row=1)
+    async def custom_form_setup(self, interaction: discord.Interaction, button: discord.ui.Button):
+        modal = FormInitModal(self.bot)
+        await interaction.response.send_modal(modal)
 
     @discord.ui.button(label="🗑️ Fabrika Ayarlarına Dön", style=discord.ButtonStyle.danger, emoji="🗑️", row=1)
     async def reset_setup(self, interaction: discord.Interaction, button: discord.ui.Button):

@@ -550,7 +550,20 @@ class FormsCog(commands.Cog):
     category_emoji = "👥"
     def __init__(self, bot):
         self.bot = bot
-        
+        self.web_actions_loop.start()
+
+    @commands.group(name="form", aliases=["basvuru", "app"], invoke_without_command=True)
+    @kumiho_check(default_access="owner")
+    async def form_group(self, ctx: commands.Context):
+        """Form sistemi arayüzünü açar.\n**Kullanım:** `{prefix}form`"""
+        from Commands.administration.setup import FormSetupView
+        embed = discord.Embed(
+            title="📝 Özel Form Sistemi",
+            description="Sunucunuz için özel formlar oluşturun ve başvuruları kolayca toplayın.\n\n**Özel Form Oluştur** butonuna tıklayarak sihirbazı başlatabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed, view=FormSetupView(self.bot))
+
     async def cog_load(self):
         if not self.web_actions_loop.is_running():
             self.web_actions_loop.start()

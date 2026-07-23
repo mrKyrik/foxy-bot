@@ -21,122 +21,14 @@ class Settings(commands.Cog):
 
     @commands.group(invoke_without_command=True)
     async def log(self, ctx: commands.Context) -> None:
-        """log işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.ticket log <#channel>`"""
-        row_db = await self.get_log_settings(ctx.guild.id)
-        row = dict(row_db) if row_db else {}
-
-        def ch(col: str) -> str:
-            val = row.get(col)
-            return f"<#{val}>" if val else "❌ Ayarlanmamış"
-
-        def sw(col: str) -> str:
-            return "🟢 Açık" if row.get(col, 0) else "🔴 Kapalı"
-
+        """log işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.log`"""
+        from Commands.administration.setup import LogSetupView
         embed = discord.Embed(
-            title="⚙️ Discord & Dashboard Log Şalterleri",
-            description=(
-                "Bu panelden açılan log şalterleri, hem seçilen Discord kanalına log gönderilmesini sağlar hem de Web Dashboard'da gösterilmek üzere veritabanına kayıt tutulmasını (senkronize olarak) kontrol eder.\n\n"
-                "Kanal ayarlamak için: `f.log <tür> channel #kanal`\n"
-                "Şalter açmak/kapatmak için: `f.log <tür> <olay> <on|off>`"
-            ),
-            color=discord.Color.blurple(),
-            timestamp=discord.utils.utcnow()
+            title="📝 Log Sistemi Kurulumu",
+            description="**Hızlı Kurulum** ile tüm kanalları otomatik açabilir veya **Detaylı Ayarlar** menüsünden tekli şalterleri ve kanal seçimlerini yönetebilirsiniz.",
+            color=discord.Color.blurple()
         )
-        embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon.url if ctx.guild.icon else None)
-
-        # ── Log Kanalları ──
-        embed.add_field(
-            name="📋 Log Kanalları",
-            value=(
-                f"📝 **Mesaj:** {ch('msg_channel')}\n"
-                f"🎙️ **Ses:** {ch('ses_channel')}\n"
-                f"🛡️ **Moderatör:** {ch('mod_channel')}\n"
-                f"⚙️ **Sunucu:** {ch('sunucu_channel')}"
-            ),
-            inline=True
-        )
-        embed.add_field(
-            name="​",  # boşluk
-            value=(
-                f"⚠️ **Uyarı:** {ch('uyari_channel')}\n"
-                f"🎫 **Ticket:** {ch('ticket_channel')}\n"
-                f"📋 **Başvuru:** {ch('basvuru_channel')}\n"
-                f"💌 **Davet:** {ch('davet_channel')}\n"
-                f"🎭 **Rol:** {ch('rol_channel')}"
-            ),
-            inline=True
-        )
-        embed.add_field(name="\u200b", value="\u200b", inline=False)
-
-        # ── Şalterler ──
-        embed.add_field(
-            name="📝 Mesaj",
-            value=f"Silinen: {sw('msg_delete_on')}\nDüzenlenen: {sw('msg_edit_on')}",
-            inline=True
-        )
-        embed.add_field(
-            name="🎙️ Ses",
-            value=(
-                f"Katıl/Çık: {sw('ses_join_on')}\n"
-                f"Kanal Değiş: {sw('ses_switch_on')}\n"
-                f"Kamera/Yayın: {sw('ses_stream_on')}"
-            ),
-            inline=True
-        )
-        embed.add_field(
-            name="🛡️ Moderatör",
-            value=(
-                f"Rol İşl.: {sw('mod_role_on')}\n"
-                f"Kanal İşl.: {sw('mod_channel_on')}\n"
-                f"Msj Silme: {sw('mod_msg_on')}"
-            ),
-            inline=True
-        )
-        embed.add_field(
-            name="⚙️ Sunucu",
-            value=(
-                f"Ayar: {sw('srv_update_on')}\n"
-                f"Emoji: {sw('srv_emoji_on')}\n"
-                f"Toplu Rol: {sw('srv_role_on')}\n"
-                f"İzin: {sw('srv_perm_on')}"
-            ),
-            inline=True
-        )
-        embed.add_field(
-            name="🔔 Diğer",
-            value=(
-                f"Uyarı Ekle: {sw('warn_add_on')}\n"
-                f"Ticket Aç: {sw('ticket_create_on')}\n"
-                f"Başvuru: {sw('app_create_on')}\n"
-                f"Davet: {sw('invite_create_on')}\n"
-                f"Rol Geçmişi: {sw('role_add_on')}"
-            ),
-            inline=True
-        )
-        embed.add_field(name="\u200b", value="\u200b", inline=True)
-
-        embed.add_field(
-            name="📖 Komut Referansı",
-            value=(
-                "```\n"
-                "f.log set <tür> #kanal    → Kanal seç\n"
-                "  türler: mesaj ses mod sunucu\n"
-                "          uyari ticket basvuru davet rol\n\n"
-                "f.log text   delete/edit   <on|off>\n"
-                "f.log voice  join/switch/stream <on|off>\n"
-                "f.log mod    role/channel/msg   <on|off>\n"
-                "f.log server update/emoji/role/perm <on|off>\n"
-                "f.log warn   add/remove    <on|off>\n"
-                "f.log ticket create/close  <on|off>\n"
-                "f.log app    create/accept/reject <on|off>\n"
-                "f.log invite create/use    <on|off>\n"
-                "f.log role   add/remove    <on|off>\n"
-                "```"
-            ),
-            inline=False
-        )
-        embed.set_footer(text=f"💡 DB logları için: f.db | Sistem: Discord Embed Log")
-        await ctx.send(embed=embed)
+        await ctx.send(embed=embed, view=LogSetupView(self.bot))
 
 
     @log.command(name="set")

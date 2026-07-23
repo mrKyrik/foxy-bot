@@ -34,6 +34,14 @@ class Suggestions(commands.Cog):
 
 **Usage:** `{prefix}suggest <text>`"""
         if not text:
+            if ctx.author.guild_permissions.manage_guild:
+                from Commands.administration.setup import SuggestionSetupView
+                embed = discord.Embed(
+                    title="💡 Öneri Sistemi Kurulumu",
+                    description="Öneri kanalını tek bir tıkla aşağıdan hızlıca ayarlayabilirsiniz.",
+                    color=discord.Color.blurple()
+                )
+                return await ctx.send(embed=embed, view=SuggestionSetupView(self.bot))
             return await ctx.send(f"Usage: `{ctx.prefix}suggest <your suggestion text>`")
 
         g_id = str(ctx.guild.id)

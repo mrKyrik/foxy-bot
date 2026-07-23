@@ -522,14 +522,13 @@ class Tickets(commands.Cog):
     @kumiho_check("owner")
     async def ticket_group(self, ctx: commands.Context) -> None:
         """Setup the ticket system.\n\n**Usage:** `{prefix}ticket`"""
-        p = ctx.prefix
-        await ctx.send(
-            "🎫 **Ticketing System**\n"
-            f"• `{p}ticket setup` — Destek panelini gönderir\n"
-            "*(Not: Tüm ticket ayarları artık Web Arayüzü / Dashboard üzerinden yapılmaktadır.)*\n"
-            f"• `{p}ticket add <@user>` — Ticketa kullanıcı ekler\n"
-            f"• `{p}ticket remove <@user>` — Ticketdan kullanıcı çıkarır"
+        from Commands.administration.setup import TicketSetupView
+        embed = discord.Embed(
+            title="🎫 Ticket Sistemi Kurulumu",
+            description="**Ticket Menüsü Gönder** butonuna tıklayarak kullanıcıların destek talebi açabileceği paneli mevcut kanala gönderebilirsiniz.\n\n**(Not: Kategori ve yetkili ayarları Web Dashboard veya detaylı ayarlar üzerinden yapılandırılır.)**",
+            color=discord.Color.blurple()
         )
+        await ctx.send(embed=embed, view=TicketSetupView(self.bot))
 
     @ticket_group.command(name="setup")
     @kumiho_check("owner")

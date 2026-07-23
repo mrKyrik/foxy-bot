@@ -181,22 +181,14 @@ class AutoMod(commands.Cog):
     @commands.group(name="automod", invoke_without_command=True)
     @kumiho_check("owner")
     async def automod_group(self, ctx: commands.Context) -> None:
-        """Manage auto-moderation settings.
-        
-        Use this command to configure the auto-moderator modules for your server.
-        
-        **Usage:** `{prefix}automod`
-        **Required Permission:** Server Owner or Administrator
-        """
-        p = ctx.prefix
-        await ctx.send(
-            "🤖 **Auto-Moderation Settings**\n"
-            f"• `{p}automod antilink <enable|disable>` — Link/invite filter\n"
-            f"• `{p}automod antispam <enable|disable>` — Spam mute\n"
-            f"• `{p}automod antiprofanity <enable|disable>` — Profanity filter\n"
-            f"• `{p}automod antizalgo <enable|disable>` — Zalgo text filter\n"
-            f"• `{p}automod whitelist <add|remove> <domain>` — Link whitelist"
+        """Manage auto-moderation settings.\n        \n        Use this command to configure the auto-moderator modules for your server.\n        \n        **Usage:** `{prefix}automod`\n        **Required Permission:** Server Owner or Administrator\n        """
+        from Commands.administration.setup import AutoModSetupView
+        embed = discord.Embed(
+            title="🤖 Oto-Moderasyon Kurulumu",
+            description="**Oto-Moderasyon Sistemleri Ayarları**\nAntispam, antilink, küfür koruması gibi özellikleri buradan açıp kapatabilirsiniz.",
+            color=discord.Color.blurple()
         )
+        await ctx.send(embed=embed, view=AutoModSetupView(self.bot))
 
     async def _toggle(self, ctx: commands.Context, key: str, action: str) -> None:
         if action.lower() not in ("enable", "disable"):

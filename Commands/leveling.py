@@ -411,23 +411,14 @@ class Leveling(commands.Cog):
 
     @commands.group(name="level", invoke_without_command=True)
     async def level_group(self, ctx: commands.Context) -> None:
-        """level işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level [parametreler]`"""
-        await ctx.send(
-            "⚙️ **Leveling Settings Suite**\n"
-            f"• `{ctx.prefix}level reward_add <lvl> <@role>` — Add a reward role\n"
-            f"• `{ctx.prefix}level reward_remove <lvl>` — Remove a reward role\n"
-            f"• `{ctx.prefix}level reward_list` — List reward roles\n"
-            f"• `{ctx.prefix}level multiplier_add <@role> <çapan>` — Rol için XP çarpanı ekle (örn: 1.5)\n"
-            f"• `{ctx.prefix}level multiplier_remove <@role>` — Rol çarpanını kaldır\n"
-            f"• `{ctx.prefix}level multiplier_list` — XP çarpanı olan rolleri listele\n"
-            f"• `{ctx.prefix}level ignore_add [#channel]` — Block XP in channel\n"
-            f"• `{ctx.prefix}level ignore_remove [#channel]` — Unblock XP in channel\n"
-            f"• `{ctx.prefix}level channel set [#channel]` — Set a specific channel for level up messages\n"
-            f"• `{ctx.prefix}level channel remove` — Send level up messages to current channel\n"
-            f"• `{ctx.prefix}level xp_rate set <min> <max>` — Configure XP gained per message\n"
-            f"• `{ctx.prefix}level rank_bg` — Kendi Rank arka planını değiştir (Mesaja resim ekle!)\n"
-            f"• `{ctx.prefix}level rank_color <hex_kodu>` — Kendi Rank tema rengini değiştir (Örn: #FF0000)"
+        """level işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.level`"""
+        from Commands.administration.setup import LevelSetupView
+        embed = discord.Embed(
+            title="⭐ Seviye Sistemi Kurulumu",
+            description="**Seviye (XP) Sistemi Ayarları**\nLevel atlama kanalını ve sistem durumunu buradan tek tıkla yönetebilirsiniz.",
+            color=discord.Color.blurple()
         )
+        await ctx.send(embed=embed, view=LevelSetupView(self.bot))
 
     # REWARDS
     @level_group.command(name="reward_add", aliases=["add_reward", "reward"])

@@ -17,6 +17,18 @@ class Forums(commands.Cog):
         self.category = "Diğer"
         self.bot = bot
 
+    @commands.group(name="forum", invoke_without_command=True)
+    @kumiho_check("owner")
+    async def forum_group(self, ctx: commands.Context):
+        """Forum sistemi kurulum menüsünü açar.\n**Kullanım:** `{prefix}forum`"""
+        from Commands.administration.setup import ForumSetupView
+        embed = discord.Embed(
+            title="💬 Forum Sistemi Kurulumu",
+            description="Sunucunuz için Forum Kanalları oluşturabilir, otomatik onay veya oto-mesaj sistemlerini aktif edebilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed, view=ForumSetupView(self.bot))
+
     @commands.command(name="forum_olustur", aliases=["forumkur", "createforum"])
     @kumiho_check("owner")
     async def forum_olustur(self, ctx, *, isim: str):

@@ -426,27 +426,17 @@ class PrivateVoice(commands.Cog):
     async def before_cleanup(self):
         await self.bot.wait_until_ready()
 
-    @commands.command(name="oda-kurulum")
+    @commands.command(name="oda-kurulum", aliases=["oda"])
     @kumiho_check(default_access="owner")
-    async def oda_kurulum(self, ctx, hub_channel: discord.VoiceChannel = None, category: discord.CategoryChannel = None):
-        """Setup the private voice channels system.\n\n**Usage:** `{prefix}oda-kurulum`"""
-        if not hub_channel or not category:
-            category = await ctx.guild.create_category("🎙️ Özel Odalar", reason="Özel Ses Odası Kurulumu")
-            hub_channel = await category.create_voice_channel("➕ Oda Oluştur", reason="Özel Ses Odası Kurulumu")
-        
-        try:
-            await self.bot.db.execute("INSERT OR REPLACE INTO private_voice_hubs (guild_id, category_id, hub_id) VALUES (?, ?, ?)", 
-                                      str(ctx.guild.id), str(category.id), str(hub_channel.id))
-            
-            embed = discord.Embed(
-                title="✅ Özel Oda Sistemi Kuruldu",
-                description=f"Başarıyla {category.mention} kategorisi ve {hub_channel.mention} kanalı oluşturuldu.\n\nKullanıcılar bu kanala girerek kendi geçici ses odalarını oluşturabilirler.",
-                color=discord.Color.green()
-            )
-            await ctx.send(embed=embed)
-        except Exception as e:
-            log.error(f"oda-kurulum komutunda hata: {e}")
-            await ctx.send(f"❌ Veritabanı hatası oluştu: `{e}`")
+    async def oda_kurulum(self, ctx):
+        """Setup the private voice channels system.\n\n**Usage:** `{prefix}oda`"""
+        from Commands.administration.setup import VoiceSetupView
+        embed = discord.Embed(
+            title="🎙️ Özel Ses Odası Kurulumu",
+            description="**Hızlı Kurulum** ile anında gerekli kategoriyi ve kanalı oluşturabilirsiniz.\nVar olan bir ses kanalını ayarlamak için **Mevcut Kanalı Ayarla** butonunu kullanabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed, view=VoiceSetupView(self.bot))
 
     async def update_live_data(self, channel_id: int):
         channel = self.bot.get_channel(channel_id)

@@ -123,18 +123,17 @@ class Giveaways(commands.Cog):
 
     # ── Commands ─────────────────────────────────────────────────────────
 
-    @commands.group(name="giveaway", aliases=["gway"], invoke_without_command=True)
+    @commands.group(name="giveaway", aliases=["gway", "cekilis"], invoke_without_command=True)
     @kumiho_check("owner")
     async def giveaway_group(self, ctx: commands.Context) -> None:
         """Manage giveaways in the server.\n\n**Usage:** `{prefix}giveaway`"""
-        p = ctx.prefix
-        await ctx.send(
-            "🎊 **Server Giveaway Suite**\n"
-            f"• `{p}giveaway start <dur> <prize>` — Start a giveaway (e.g. `{p}gway start 1h Nitro`)\n"
-            f"• `{p}giveaway end <msg_id>` — End a giveaway early\n"
-            f"• `{p}giveaway reroll <msg_id>` — Reroll winner\n"
-            f"• `{p}giveaway list` — View active giveaways"
+        from Commands.administration.setup import GiveawaySetupView
+        embed = discord.Embed(
+            title="🎉 Çekiliş Sistemi Kurulumu",
+            description="**Gelişmiş Çekiliş Sihirbazı**\nAşağıdaki butona tıklayarak adım adım yeni bir çekiliş başlatabilirsiniz.",
+            color=discord.Color.blurple()
         )
+        await ctx.send(embed=embed, view=GiveawaySetupView(self.bot))
 
     @giveaway_group.command(name="start")
     @kumiho_check("owner")
