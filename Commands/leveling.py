@@ -542,14 +542,15 @@ class Leveling(commands.Cog):
             # Fonts
             try:
                 font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
-                font_lg = ImageFont.truetype(os.path.join(font_dir, "Roboto-Black.ttf"), 76)
-                font_sm = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 52)
+                font_name = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 57)
+                font_lvl = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 45)
+                font_xp = ImageFont.truetype(os.path.join(font_dir, "Roboto-Medium.ttf"), 24)
             except Exception as e:
                 log.error(f"Font load error: {e}")
-                font_lg = font_sm = ImageFont.load_default()
+                font_name = font_lvl = font_xp = ImageFont.load_default()
 
-            draw.text((250, 30), member.display_name, fill=(255, 255, 255), font=font_lg)
-            draw.text((width - 60, 30), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lg, anchor="ra")
+            draw.text((250, 40), member.display_name, fill=(255, 255, 255), font=font_name)
+            draw.text((width - 60, 40), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lvl, anchor="ra")
 
             bar_x, bar_y = 250, 150
             bar_w, bar_h = 600, 30
@@ -562,7 +563,7 @@ class Leveling(commands.Cog):
             if fill_w > 0:
                 draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=15, fill=primary_color)
 
-            draw.text((bar_x + bar_w, bar_y - 55), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_sm, anchor="ra")
+            draw.text((bar_x + bar_w, bar_y - 30), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_xp, anchor="ra")
 
             buf = io.BytesIO()
             card.save(buf, format="PNG")
