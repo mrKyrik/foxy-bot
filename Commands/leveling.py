@@ -125,12 +125,6 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
     for idx, row in enumerate(lb_data):
         rank = row["rank"]
         
-        # Color mapping for top 3
-        if rank == 1: rank_color = (0, 255, 255)
-        elif rank == 2: rank_color = (255, 215, 0)
-        elif rank == 3: rank_color = (0, 255, 0)
-        else: rank_color = (180, 180, 180)
-        
         def _hex_to_rgb(h, fallback=(180, 180, 180)):
             if not h: return fallback
             h = h.lstrip('#')
@@ -139,8 +133,8 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
             except Exception:
                 return fallback
 
-        # Determine colors from profile or fallback to rank color
-        custom_bar_color = _hex_to_rgb(row.get("bar_color"), rank_color)
+        # Determine colors from profile or fallback to standard gray
+        custom_bar_color = _hex_to_rgb(row.get("bar_color"), (180, 180, 180, 255))
         custom_name_color = _hex_to_rgb(row.get("name_color"), (255, 255, 255, 255))
         
         # Draw background alternating row (modern light grey)
@@ -148,7 +142,7 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
             draw.rectangle([10, y_offset, width - 10, y_offset + row_height], fill=(39, 39, 42, 255))
             
         # Rank Text
-        draw.text((40, y_offset + row_height // 2), f"#{rank}", fill=rank_color, font=font_rank, anchor="mm")
+        draw.text((40, y_offset + row_height // 2), f"#{rank}", fill=custom_bar_color, font=font_rank, anchor="mm")
 
         # Avatar
         av_size = 46
