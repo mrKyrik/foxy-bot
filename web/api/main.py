@@ -1665,7 +1665,7 @@ async def upload_banner(
 
     # Atomic delete
     cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
-    if cursor.rowcount() == 0:
+    if cursor.rowcount == 0:
         db.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
     db.commit()
