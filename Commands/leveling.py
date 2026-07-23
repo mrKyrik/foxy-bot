@@ -444,6 +444,7 @@ class Leveling(commands.Cog):
     # ── Rank Card ─────────────────────────────────────────────────────────────
 
     @commands.command(name="rank")
+    @commands.guild_only()
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     @kumiho_check("public")
     async def rank(self, ctx: commands.Context, member: discord.Member = None) -> None:
