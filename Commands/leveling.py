@@ -131,6 +131,18 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
         elif rank == 3: rank_color = (0, 255, 0)
         else: rank_color = (180, 180, 180)
         
+        def _hex_to_rgb(h, fallback=(180, 180, 180)):
+            if not h: return fallback
+            h = h.lstrip('#')
+            try:
+                return tuple(int(h[i:i+2], 16) for i in (0, 2, 4)) + (255,)
+            except Exception:
+                return fallback
+
+        # Determine colors from profile or fallback to rank color
+        custom_bar_color = _hex_to_rgb(row.get("bar_color"), rank_color)
+        custom_name_color = _hex_to_rgb(row.get("name_color"), (255, 255, 255, 255))
+        
         # Draw background alternating row (modern light grey)
         if idx % 2 == 1:
             draw.rectangle([10, y_offset, width - 10, y_offset + row_height], fill=(39, 39, 42, 255))
@@ -161,15 +173,15 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
         bar_y = y_offset + 52
         
         # Name (Above bar, left aligned)
-        draw.text((bar_x, bar_y - 6), str(row["name"]), fill=(255, 255, 255), font=font_name, anchor="ld")
+        draw.text((bar_x, bar_y - 6), str(row["name"]), fill=custom_name_color, font=font_name, anchor="ld")
         
         # Level & XP (Above bar, right aligned)
         if "level" in row:
             draw.text((bar_x + bar_w, bar_y - 25), f"Lvl {row['level']}", fill=(255, 255, 255), font=font_level, anchor="rd")
-            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=rank_color, font=font_small, anchor="rd")
+            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=custom_bar_color, font=font_small, anchor="rd")
         else:
             draw.text((bar_x + bar_w, bar_y - 25), f"{row.get('voice_hrs', '0')} Saat", fill=(255, 255, 255), font=font_level, anchor="rd")
-            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=rank_color, font=font_small, anchor="rd")
+            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=custom_bar_color, font=font_small, anchor="rd")
             
         # Draw Progress Bar
         draw.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=4, fill=(63, 63, 70, 255))
@@ -177,7 +189,7 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
         if row.get("ratio", 0) > 0:
             fill_w = int(bar_w * min(row["ratio"], 1.0))
             if fill_w > 0:
-                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=4, fill=rank_color)
+                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=4, fill=custom_bar_color)
                 
         y_offset += row_height
 
@@ -839,7 +851,11 @@ class Leveling(commands.Cog):
     async def lb_xp(self, ctx: commands.Context) -> None:
         """View the XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_xp`"""
         rows = await self.db.fetchall(
-            "SELECT user_id, level, xp FROM levels WHERE guild_id=? ORDER BY level DESC, xp DESC",
+            """SELECT l.user_id, l.level, l.xp, p.name_color, COALESCE(p.bar_color, p.color_hex) AS bar_color
+               FROM levels l
+               LEFT JOIN global_profiles p ON l.user_id = p.user_id
+               WHERE l.guild_id=? 
+               ORDER BY l.level DESC, l.xp DESC""",
             str(ctx.guild.id),
         )
         if not rows:
@@ -854,7 +870,11 @@ class Leveling(commands.Cog):
     async def lb_vc(self, ctx: commands.Context) -> None:
         """View the voice XP leaderboard.\n\n**Usage:** `{prefix}leaderboard_voice`"""
         rows = await self.db.fetchall(
-            "SELECT user_id, voice_time FROM levels WHERE guild_id=? AND voice_time > 0 ORDER BY voice_time DESC",
+            """SELECT l.user_id, l.voice_time, p.name_color, COALESCE(p.bar_color, p.color_hex) AS bar_color
+               FROM levels l
+               LEFT JOIN global_profiles p ON l.user_id = p.user_id
+               WHERE l.guild_id=? AND l.voice_time > 0 
+               ORDER BY l.voice_time DESC""",
             str(ctx.guild.id),
         )
         if not rows:
@@ -899,7 +919,9 @@ class LeaderboardView(discord.ui.View):
             data_dict = {
                 "rank": idx,
                 "name": name,
-                "avatar_bytes": avatar_bytes
+                "avatar_bytes": avatar_bytes,
+                "name_color": row.get("name_color"),
+                "bar_color": row.get("bar_color")
             }
             
             if self.lb_type == "voice":
