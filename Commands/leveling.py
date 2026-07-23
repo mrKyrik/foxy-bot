@@ -92,31 +92,34 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
     if not _PILLOW:
         return None
         
-    width = 850
+    width = 800
     row_height = 70
     padding = 20
-    header_height = 80
+    header_height = 70
     height = header_height + (len(lb_data) * row_height) + padding
     
-    card = Image.new("RGBA", (width, height), (36, 39, 46, 255))
+    # Modern dark grey background
+    card = Image.new("RGBA", (width, height), (24, 24, 27, 255))
     draw = ImageDraw.Draw(card)
 
     try:
         if platform.system() == "Windows":
-            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 40)
+            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 32)
             font_rank = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 24)
-            font_name = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 26)
-            font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 20)
+            font_name = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 20)
+            font_level = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 18)
+            font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 16)
         else:
-            font_title = ImageFont.truetype("arial.ttf", 40)
+            font_title = ImageFont.truetype("arial.ttf", 32)
             font_rank = ImageFont.truetype("arial.ttf", 24)
-            font_name = ImageFont.truetype("arial.ttf", 26)
-            font_small = ImageFont.truetype("arial.ttf", 20)
+            font_name = ImageFont.truetype("arial.ttf", 20)
+            font_level = ImageFont.truetype("arial.ttf", 18)
+            font_small = ImageFont.truetype("arial.ttf", 16)
     except Exception:
-        font_title = font_rank = font_name = font_small = ImageFont.load_default()
+        font_title = font_rank = font_name = font_level = font_small = ImageFont.load_default()
 
     title_text = f"{guild_name} - {'XP' if lb_type == 'xp' else 'Ses'} Sıralaması"
-    draw.text((width//2, 40), title_text, fill=(255, 255, 255), font=font_title, anchor="mm")
+    draw.text((width//2, 35), title_text, fill=(255, 255, 255), font=font_title, anchor="mm")
 
     y_offset = header_height
     for idx, row in enumerate(lb_data):
@@ -128,13 +131,16 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
         elif rank == 3: rank_color = (0, 255, 0)
         else: rank_color = (180, 180, 180)
         
-        # Draw background alternating row
+        # Draw background alternating row (modern light grey)
         if idx % 2 == 1:
-            draw.rectangle([10, y_offset, width - 10, y_offset + row_height], fill=(47, 49, 54, 255))
+            draw.rectangle([10, y_offset, width - 10, y_offset + row_height], fill=(39, 39, 42, 255))
             
+        # Rank Text
+        draw.text((40, y_offset + row_height // 2), f"#{rank}", fill=rank_color, font=font_rank, anchor="mm")
+
         # Avatar
-        av_size = 50
-        ax, ay = 30, y_offset + (row_height - av_size) // 2
+        av_size = 46
+        ax, ay = 75, y_offset + (row_height - av_size) // 2
         
         if row.get("avatar_bytes"):
             try:
@@ -148,30 +154,31 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
         ImageDraw.Draw(mask).ellipse((0, 0, av_size, av_size), fill=255)
         card.paste(av_img, (ax, ay), mask)
         
-        # Rank and Name
-        draw.text((100, y_offset + 20), f"#{rank}", fill=rank_color, font=font_rank)
-        draw.text((160, y_offset + 18), str(row["name"]), fill=(255, 255, 255), font=font_name)
+        # Progress Bar dimensions
+        bar_x = 135
+        bar_w = width - bar_x - 30
+        bar_h = 8
+        bar_y = y_offset + 52
         
-        # Progress Bar
-        bar_x, bar_y = 400, y_offset + 25
-        bar_w, bar_h = 250, 20
-        draw.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=10, fill=(32, 34, 37, 255))
+        # Name (Above bar, left aligned)
+        draw.text((bar_x, bar_y - 6), str(row["name"]), fill=(255, 255, 255), font=font_name, anchor="ld")
+        
+        # Level & XP (Above bar, right aligned)
+        if "level" in row:
+            draw.text((bar_x + bar_w, bar_y - 25), f"Lvl {row['level']}", fill=(255, 255, 255), font=font_level, anchor="rd")
+            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=rank_color, font=font_small, anchor="rd")
+        else:
+            draw.text((bar_x + bar_w, bar_y - 25), f"{row.get('voice_hrs', '0')} Saat", fill=(255, 255, 255), font=font_level, anchor="rd")
+            draw.text((bar_x + bar_w, bar_y - 6), row["progress_text"], fill=rank_color, font=font_small, anchor="rd")
+            
+        # Draw Progress Bar
+        draw.rounded_rectangle([bar_x, bar_y, bar_x + bar_w, bar_y + bar_h], radius=4, fill=(63, 63, 70, 255))
         
         if row.get("ratio", 0) > 0:
             fill_w = int(bar_w * min(row["ratio"], 1.0))
             if fill_w > 0:
-                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=10, fill=rank_color)
+                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=4, fill=rank_color)
                 
-        # Progress text
-        if "progress_text" in row:
-            draw.text((bar_x + bar_w - 5, bar_y - 20), row["progress_text"], fill=rank_color, font=font_small, anchor="ra")
-            
-        # Level text
-        if "level" in row:
-            draw.text((700, y_offset + 20), f"Lvl {row['level']}", fill=(255, 255, 255), font=font_name)
-        else:
-            draw.text((700, y_offset + 20), f"{row.get('voice_hrs', '0')} Saat", fill=(255, 255, 255), font=font_name)
-            
         y_offset += row_height
 
     buf = io.BytesIO()
