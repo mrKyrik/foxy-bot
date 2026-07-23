@@ -1,19 +1,21 @@
-import sqlite3
+import asyncio
+from dotenv import load_dotenv
+load_dotenv()
+from core.database import Database
 
-def check_db():
-    conn = sqlite3.connect('temp_backup/foxy-bot/kumiho.db')
-    cursor = conn.cursor()
+async def main():
+    db = Database()
+    await db.init()
+    
+    rows = await db.fetchall("SELECT * FROM global_profiles")
+    print("GLOBAL_PROFILES (ORACLE):", rows)
+    
+    # Try querying levels
     try:
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
-        tables = cursor.fetchall()
-        for (table_name,) in tables:
-            try:
-                cursor.execute(f"SELECT count(*) FROM {table_name}")
-                count = cursor.fetchone()[0]
-                print(f"{table_name}: OK ({count} rows)")
-            except Exception as e:
-                print(f"{table_name}: FAILED - {e}")
+        l_rows = await db.fetchall("SELECT * FROM levels WHERE rownum <= 5")
+        print("LEVELS (ORACLE):", l_rows)
     except Exception as e:
-        print(f"Failed to read sqlite_master: {e}")
+        print("LEVELS error:", e)
 
-check_db()
+if __name__ == "__main__":
+    asyncio.run(main())
