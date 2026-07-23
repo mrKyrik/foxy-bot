@@ -1,8 +1,8 @@
 import asyncio
-from core.database import DatabaseManager
+from core.database import Database
 
 async def r():
-    db = DatabaseManager()
+    db = Database()
     await db.connect()
     try:
         await db.execute('ALTER TABLE global_profiles ADD blur_amount NUMBER DEFAULT 0')
