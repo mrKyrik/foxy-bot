@@ -95,7 +95,7 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
     width = 800
     row_height = 70
     padding = 20
-    header_height = 110
+    header_height = 80
     height = header_height + (len(lb_data) * row_height) + padding
     
     # Modern dark grey background
@@ -104,13 +104,13 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
 
     try:
         if platform.system() == "Windows":
-            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 64)
+            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 38)
             font_rank = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 24)
             font_name = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 20)
             font_level = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 18)
             font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 16)
         else:
-            font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
+            font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 38)
             font_rank = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
             font_name = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
             font_level = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
