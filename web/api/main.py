@@ -1621,6 +1621,7 @@ async def upload_banner(
     border_width: int = Form(default=6),
     overlay_opacity: int = Form(default=60),
     name_color: str = Form(default="#FFFFFF"),
+    blur_amount: int = Form(default=0),
 ):
     if not Image:
         raise HTTPException(status_code=500, detail="Pillow not installed on server")
@@ -1628,6 +1629,7 @@ async def upload_banner(
     # Clamp values
     border_width = max(2, min(16, border_width))
     overlay_opacity = max(0, min(85, overlay_opacity))
+    blur_amount = max(0, min(20, blur_amount))
 
     # Validate hex colors
     import re as _re
@@ -1647,6 +1649,7 @@ async def upload_banner(
         ("border_width", "INTEGER DEFAULT 6"),
         ("overlay_opacity", "INTEGER DEFAULT 60"),
         ("name_color", "TEXT DEFAULT '#FFFFFF'"),
+        ("blur_amount", "INTEGER DEFAULT 0"),
     ]:
         try:
             cursor.execute(f"ALTER TABLE global_profiles ADD COLUMN {col_def[0]} {col_def[1]}")
@@ -1686,6 +1689,10 @@ async def upload_banner(
     try:
         img = Image.open(io.BytesIO(content)).convert("RGBA")
         img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
+        # Apply blur before saving (bot reads raw file, blur baked in)
+        if blur_amount > 0:
+            from PIL import ImageFilter as _IF
+            img = img.filter(_IF.GaussianBlur(radius=blur_amount))
 
         banner_dir = os.path.join(os.path.dirname(BASE_DIR), "foxy-bg")
         os.makedirs(banner_dir, exist_ok=True)
@@ -1698,16 +1705,17 @@ async def upload_banner(
     # Save customization to global_profiles
     cursor.execute(
         """
-        INSERT INTO global_profiles (user_id, bar_color, border_color, border_width, overlay_opacity, name_color)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO global_profiles (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             bar_color=excluded.bar_color,
             border_color=excluded.border_color,
             border_width=excluded.border_width,
             overlay_opacity=excluded.overlay_opacity,
-            name_color=excluded.name_color
+            name_color=excluded.name_color,
+            blur_amount=excluded.blur_amount
         """,
-        (user_id, bar_color, border_color, border_width, overlay_opacity, name_color)
+        (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
     )
     conn.commit()
     conn.close()

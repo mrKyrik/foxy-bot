@@ -30,7 +30,7 @@ from discord.ext import commands, tasks
 log = logging.getLogger(__name__)
 
 try:
-    from PIL import Image, ImageDraw, ImageFont, ImageOps
+    from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageFilter
     _PILLOW = True
 except ImportError:
     _PILLOW = False
@@ -484,7 +484,7 @@ class Leveling(commands.Cog):
         async with ctx.typing():
             # Check global profile
             global_prof = await self.db.fetchone(
-                "SELECT color_hex, bar_color, border_color, border_width, overlay_opacity, name_color FROM global_profiles WHERE user_id = ?",
+                "SELECT color_hex, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount FROM global_profiles WHERE user_id = ?",
                 str(member.id)
             )
             # bar_color: XP bar + level text (fallback to old color_hex)
@@ -497,6 +497,7 @@ class Leveling(commands.Cog):
             bwidth        = int(global_prof["border_width"]    if global_prof and global_prof["border_width"]    else 6)
             ov_opacity    = int(global_prof["overlay_opacity"] if global_prof and global_prof["overlay_opacity"] else 60)
             name_hex      = (global_prof["name_color"]     if global_prof and global_prof["name_color"]     else "#FFFFFF")
+            blur_amount   = int(global_prof["blur_amount"]  if global_prof and global_prof["blur_amount"]  else 0)
 
             def _hex_to_rgb(h, fallback=(16, 185, 129)):
                 try:
@@ -526,6 +527,9 @@ class Leveling(commands.Cog):
                     # Ensure it is 900x250
                     if card.size != (width, height):
                         card = ImageOps.fit(card, (width, height), method=Image.Resampling.LANCZOS)
+                    # Apply gaussian blur if set
+                    if blur_amount > 0:
+                        card = card.filter(ImageFilter.GaussianBlur(radius=blur_amount))
                 except Exception as e:
                     log.error(f"Failed to load banner for {member.id}: {e}")
                     card = Image.new("RGBA", (width, height), (15, 23, 42, 255))
