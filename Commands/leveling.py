@@ -133,8 +133,8 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
             except Exception:
                 return fallback
 
-        # Determine colors from profile or fallback to standard Kumiho green
-        custom_bar_color = _hex_to_rgb(row.get("bar_color"), (16, 185, 129, 255))
+        # Determine colors from profile or fallback to standard gray
+        custom_bar_color = _hex_to_rgb(row.get("bar_color"), (180, 180, 180, 255))
         custom_name_color = _hex_to_rgb(row.get("name_color"), (255, 255, 255, 255))
         
         # Draw background alternating row (modern light grey)
