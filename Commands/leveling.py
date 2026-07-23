@@ -73,13 +73,11 @@ def _generate_levelup_card_sync(member_name: str, avatar_bytes: bytes, new_level
     draw.ellipse((ax - 3, ay - 3, ax + av_size + 3, ay + av_size + 3), outline=(16, 185, 129, 255), width=6)
 
     try:
-        if platform.system() == "Windows":
-            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 55)
-            font_sub = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 35)
-        else:
-            font_title = ImageFont.truetype("arial.ttf", 55)
-            font_sub = ImageFont.truetype("arial.ttf", 35)
-    except Exception:
+        font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
+        font_title = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 80)
+        font_sub = ImageFont.truetype(os.path.join(font_dir, "Roboto-Medium.ttf"), 50)
+    except Exception as e:
+        log.error(f"Font load error: {e}")
         font_title = font_sub = ImageFont.load_default()
 
     draw.text((250, 70), "LEVEL UP!", fill=(16, 185, 129), font=font_title)
@@ -543,13 +541,11 @@ class Leveling(commands.Cog):
 
             # Fonts
             try:
-                if platform.system() == "Windows":
-                    font_lg = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 38)
-                    font_sm = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 26)
-                else:
-                    font_lg = ImageFont.truetype("arial.ttf", 40)
-                    font_sm = font_lg
-            except Exception:
+                font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
+                font_lg = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 65)
+                font_sm = ImageFont.truetype(os.path.join(font_dir, "Roboto-Medium.ttf"), 40)
+            except Exception as e:
+                log.error(f"Font load error: {e}")
                 font_lg = font_sm = ImageFont.load_default()
 
             draw.text((250, 45), member.display_name, fill=(255, 255, 255), font=font_lg)
