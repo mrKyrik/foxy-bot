@@ -1613,47 +1613,80 @@ def delete_panel_auth(guild_id: str, target_id: str, _: dict = Depends(verify_ow
     return {"status": "success"}
 
 @app.post("/api/upload-banner")
-async def upload_banner(token: str = Form(...), file: UploadFile = File(...)):
+async def upload_banner(
+    token: str = Form(...),
+    file: UploadFile = File(...),
+    bar_color: str = Form(default="#10B981"),
+    border_color: str = Form(default="#00C8FF"),
+    border_width: int = Form(default=6),
+    overlay_opacity: int = Form(default=60),
+    name_color: str = Form(default="#FFFFFF"),
+):
     if not Image:
         raise HTTPException(status_code=500, detail="Pillow not installed on server")
-        
+
+    # Clamp values
+    border_width = max(2, min(16, border_width))
+    overlay_opacity = max(0, min(85, overlay_opacity))
+
+    # Validate hex colors
+    import re as _re
+    _hex_re = _re.compile(r'^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$')
+    for col in (bar_color, border_color, name_color):
+        if not _hex_re.match(col):
+            raise HTTPException(status_code=422, detail=f"Geçersiz renk kodu: {col}")
+
     conn = sqlite3.connect(MAIN_DB_PATH)
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
-    
+
+    # Ensure global_profiles has new columns (safe migration)
+    for col_def in [
+        ("bar_color", "TEXT DEFAULT '#10B981'"),
+        ("border_color", "TEXT DEFAULT '#00C8FF'"),
+        ("border_width", "INTEGER DEFAULT 6"),
+        ("overlay_opacity", "INTEGER DEFAULT 60"),
+        ("name_color", "TEXT DEFAULT '#FFFFFF'"),
+    ]:
+        try:
+            cursor.execute(f"ALTER TABLE global_profiles ADD COLUMN {col_def[0]} {col_def[1]}")
+        except Exception:
+            pass  # column already exists
+    conn.commit()
+
     cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = ?", (token,))
     row = cursor.fetchone()
-    
+
     if not row:
         conn.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
-        
+
     user_id = row['user_id']
     expires_at = row['expires_at']
-    
+
     if time.time() > expires_at:
         cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
         conn.commit()
         conn.close()
         raise HTTPException(status_code=401, detail="Token süresi dolmuş.")
-        
+
     # Atomic delete
     cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
     if cursor.rowcount == 0:
         conn.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
     conn.commit()
-    
+
     # Process image
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
         conn.close()
         raise HTTPException(status_code=413, detail="Dosya çok büyük (Maks 5MB)")
-        
+
     try:
         img = Image.open(io.BytesIO(content)).convert("RGBA")
         img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
-        
+
         banner_dir = os.path.join(os.path.dirname(BASE_DIR), "foxy-bg")
         os.makedirs(banner_dir, exist_ok=True)
         bg_path = os.path.join(banner_dir, f"{user_id}.png")
@@ -1661,9 +1694,25 @@ async def upload_banner(token: str = Form(...), file: UploadFile = File(...)):
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")
-        
+
+    # Save customization to global_profiles
+    cursor.execute(
+        """
+        INSERT INTO global_profiles (user_id, bar_color, border_color, border_width, overlay_opacity, name_color)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            bar_color=excluded.bar_color,
+            border_color=excluded.border_color,
+            border_width=excluded.border_width,
+            overlay_opacity=excluded.overlay_opacity,
+            name_color=excluded.name_color
+        """,
+        (user_id, bar_color, border_color, border_width, overlay_opacity, name_color)
+    )
+    conn.commit()
     conn.close()
-    return {"status": "success", "message": "Arka plan başarıyla güncellendi."}
+    return {"status": "success", "message": "Rank kartı başarıyla güncellendi."}
+
 
 if __name__ == "__main__":
     import uvicorn

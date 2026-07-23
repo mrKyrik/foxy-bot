@@ -484,17 +484,30 @@ class Leveling(commands.Cog):
         async with ctx.typing():
             # Check global profile
             global_prof = await self.db.fetchone(
-                "SELECT color_hex FROM global_profiles WHERE user_id = ?",
+                "SELECT color_hex, bar_color, border_color, border_width, overlay_opacity, name_color FROM global_profiles WHERE user_id = ?",
                 str(member.id)
             )
-            color_hex = global_prof["color_hex"] if global_prof and global_prof["color_hex"] else "#10B981"
-            
-            # Convert hex to RGB tuple
-            try:
-                c = color_hex.lstrip("#")
-                primary_color = tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
-            except Exception:
-                primary_color = (16, 185, 129)
+            # bar_color: XP bar + level text (fallback to old color_hex)
+            bar_hex = (
+                (global_prof["bar_color"] if global_prof and global_prof["bar_color"] else None)
+                or (global_prof["color_hex"] if global_prof and global_prof["color_hex"] else None)
+                or "#10B981"
+            )
+            border_hex    = (global_prof["border_color"]   if global_prof and global_prof["border_color"]   else "#00C8FF")
+            bwidth        = int(global_prof["border_width"]    if global_prof and global_prof["border_width"]    else 6)
+            ov_opacity    = int(global_prof["overlay_opacity"] if global_prof and global_prof["overlay_opacity"] else 60)
+            name_hex      = (global_prof["name_color"]     if global_prof and global_prof["name_color"]     else "#FFFFFF")
+
+            def _hex_to_rgb(h, fallback=(16, 185, 129)):
+                try:
+                    c = h.lstrip("#")
+                    return tuple(int(c[i:i+2], 16) for i in (0, 2, 4))
+                except Exception:
+                    return fallback
+
+            primary_color = _hex_to_rgb(bar_hex)
+            border_color  = _hex_to_rgb(border_hex, (0, 200, 255))
+            name_color    = _hex_to_rgb(name_hex, (255, 255, 255))
 
             avatar_bytes = None
             try:
@@ -521,6 +534,11 @@ class Leveling(commands.Cog):
                 
             draw = ImageDraw.Draw(card)
 
+            # Dark overlay
+            overlay = Image.new("RGBA", (width, height), (0, 0, 0, int(ov_opacity * 2.55)))
+            card = Image.alpha_composite(card, overlay)
+            draw = ImageDraw.Draw(card)
+
             # Avatar
             av_size = 180
             if avatar_bytes:
@@ -535,8 +553,8 @@ class Leveling(commands.Cog):
             ax, ay = 35, (height - av_size) // 2
             card.paste(av_img, (ax, ay), mask)
             draw.ellipse(
-                (ax - 3, ay - 3, ax + av_size + 3, ay + av_size + 3),
-                outline=(0, 200, 255, 255), width=6,
+                (ax - bwidth - 1, ay - bwidth - 1, ax + av_size + bwidth + 1, ay + av_size + bwidth + 1),
+                outline=(*border_color, 255), width=bwidth,
             )
 
             # Fonts
@@ -549,8 +567,8 @@ class Leveling(commands.Cog):
                 log.error(f"Font load error: {e}")
                 font_name = font_lvl = font_xp = ImageFont.load_default()
 
-            draw.text((250, 40), member.display_name, fill=(255, 255, 255), font=font_name)
-            draw.text((width - 60, 40), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lvl, anchor="ra")
+            draw.text((250, 40), member.display_name, fill=(*name_color, 255), font=font_name)
+            draw.text((width - 60, 40), f"Lvl {level}  |  #{rank_pos}", fill=(*primary_color, 255), font=font_lvl, anchor="ra")
 
             bar_x, bar_y = 250, 150
             bar_w, bar_h = 600, 30
@@ -561,7 +579,7 @@ class Leveling(commands.Cog):
             fill_w = int(bar_w * ratio)
 
             if fill_w > 0:
-                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=15, fill=primary_color)
+                draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=15, fill=(*primary_color, 255))
 
             draw.text((bar_x + bar_w, bar_y - 30), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_xp, anchor="ra")
 
