@@ -7,7 +7,7 @@ from core.database import Database
 
 async def main():
     # SQLite
-    sl_conn = sqlite3.connect("kumiho.db")
+    sl_conn = sqlite3.connect("Data/kumiho.db")
     sl_conn.row_factory = sqlite3.Row
     sl_cur = sl_conn.cursor()
     try:
