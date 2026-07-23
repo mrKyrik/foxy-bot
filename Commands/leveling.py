@@ -95,7 +95,7 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
     width = 800
     row_height = 70
     padding = 20
-    header_height = 70
+    header_height = 110
     height = header_height + (len(lb_data) * row_height) + padding
     
     # Modern dark grey background
@@ -104,22 +104,22 @@ def _generate_leaderboard_image_sync(lb_data: list, guild_name: str, lb_type: st
 
     try:
         if platform.system() == "Windows":
-            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 32)
+            font_title = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 64)
             font_rank = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 24)
             font_name = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 20)
             font_level = ImageFont.truetype(r"C:\Windows\Fonts\segoeuib.ttf", 18)
             font_small = ImageFont.truetype(r"C:\Windows\Fonts\segoeui.ttf", 16)
         else:
-            font_title = ImageFont.truetype("arial.ttf", 32)
-            font_rank = ImageFont.truetype("arial.ttf", 24)
-            font_name = ImageFont.truetype("arial.ttf", 20)
-            font_level = ImageFont.truetype("arial.ttf", 18)
-            font_small = ImageFont.truetype("arial.ttf", 16)
+            font_title = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 64)
+            font_rank = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 24)
+            font_name = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 20)
+            font_level = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 18)
+            font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 16)
     except Exception:
         font_title = font_rank = font_name = font_level = font_small = ImageFont.load_default()
 
     title_text = f"{guild_name} - {'XP' if lb_type == 'xp' else 'Ses'} Sıralaması"
-    draw.text((width//2, 35), title_text, fill=(255, 255, 255), font=font_title, anchor="mm")
+    draw.text((width//2, header_height // 2), title_text, fill=(255, 255, 255), font=font_title, anchor="mm")
 
     y_offset = header_height
     for idx, row in enumerate(lb_data):
