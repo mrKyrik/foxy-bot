@@ -74,8 +74,8 @@ def _generate_levelup_card_sync(member_name: str, avatar_bytes: bytes, new_level
 
     try:
         font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
-        font_title = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 80)
-        font_sub = ImageFont.truetype(os.path.join(font_dir, "Roboto-Medium.ttf"), 50)
+        font_title = ImageFont.truetype(os.path.join(font_dir, "Roboto-Black.ttf"), 110)
+        font_sub = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 70)
     except Exception as e:
         log.error(f"Font load error: {e}")
         font_title = font_sub = ImageFont.load_default()
@@ -542,14 +542,14 @@ class Leveling(commands.Cog):
             # Fonts
             try:
                 font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
-                font_lg = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 65)
-                font_sm = ImageFont.truetype(os.path.join(font_dir, "Roboto-Medium.ttf"), 40)
+                font_lg = ImageFont.truetype(os.path.join(font_dir, "Roboto-Black.ttf"), 76)
+                font_sm = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 52)
             except Exception as e:
                 log.error(f"Font load error: {e}")
                 font_lg = font_sm = ImageFont.load_default()
 
-            draw.text((250, 45), member.display_name, fill=(255, 255, 255), font=font_lg)
-            draw.text((width - 60, 45), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lg, anchor="ra")
+            draw.text((250, 30), member.display_name, fill=(255, 255, 255), font=font_lg)
+            draw.text((width - 60, 30), f"Lvl {level}  |  #{rank_pos}", fill=primary_color, font=font_lg, anchor="ra")
 
             bar_x, bar_y = 250, 150
             bar_w, bar_h = 600, 30
@@ -562,7 +562,7 @@ class Leveling(commands.Cog):
             if fill_w > 0:
                 draw.rounded_rectangle([bar_x, bar_y, bar_x + fill_w, bar_y + bar_h], radius=15, fill=primary_color)
 
-            draw.text((bar_x + bar_w, bar_y - 25), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_sm, anchor="ra")
+            draw.text((bar_x + bar_w, bar_y - 55), f"{xp} / {needed} XP", fill=(200, 200, 200), font=font_sm, anchor="ra")
 
             buf = io.BytesIO()
             card.save(buf, format="PNG")
