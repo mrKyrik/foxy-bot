@@ -1638,52 +1638,42 @@ async def upload_banner(
         if not _hex_re.match(col):
             raise HTTPException(status_code=422, detail=f"Geçersiz renk kodu: {col}")
 
-    conn = sqlite3.connect(MAIN_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    cursor = conn.cursor()
+    db = SyncOracleConnection()
+    cursor = db.cursor()
+    if not cursor:
+        raise HTTPException(status_code=500, detail="Database connection failed")
 
-    # Ensure global_profiles has new columns (safe migration)
-    for col_def in [
-        ("bar_color", "TEXT DEFAULT '#10B981'"),
-        ("border_color", "TEXT DEFAULT '#00C8FF'"),
-        ("border_width", "INTEGER DEFAULT 6"),
-        ("overlay_opacity", "INTEGER DEFAULT 60"),
-        ("name_color", "TEXT DEFAULT '#FFFFFF'"),
-        ("blur_amount", "INTEGER DEFAULT 0"),
-    ]:
-        try:
-            cursor.execute(f"ALTER TABLE global_profiles ADD COLUMN {col_def[0]} {col_def[1]}")
-        except Exception:
-            pass  # column already exists
-    conn.commit()
+    # Oracle doesn't support schema alteration dynamically like sqlite during normal queries,
+    # so we assume blur_amount and upload_tokens exist in Oracle DB.
+    # We added them manually via update_oracle.py
 
-    cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = ?", (token,))
+    cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = :1", (token,))
     row = cursor.fetchone()
 
     if not row:
-        conn.close()
+        db.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
 
     user_id = row['user_id']
     expires_at = row['expires_at']
 
     if time.time() > expires_at:
-        cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
-        conn.commit()
-        conn.close()
+        cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
+        db.commit()
+        db.close()
         raise HTTPException(status_code=401, detail="Token süresi dolmuş.")
 
     # Atomic delete
-    cursor.execute("DELETE FROM upload_tokens WHERE token = ?", (token,))
-    if cursor.rowcount == 0:
-        conn.close()
+    cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
+    if cursor.rowcount() == 0:
+        db.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
-    conn.commit()
+    db.commit()
 
     # Process image
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
-        conn.close()
+        db.close()
         raise HTTPException(status_code=413, detail="Dosya çok büyük (Maks 5MB)")
 
     try:
@@ -1699,26 +1689,29 @@ async def upload_banner(
         bg_path = os.path.join(banner_dir, f"{user_id}.png")
         img.save(bg_path, "PNG", optimize=True)
     except Exception as e:
-        conn.close()
+        db.close()
         raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")
 
-    # Save customization to global_profiles
+    # Save customization to global_profiles in Oracle
     cursor.execute(
         """
-        INSERT INTO global_profiles (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(user_id) DO UPDATE SET
-            bar_color=excluded.bar_color,
-            border_color=excluded.border_color,
-            border_width=excluded.border_width,
-            overlay_opacity=excluded.overlay_opacity,
-            name_color=excluded.name_color,
-            blur_amount=excluded.blur_amount
+        MERGE INTO global_profiles trg
+        USING (SELECT :1 AS user_id, :2 AS bar_color, :3 AS border_color, :4 AS border_width, :5 AS overlay_opacity, :6 AS name_color, :7 AS blur_amount FROM dual) src
+        ON (trg.user_id = src.user_id)
+        WHEN MATCHED THEN UPDATE SET 
+            trg.bar_color = src.bar_color, 
+            trg.border_color = src.border_color, 
+            trg.border_width = src.border_width, 
+            trg.overlay_opacity = src.overlay_opacity, 
+            trg.name_color = src.name_color,
+            trg.blur_amount = src.blur_amount
+        WHEN NOT MATCHED THEN INSERT (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
+        VALUES (src.user_id, src.bar_color, src.border_color, src.border_width, src.overlay_opacity, src.name_color, src.blur_amount)
         """,
         (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
     )
-    conn.commit()
-    conn.close()
+    db.commit()
+    db.close()
     return {"status": "success", "message": "Rank kartı başarıyla güncellendi."}
 
 

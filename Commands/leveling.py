@@ -482,18 +482,11 @@ class Leveling(commands.Cog):
             return await ctx.send(embed=embed)
 
         async with ctx.typing():
-            # Check global profile in sqlite3 (shared with dashboard API)
-            global_prof = None
-            try:
-                db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kumiho.db")
-                conn = sqlite3.connect(db_path)
-                conn.row_factory = sqlite3.Row
-                c = conn.cursor()
-                c.execute("SELECT color_hex, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount FROM global_profiles WHERE user_id = ?", (str(member.id),))
-                global_prof = c.fetchone()
-                conn.close()
-            except Exception as e:
-                log.error(f"Failed to read global_profile from sqlite: {e}")
+            # Check global profile
+            global_prof = await self.db.fetchone(
+                "SELECT color_hex, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount FROM global_profiles WHERE user_id = ?",
+                str(member.id)
+            )
             # bar_color: XP bar + level text (fallback to old color_hex)
             bar_hex = (
                 (global_prof["bar_color"] if global_prof and global_prof["bar_color"] else None)
@@ -793,16 +786,10 @@ class Leveling(commands.Cog):
         expires_at = int(time.time()) + 900 # 15 mins
         
         try:
-            # Use sqlite3 directly to share with FastAPI
-            db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kumiho.db")
-            conn = sqlite3.connect(db_path)
-            cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO upload_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
-                (token, str(ctx.author.id), expires_at)
+            await self.db.execute(
+                "INSERT INTO upload_tokens (token, user_id, expires_at) VALUES (:1, :2, :3)",
+                token, str(ctx.author.id), expires_at
             )
-            conn.commit()
-            conn.close()
         except Exception as e:
             log.error(f"Failed to generate upload token for {ctx.author.id}: {e}")
             return await ctx.send("❌ Link oluşturulurken bir hata oluştu.")
@@ -830,31 +817,10 @@ class Leveling(commands.Cog):
         if not hex_code.startswith("#") or len(hex_code) not in (4, 7):
             return await ctx.send("❌ Lütfen geçerli bir HEX kodu gir. Örn: `#FF5733`")
             
-        try:
-            db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "kumiho.db")
-            conn = sqlite3.connect(db_path)
-            c = conn.cursor()
-            # Ensure table exists if not created by API yet
-            c.execute('''CREATE TABLE IF NOT EXISTS global_profiles (
-                user_id TEXT PRIMARY KEY,
-                color_hex TEXT,
-                bar_color TEXT DEFAULT '#10B981',
-                border_color TEXT DEFAULT '#00C8FF',
-                border_width INTEGER DEFAULT 6,
-                overlay_opacity INTEGER DEFAULT 60,
-                name_color TEXT DEFAULT '#FFFFFF',
-                blur_amount INTEGER DEFAULT 0
-            )''')
-            c.execute(
-                "INSERT INTO global_profiles (user_id, color_hex) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET color_hex=excluded.color_hex",
-                (str(ctx.author.id), hex_code)
-            )
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            log.error(f"Failed to update global_profile in sqlite: {e}")
-            return await ctx.send("❌ Tema rengi güncellenirken bir hata oluştu.")
-            
+        await self.db.execute(
+            "INSERT INTO global_profiles (user_id, color_hex) VALUES (?, ?) ON CONFLICT(user_id) DO UPDATE SET color_hex=excluded.color_hex",
+            str(ctx.author.id), hex_code
+        )
         await ctx.send(f"✅ Rank kartı temanın ana rengi **{hex_code}** olarak güncellendi! Görmek için `{ctx.prefix}rank` yazabilirsin.")
 
 
