@@ -68,6 +68,7 @@ const LoginPage = ({ setAuthToken }) => {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#0a0a0a', color: 'white', padding: '24px' }}>
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ marginBottom: '32px' }}>
+          <img src="/foxy-bot-pp.webp" alt="Foxy Bot Logo" style={{ width: '120px', height: '120px', borderRadius: '50%', marginBottom: '24px', boxShadow: '0 8px 32px rgba(0,255,136,0.3)' }} />
           <h1 style={{ fontSize: '3rem', fontWeight: 800, background: 'linear-gradient(135deg, #00ff88, #00d4ff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '16px' }}>
             Kumiho Dashboard
           </h1>

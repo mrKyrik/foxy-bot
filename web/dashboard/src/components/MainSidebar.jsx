@@ -31,7 +31,7 @@ const MainSidebar = ({ setAuthToken }) => {
           animate={{ rotate: 360 }}
           transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
         >
-          <LayoutDashboard size={28} color="var(--accent-blue)" />
+          <img src="/foxy-bot-pp.webp" alt="Foxy Bot Logo" style={{ width: '28px', height: '28px', borderRadius: '50%' }} />
         </motion.div>
         Kumiho Panel
       </div>
