@@ -91,6 +91,7 @@ const LoginPage = ({ setAuthToken }) => {
         <button 
           onClick={handleLogin}
           style={{
+            margin: '0 auto',
             padding: '16px 32px',
             background: 'linear-gradient(135deg, #5865F2, #4752C4)',
             color: 'white',

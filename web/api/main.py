@@ -575,7 +575,8 @@ def get_global_stats():
         
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT COUNT(DISTINCT guild_id) as c FROM guild_settings")
+        # We count distinct guilds from channel_cache because guild_settings might be empty if users haven't configured anything
+        cursor.execute("SELECT COUNT(DISTINCT guild_id) as c FROM channel_cache")
         row = cursor.fetchone()
         guilds_in_db = row["c"] if row else 0
     except Exception as e:
