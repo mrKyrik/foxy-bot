@@ -316,8 +316,8 @@ const BannerUpload = () => {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Sparkles size={18} style={{ color: '#a78bfa' }} />
               <h1 style={{ fontSize: '18px', fontWeight: 800, letterSpacing: '-0.3px', lineHeight: 1 }}>
-                <span style={{ background: accentGrad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Rank Kartı</span>
-                {' '}<span style={{ color: 'rgba(255,255,255,0.85)' }}>Stüdyo</span>
+                <span style={{ background: accentGrad, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Foxy Rank</span>
+                {' '}<span style={{ color: 'rgba(255,255,255,0.85)' }}>Stüdyosu</span>
               </h1>
             </div>
             <p style={{ fontSize: '11px', color: 'rgba(167,139,250,0.6)', marginTop: '2px', letterSpacing: '0.02em' }}>Arka planını yükle · kırp · özelleştir · kaydet</p>
