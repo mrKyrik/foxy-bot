@@ -537,9 +537,9 @@ class Leveling(commands.Cog):
             if os.path.exists(bg_path):
                 try:
                     card = Image.open(bg_path).convert("RGBA")
-                    # Ensure it is 900x250
                     if card.size != (width, height):
-                        card = ImageOps.fit(card, (width, height), method=Image.Resampling.LANCZOS)
+                        # Resize instead of fit to prevent cropping the image (matching dashboard preview)
+                        card = card.resize((width, height), Image.Resampling.LANCZOS)
                     # Apply gaussian blur if set
                     if blur_amount > 0:
                         card = card.filter(ImageFilter.GaussianBlur(radius=blur_amount))
