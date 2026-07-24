@@ -568,21 +568,24 @@ async def discord_callback(request: Request):
 
 
 @app.get("/api/global_stats")
-def get_global_stats():
-    conn = get_db_connection(MAIN_DB_PATH)
-    c = conn.cursor()
+def get_global_stats(db=Depends(get_db)):
+    cursor = db.cursor()
     try:
-        c.execute("SELECT COUNT(DISTINCT guild_id) FROM guild_settings")
-        guilds_in_db = c.fetchone()[0]
-    except Exception:
+        cursor.execute("SELECT COUNT(DISTINCT guild_id) FROM guild_settings")
+        row = cursor.fetchone()
+        guilds_in_db = row[0] if row else 0
+    except Exception as e:
+        print(f"Error fetching guilds_in_db: {e}")
         guilds_in_db = 0
-    try:
-        c.execute("SELECT COUNT(*) FROM user_cache")
-        total_users = c.fetchone()[0]
-    except Exception:
-        total_users = 0
-    conn.close()
     
+    try:
+        cursor.execute("SELECT COUNT(*) FROM user_cache")
+        row = cursor.fetchone()
+        total_users = row[0] if row else 0
+    except Exception as e:
+        print(f"Error fetching total_users: {e}")
+        total_users = 0
+        
     return {"total_guilds": guilds_in_db, "total_users": total_users}
 
 @app.get("/api/guilds")
