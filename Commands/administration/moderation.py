@@ -17,6 +17,7 @@ Komutlar:
 from core.checks import kumiho_check, kumiho_app_check
 import logging
 import typing
+import re
 from datetime import timedelta
 
 import discord
@@ -97,8 +98,10 @@ class Moderation(commands.Cog):
     @kumiho_check("owner")
     @commands.bot_has_permissions(kick_members=True)
     async def kick(
-        self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
+        self, ctx: commands.Context, user: typing.Optional[discord.Member] = None, *, reason: str = "Belirtilmedi"
     ) -> None:
+        if user is None:
+            return await ctx.send("Kimi sunucudan atacaksınız?", view=MemberSelectView("kick", self), ephemeral=True)
         """
         Kullanıcıyı sunucudan atar.
         Kullanım: `f.kick @kullanıcı [sebep]`
@@ -127,8 +130,10 @@ class Moderation(commands.Cog):
     @kumiho_check("owner")
     @commands.bot_has_permissions(ban_members=True)
     async def ban(
-        self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
+        self, ctx: commands.Context, user: typing.Optional[discord.Member] = None, *, reason: str = "Belirtilmedi"
     ) -> None:
+        if user is None:
+            return await ctx.send("Kimi yasaklayacaksınız?", view=MemberSelectView("ban", self), ephemeral=True)
         """
         Kullanıcıyı sunucudan banlar.
         Kullanım: `f.ban @kullanıcı [sebep]`
@@ -187,11 +192,15 @@ class Moderation(commands.Cog):
     async def timeout(
         self,
         ctx: commands.Context,
-        user: discord.Member,
-        minutes: int,
+        user: typing.Optional[discord.Member] = None,
+        minutes: typing.Optional[int] = None,
         *,
         reason: str = "Belirtilmedi",
     ) -> None:
+        if user is None:
+            return await ctx.send("Kimi susturacaksınız (veya susturmasını kaldıracaksınız)?", view=MemberSelectView("timeout", self), ephemeral=True)
+        if minutes is None:
+            minutes = 10
         """
         Kullanıcıyı belirtilen süre boyunca susturur.
         Kullanım: `f.timeout @kullanıcı <dakika> [sebep]`
@@ -224,8 +233,10 @@ class Moderation(commands.Cog):
     @kumiho_check("owner")
     @commands.bot_has_permissions(moderate_members=True)
     async def untimeout(
-        self, ctx: commands.Context, user: discord.Member, *, reason: str = "Belirtilmedi"
+        self, ctx: commands.Context, user: typing.Optional[discord.Member] = None, *, reason: str = "Belirtilmedi"
     ) -> None:
+        if user is None:
+            return await ctx.send("Kimin susturmasını kaldıracaksınız?", view=MemberSelectView("timeout", self), ephemeral=True)
         """
         Kullanıcının susturmasını kaldırır.
         Kullanım: `f.untimeout @kullanıcı [sebep]`
@@ -253,7 +264,9 @@ class Moderation(commands.Cog):
     @commands.command()
     @kumiho_check("owner")
     @commands.bot_has_permissions(manage_messages=True)
-    async def purge(self, ctx: commands.Context, amount: int) -> None:
+    async def purge(self, ctx: commands.Context, amount: typing.Optional[int] = None) -> None:
+        if amount is None:
+            return await ctx.send("Lütfen butona tıklayarak silinecek sayıyı girin.", view=ModPanelView(self), ephemeral=True)
         """purge işlemini güvenli bir şekilde gerçekleştirir. Kullanım: `f.purge [parametreler]`"""
         if amount < 1 or amount > 500:
             return await ctx.send("❌ Miktar 1-500 arasında olmalıdır.")
@@ -651,6 +664,217 @@ class Moderation(commands.Cog):
     # ==================================================================
     # Son
     # ==================================================================
+
+
+
+    @commands.command(aliases=["mod_panel"])
+    @kumiho_check("owner")
+    async def modpanel(self, ctx: commands.Context) -> None:
+        """Moderatör kontrol panelini açar."""
+        embed = discord.Embed(
+            title="🛡️ Moderatör Kontrol Paneli",
+            description="Lütfen yapmak istediğiniz işlemi aşağıdaki butonlardan seçin.",
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed, view=ModPanelView(self))
+
+
+def parse_timeout_duration(time_str: str) -> int:
+    """Parses w-d-h-m string to total minutes."""
+    if not time_str:
+        return 0
+    time_str = time_str.lower().strip()
+    pattern = r'(?:(\d+)w)?\s*(?:(\d+)d)?\s*(?:(\d+)h)?\s*(?:(\d+)m)?'
+    match = re.match(pattern, time_str)
+    if not match:
+        return 0
+    w, d, h, m = match.groups()
+    total_minutes = 0
+    if w: total_minutes += int(w) * 7 * 24 * 60
+    if d: total_minutes += int(d) * 24 * 60
+    if h: total_minutes += int(h) * 60
+    if m: total_minutes += int(m)
+    return total_minutes
+
+class ReasonModal(discord.ui.Modal, title='İşlem Sebebi'):
+    reason = discord.ui.TextInput(
+        label='Sebep',
+        style=discord.TextStyle.paragraph,
+        placeholder='Neden bu işlemi yapıyorsunuz? (İsteğe bağlı)',
+        required=False,
+        max_length=300
+    )
+
+    def __init__(self, action: str, member: discord.Member, moderation_cog):
+        super().__init__()
+        self.action = action
+        self.member = member
+        self.moderation_cog = moderation_cog
+        self.title = f"{action.capitalize()} - {member.display_name}"
+
+    async def on_submit(self, interaction: discord.Interaction):
+        reason_val = self.reason.value or "Belirtilmedi"
+        await interaction.response.defer(ephemeral=True)
+        
+        ctx = await self.moderation_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        
+        if self.action == "kick":
+            await self.moderation_cog.kick(ctx, self.member, reason=reason_val)
+        elif self.action == "ban":
+            await self.moderation_cog.ban(ctx, self.member, reason=reason_val)
+            
+        await interaction.followup.send(f"✅ {self.member.mention} için `{self.action}` işlemi uygulandı.", ephemeral=True)
+
+class TimeoutModal(discord.ui.Modal, title='Susturma (Mute)'):
+    duration = discord.ui.TextInput(
+        label='Süre (w-d-h-m)',
+        style=discord.TextStyle.short,
+        placeholder='Örn: 1d 2h 30m',
+        required=True,
+        max_length=50
+    )
+    reason = discord.ui.TextInput(
+        label='Sebep',
+        style=discord.TextStyle.paragraph,
+        placeholder='Neden susturuyorsunuz? (İsteğe bağlı)',
+        required=False,
+        max_length=300
+    )
+
+    def __init__(self, member: discord.Member, moderation_cog):
+        super().__init__()
+        self.member = member
+        self.moderation_cog = moderation_cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        reason_val = self.reason.value or "Belirtilmedi"
+        minutes = parse_timeout_duration(self.duration.value)
+        
+        if minutes <= 0:
+            return await interaction.response.send_message("❌ Geçersiz süre formatı! Lütfen '1d 2h' gibi bir format kullanın.", ephemeral=True)
+            
+        await interaction.response.defer(ephemeral=True)
+        ctx = await self.moderation_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        
+        await self.moderation_cog.timeout(ctx, self.member, minutes, reason=reason_val)
+        await interaction.followup.send(f"✅ {self.member.mention} susturuldu.", ephemeral=True)
+
+class PurgeModal(discord.ui.Modal, title='Mesajları Temizle'):
+    amount = discord.ui.TextInput(
+        label='Silinecek Mesaj Sayısı',
+        style=discord.TextStyle.short,
+        placeholder='1-500 arası bir sayı',
+        required=True,
+        max_length=4
+    )
+
+    def __init__(self, moderation_cog):
+        super().__init__()
+        self.moderation_cog = moderation_cog
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            amt = int(self.amount.value)
+        except ValueError:
+            return await interaction.response.send_message("❌ Lütfen geçerli bir sayı girin.", ephemeral=True)
+            
+        await interaction.response.defer(ephemeral=True)
+        ctx = await self.moderation_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        
+        await self.moderation_cog.purge(ctx, amt)
+        await interaction.followup.send(f"✅ Temizleme işlemi başlatıldı.", ephemeral=True)
+
+class MemberSelect(discord.ui.UserSelect):
+    def __init__(self, action: str, moderation_cog):
+        super().__init__(placeholder=f"İşlem yapılacak üyeyi seçin...", min_values=1, max_values=1)
+        self.action_type = action
+        self.moderation_cog = moderation_cog
+
+    async def callback(self, interaction: discord.Interaction):
+        member = self.values[0]
+        if not isinstance(member, discord.Member):
+            return await interaction.response.send_message("❌ Sadece sunucudaki üyeleri seçebilirsiniz.", ephemeral=True)
+            
+        if self.action_type in ["kick", "ban"]:
+            modal = ReasonModal(self.action_type, member, self.moderation_cog)
+            await interaction.response.send_modal(modal)
+        elif self.action_type == "timeout":
+            if member.is_timed_out():
+                # Ask to unmute
+                ctx = await self.moderation_cog.bot.get_context(interaction.message)
+                ctx.author = interaction.user
+                await interaction.response.defer(ephemeral=True)
+                await self.moderation_cog.untimeout(ctx, member, reason="ModPanel üzerinden kaldırıldı")
+                await interaction.followup.send(f"✅ {member.mention} kullanıcısının susturması kaldırıldı.", ephemeral=True)
+            else:
+                modal = TimeoutModal(member, self.moderation_cog)
+                await interaction.response.send_modal(modal)
+
+class MemberSelectView(discord.ui.View):
+    def __init__(self, action: str, moderation_cog):
+        super().__init__(timeout=120)
+        self.add_item(MemberSelect(action, moderation_cog))
+
+class ModPanelView(discord.ui.View):
+    def __init__(self, moderation_cog):
+        super().__init__(timeout=None)
+        self.moderation_cog = moderation_cog
+
+    @discord.ui.button(label="Kick", style=discord.ButtonStyle.danger, emoji="👢", row=0)
+    async def btn_kick(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Kimi sunucudan atacaksınız?",
+            view=MemberSelectView("kick", self.moderation_cog),
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="Ban", style=discord.ButtonStyle.danger, emoji="🔨", row=0)
+    async def btn_ban(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Kimi yasaklayacaksınız?",
+            view=MemberSelectView("ban", self.moderation_cog),
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="Mute/Unmute", style=discord.ButtonStyle.secondary, emoji="⏱️", row=0)
+    async def btn_mute(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_message(
+            "Kimi susturacaksınız (veya susturmasını kaldıracaksınız)?",
+            view=MemberSelectView("timeout", self.moderation_cog),
+            ephemeral=True
+        )
+
+    @discord.ui.button(label="Purge", style=discord.ButtonStyle.primary, emoji="🧹", row=1)
+    async def btn_purge(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.send_modal(PurgeModal(self.moderation_cog))
+
+    @discord.ui.button(label="Nuke", style=discord.ButtonStyle.danger, emoji="☢️", row=1)
+    async def btn_nuke(self, interaction: discord.Interaction, button: discord.ui.Button):
+        ctx = await self.moderation_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        await interaction.response.defer(ephemeral=True)
+        await self.moderation_cog.nuke(ctx, interaction.channel)
+
+    @discord.ui.button(label="Lock / Unlock", style=discord.ButtonStyle.secondary, emoji="🔒", row=1)
+    async def btn_lock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        ctx = await self.moderation_cog.bot.get_context(interaction.message)
+        ctx.author = interaction.user
+        await interaction.response.defer(ephemeral=True)
+        
+        channel = interaction.channel
+        perms = channel.overwrites_for(ctx.guild.default_role)
+        
+        if perms.send_messages is False:
+            perms.send_messages = None
+            await channel.set_permissions(ctx.guild.default_role, overwrite=perms, reason="ModPanel: Unlock")
+            await interaction.followup.send("✅ Kanal kilidi açıldı.", ephemeral=True)
+        else:
+            perms.send_messages = False
+            await channel.set_permissions(ctx.guild.default_role, overwrite=perms, reason="ModPanel: Lock")
+            await interaction.followup.send("✅ Kanal kilitlendi.", ephemeral=True)
 
 
 async def setup(bot: commands.Bot) -> None:
