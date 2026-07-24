@@ -590,6 +590,9 @@ def get_global_stats():
         print(f"Error fetching total_users: {e}")
         total_users = 0
         
+    if hasattr(conn, 'close'):
+        conn.close()
+        
     return {"total_guilds": guilds_in_db, "total_users": total_users}
 
 @app.get("/api/guilds")
