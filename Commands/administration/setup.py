@@ -465,6 +465,104 @@ class LevelIgnoreSelect(discord.ui.ChannelSelect):
         await self.parent_view.update_save_button(interaction)
 
 
+
+
+class LevelRewardModal(discord.ui.Modal):
+    def __init__(self, bot, role: discord.Role):
+        super().__init__(title="🎁 Ödül Eklenecek Seviye")
+        self.bot = bot
+        self.role = role
+        self.level_input = discord.ui.TextInput(
+            label="Seviye (Örn: 10)",
+            style=discord.TextStyle.short,
+            placeholder="10",
+            required=True
+        )
+        self.add_item(self.level_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            level = int(self.level_input.value)
+            if level <= 0:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message("❌ Lütfen geçerli pozitif bir sayı girin.", ephemeral=True)
+            
+        await self.bot.db.execute(
+            "INSERT INTO level_rewards (guild_id, level, role_id) VALUES (?, ?, ?) ON CONFLICT(guild_id, level) DO UPDATE SET role_id=excluded.role_id",
+            str(interaction.guild.id), level, str(self.role.id)
+        )
+        await interaction.response.send_message(f"✅ Seviye {level} ödülü olarak {self.role.mention} ayarlandı!", ephemeral=True)
+
+
+class RewardRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, bot):
+        super().__init__(placeholder="🎁 Ödül olarak verilecek Rolü Seçin", min_values=1, max_values=1, row=0)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        role = self.values[0]
+        await interaction.response.send_modal(LevelRewardModal(self.bot, role))
+
+
+class RewardRoleSelectView(discord.ui.View):
+    def __init__(self, bot, parent_view):
+        super().__init__(timeout=None)
+        self.add_item(RewardRoleSelect(bot))
+        self.parent_view = parent_view
+        
+    @discord.ui.button(label="Geri Dön", style=discord.ButtonStyle.secondary, row=1)
+    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=self.parent_view)
+
+class LevelMultiplierModal(discord.ui.Modal):
+    def __init__(self, bot, role: discord.Role):
+        super().__init__(title="⚡ XP Çarpanı Ekle")
+        self.bot = bot
+        self.role = role
+        self.mult_input = discord.ui.TextInput(
+            label="Çarpan Oranı (Örn: 1.5 veya 2.0)",
+            style=discord.TextStyle.short,
+            placeholder="1.5",
+            required=True
+        )
+        self.add_item(self.mult_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        try:
+            mult = float(self.mult_input.value.replace(",", "."))
+            if mult <= 0.0:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message("❌ Lütfen geçerli pozitif bir sayı girin (Örn: 1.5).", ephemeral=True)
+            
+        await self.bot.db.execute(
+            "INSERT INTO level_multipliers (guild_id, role_id, multiplier) VALUES (?, ?, ?) ON CONFLICT(guild_id, role_id) DO UPDATE SET multiplier=excluded.multiplier",
+            str(interaction.guild.id), str(self.role.id), mult
+        )
+        await interaction.response.send_message(f"✅ {self.role.mention} rolüne {mult}x XP çarpanı eklendi!", ephemeral=True)
+
+
+class MultiplierRoleSelect(discord.ui.RoleSelect):
+    def __init__(self, bot):
+        super().__init__(placeholder="⚡ Çarpan eklenecek Rolü Seçin", min_values=1, max_values=1, row=0)
+        self.bot = bot
+
+    async def callback(self, interaction: discord.Interaction):
+        role = self.values[0]
+        await interaction.response.send_modal(LevelMultiplierModal(self.bot, role))
+
+
+class MultiplierRoleSelectView(discord.ui.View):
+    def __init__(self, bot, parent_view):
+        super().__init__(timeout=None)
+        self.add_item(MultiplierRoleSelect(bot))
+        self.parent_view = parent_view
+        
+    @discord.ui.button(label="Geri Dön", style=discord.ButtonStyle.secondary, row=1)
+    async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=self.parent_view)
+
 class LevelSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
@@ -534,6 +632,40 @@ class LevelSetupView(discord.ui.View):
         )
         await interaction.edit_original_response(embed=embed, view=None)
 
+
+
+    @discord.ui.button(label="🎁 Ödül Ekle", style=discord.ButtonStyle.secondary, emoji="🎁", row=3)
+    async def btn_reward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=RewardRoleSelectView(self.bot, self))
+        
+    @discord.ui.button(label="⚡ Çarpan Ekle", style=discord.ButtonStyle.secondary, emoji="⚡", row=3)
+    async def btn_mult(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.edit_message(view=MultiplierRoleSelectView(self.bot, self))
+
+    @discord.ui.button(label="📊 Ayarları Görüntüle", style=discord.ButtonStyle.primary, emoji="📊", row=3)
+    async def btn_view_settings(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
+        ignores = await self.bot.db.fetchall("SELECT channel_id FROM level_ignores WHERE guild_id=?", str(interaction.guild.id))
+        rewards = await self.bot.db.fetchall("SELECT level, role_id FROM level_rewards WHERE guild_id=? ORDER BY level ASC", str(interaction.guild.id))
+        mults = await self.bot.db.fetchall("SELECT role_id, multiplier FROM level_multipliers WHERE guild_id=?", str(interaction.guild.id))
+        
+        desc = "**🚫 Yasaklı Kanallar:**\n"
+        desc += ", ".join([f"<#{r['channel_id']}>" for r in ignores]) if ignores else "Yok"
+        
+        desc += "\n\n**🎁 Rol Ödülleri:**\n"
+        if rewards:
+            desc += "\n".join([f"Seviye {r['level']} -> <@&{r['role_id']}>" for r in rewards])
+        else:
+            desc += "Yok"
+            
+        desc += "\n\n**⚡ XP Çarpanları:**\n"
+        if mults:
+            desc += "\n".join([f"<@&{r['role_id']}> -> {r['multiplier']}x" for r in mults])
+        else:
+            desc += "Yok"
+            
+        embed = discord.Embed(title="📊 Sunucu Seviye Ayarları", description=desc, color=discord.Color.blue())
+        await interaction.followup.send(embed=embed, ephemeral=True)
 
 class LevelDetailedSettingsDropdown(discord.ui.Select):
     def __init__(self, bot: commands.Bot):
