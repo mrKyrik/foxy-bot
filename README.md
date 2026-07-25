@@ -1,122 +1,128 @@
-# 🦊 Azalea Discord Bot
+# 🦊 Kumiho Bot (Azalea)
 
-Güçlü, modüler ve SQL destekli bir Discord botu. Prefix: `f.`
+![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=white)
+![Discord.py](https://img.shields.io/badge/discord.py-2.4.0-blue?style=for-the-badge&logo=discord&logoColor=white)
+![Oracle](https://img.shields.io/badge/Oracle_DB-Red?style=for-the-badge&logo=oracle&logoColor=white)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+
+Kumiho (eski adıyla Azalea), gelişmiş özelliklere sahip, modüler, tam kapsamlı ve **Oracle Cloud Autonomous Database** destekli profesyonel bir Discord botudur. Hem gelişmiş sunucu içi komutlara, hem de sunucunuzu tek bir tıkla yönetebileceğiniz modern bir **Web Dashboard**'a sahiptir.
 
 ---
 
-## 🚀 Kurulum
+## 🌟 Temel Özellikler
+
+- **📈 Gelişmiş Seviye Sistemi (Leveling):** Kullanıcılar mesaj yazdıkça veya ses kanallarında durdukça XP kazanır. Dinamik rol ödülleri, kişiselleştirilebilir Rank (Seviye) kartları (arkaplan ve renk destekli) ve ses/yazı XP çarpanları sunar. Yönetimi tamamen Dashboard veya interaktif Embed'ler üzerinden yapılabilir.
+- **💰 Kapsamlı Ekonomi Sistemi:** Gelişmiş bir sanal ekonomi. Kullanıcılar para kazanabilir (daily, work, fish), evlenebilir, özel eşyalar satın alabilir ve birbirleriyle etkileşime girebilirler.
+- **🌐 Web Dashboard & API:** FastAPI tabanlı bir backend ve React/Vite tabanlı şık bir frontend ile sunucu ayarlarını (level kanalları, prefix, otoroller) tarayıcı üzerinden kolayca yönetin.
+- **🛡️ Moderasyon ve Loglama:** Timeout, kick, ban gibi temel komutların yanında tüm sunucu içi olayları loglayabilen detaylı kayıt sistemi.
+- **📝 Form & Başvuru Sistemi (Forms):** Discord forum kanallarına veya log kanallarına yönlendirilebilen, dinamik butonlu (Onayla/Reddet/Yanıtla) form sistemleri oluşturabilirsiniz. Form gönderimlerini zamanlayabilirsiniz.
+- **🎫 Destek Talepleri (Tickets):** Kullanıcıların yetkililerle özel olarak iletişime geçebileceği hızlı destek sistemi.
+- **🎲 Eğlence & Ekstralar:** Müzik çalma, özel ses kanalları (Private Voice), çekilişler, öneriler sistemi ve daha fazlası.
+
+---
+
+## 🏗️ Teknoloji Yığını
+
+- **Bot Çekirdeği:** `discord.py` (Python 3.12)
+- **Veritabanı:** `oracledb` (Oracle Cloud Autonomous Database)
+- **Web API:** `FastAPI`, `Uvicorn`
+- **Frontend (Panel):** `React`, `Vite`, `Tailwind CSS` (isteğe bağlı)
+- **Process Manager:** `PM2` (Sunucuda 7/24 barındırma)
+
+---
+
+## 🚀 Kurulum & Çalıştırma
+
+Bot, Oracle DB gerektirdiği için doğrudan çalıştırılmadan önce Wallet (Cüzdan) dosyalarına ve doğru `.env` yapılandırmasına ihtiyaç duyar.
 
 ```bash
-# 1. Bağımlılıkları yükle
+# 1. Repoyu klonlayın
+git clone https://github.com/mrKyrik/foxy-bot.git
+cd foxy-bot
+
+# 2. Sanal ortam (venv) oluşturun ve aktif edin
+python -m venv venv
+source venv/bin/activate  # Windows için: venv\Scripts\activate
+
+# 3. Bağımlılıkları yükleyin
 pip install -r requirements.txt
 
-# 2. .env dosyasını oluştur
-cp .env.example .env   # veya elle oluştur
+# 4. .env dosyasını oluşturun (aşağıdaki şablona bakın)
+cp .env.example .env
 
-# 3. Botu başlat
+# 5. Oracle cüzdanını ayarlayın
+# 'wallet' adında bir klasör oluşturup Oracle Cloud'dan indirdiğiniz cüzdan dosyalarını buraya çıkartın.
+
+# 6. Botu başlatın (Geliştirme için)
 python main.py
-```
 
-> **Not:** Müzik komutları (`f.play`) için `ffmpeg` ayrıca kurulmalıdır.  
-> İndirme: https://ffmpeg.org/download.html
+# 7. PM2 ile Başlatın (Sunucu ortamı için önerilir)
+pm2 start main.py --name "Kumiho-Bot" --interpreter python3
+pm2 start web/api/main.py --name "Kumiho-API" --interpreter python3
+pm2 start npm --name "Kumiho-Dashboard" -- run dev --prefix web/dashboard
+```
 
 ---
 
-## ⚙️ .env Yapılandırması
+## ⚙️ Çevre Değişkenleri (.env)
+
+Proje dizininde yer alması gereken örnek `.env` yapılandırması:
 
 ```env
+# Bot Kimlik Bilgileri
 DISCORD_TOKEN=your_bot_token_here
-OWNER_ID=your_discord_id,second_owner_id
+OWNER_ID=your_discord_id
 STATUS=f.help
-MY_TWITCH_ACCOUNT=your_twitch_channel
+
+# Oracle Veritabanı Bilgileri
+DB_USER=admin
+DB_PASSWORD=your_oracle_password
+DB_DSN=your_database_dsn_name (ör: db_high)
+WALLET_LOCATION=./wallet
+WALLET_PASSWORD=your_wallet_password
+
+# Web Dashboard (FastAPI & React) OAuth2
+CLIENT_ID=your_discord_client_id
+CLIENT_SECRET=your_discord_client_secret
+JWT_SECRET=a_random_secure_jwt_secret
+
+# URL Ayarları
+VITE_API_URL=http://localhost:8000
+VITE_DISCORD_REDIRECT_URI=http://localhost:5173/login
 ```
 
 ---
 
-## 🗂️ Proje Yapısı
+## 🗂️ Klasör Yapısı
 
 ```
-kumiho/
-├── main.py                    # Bot giriş noktası, help sistemi
-├── requirements.txt           # Python bağımlılıkları
-│
-├── core/                      # Çekirdek altyapı
-│   ├── database.py            # aiosqlite wrapper (USER-DB.db + ADMIN-EVENTS.db)
-│   ├── logger.py              # Merkezi log sistemi (RotatingFileHandler)
-│   ├── utils.py               # Ortak yardımcı fonksiyonlar
-│   └── embed.py               # EmbedBuilder yardımcısı
-│
-├── Commands/                  # Komut cog'ları
-│   ├── economy.py             # 💰 Ekonomi sistemi (SQL)
-│   ├── leveling.py            # 📈 XP/Seviye sistemi (SQL)
-│   ├── fun.py                 # 🎉 Eğlence komutları
-│   ├── utils.py               # 🛠️ Yardımcı komutlar
-│   ├── owner.py               # 👑 Sahip/Admin komutları
-│   ├── music.py               # 🎵 Müzik çalar (yt-dlp)
-│   ├── nsfw.py                # 🔞 NSFW komutları
-│   ├── automod.py             # 🤖 Otomatik moderasyon
-│   ├── giveaways.py           # 🎁 Çekiliş sistemi
-│   ├── tickets.py             # 🎫 Destek ticket sistemi
-│   ├── suggestions.py         # 💡 Öneri sistemi
-│   └── administration/        # Yönetim alt paketi
-│       ├── moderation.py      # 🛡️ Moderasyon komutları
-│       ├── permissions.py     # 🔐 İzin yönetimi
-│       └── permission_check.py
-│
-├── Events/                    # Event listener'lar
-│   └── members.py             # Üye giriş/çıkış, saved_roles
-│
-└── Data/                      # Veritabanı dosyaları (git'te yok)
-    ├── USER-DB.db             # Kullanıcı/Sunucu verileri
-    └── ADMIN-EVENTS.db        # Moderasyon log'ları
+foxy-bot/
+├── main.py                     # Botun ana giriş noktası (Events, Cogs yüklenir)
+├── requirements.txt            # Python modülleri
+├── Commands/                   # Komut modülleri (Economy, Leveling, Fun, Moderation...)
+├── Events/                     # Discord event dinleyicileri (on_message, on_member_join...)
+├── core/                       # Veritabanı ve yardımcı sınıf/fonksiyonlar
+│   ├── database.py             # Oracle DB bağlantı havuzu yönetimi
+│   └── logger.py               # Konsol ve dosya loglama altyapısı
+├── web/                        # Web Dashboard dosyaları
+│   ├── api/                    # FastAPI backend
+│   └── dashboard/              # React (Vite) frontend
+└── wallet/                     # (Git'te yok) Oracle Autonomous DB cüzdan dosyaları
 ```
 
 ---
 
-## 🗃️ Veritabanı Şeması
+## 📋 Önemli Komutlar (Prefix: `f.`)
 
-### USER-DB.db Tabloları
-
-| Tablo | İçerik |
-|-------|---------|
-| `guild_settings` | Sunucu prefix, log/welcome kanalları |
-| `roles` | Kayıtlı roller |
-| `role_permissions` | Rol bazlı komut izinleri |
-| `warns` | Kullanıcı uyarı kayıtları |
-| `economy` | Cüzdan, banka, cooldown'lar, padlock |
-| `economy_extras` | Evlilik, çiftçilik, özel başlık, master_crown |
-| `inventory` | Kullanıcı envanteri |
-| `levels` | XP, seviye, mesaj sayacı |
-| `level_rewards` | Seviye ödül rolleri |
-| `level_ignores` | XP kazanılmayan kanallar |
-| `saved_roles` | Sunucu terk eden üyelerin rolleri |
-| `bot_bans` | Global bot yasakları |
-| `eco_bans` | Ekonomi yasakları |
-
-### ADMIN-EVENTS.db Tabloları
-
-| Tablo | İçerik |
-|-------|---------|
-| `admin_events` | Moderasyon eylemleri (kick, ban, timeout...) |
-
----
-
-## 📋 Komut Kategorileri
-
-| Kategori | Prefix Örneği |
-|----------|---------------|
-| 💰 Ekonomi | `f.balance`, `f.daily`, `f.shop` |
-| 📈 Seviye | `f.rank`, `f.leaderboard_xp` |
-| 🎉 Eğlence | `f.trivia`, `f.8ball`, `f.meme` |
-| 🛡️ Moderasyon | `f.kick`, `f.ban`, `f.warn` |
-| 🎵 Müzik | `f.play`, `f.queue`, `f.skip` |
-| 🎁 Çekiliş | `f.gcreate`, `f.gend` |
-| 🎫 Ticket | `f.ticket`, `f.close` |
-| 💡 Öneri | `f.suggest` |
-| 👑 Sahip | `f.givemoney`, `f.botban` |
+- **Yönetim:** `f.setup` (Tüm modülleri UI ile yönetir), `f.setprefix`
+- **Seviye:** `f.rank` (Profil kartını gösterir), `f.toprank` (Liderlik tablosu)
+- **Ekonomi:** `f.bal`, `f.daily`, `f.shop`, `f.lb`
+- **Müzik:** `f.play`, `f.stop`, `f.skip`
+- **Kullanıcı:** `f.help`, `f.avatar`, `f.ping`
 
 ---
 
 ## 📄 Lisans
 
-Bu proje özel kullanım içindir.
+Bu proje, **Pishi-lab** ve **mrKyrik** iş birliği ile özel olarak geliştirilmiştir.
