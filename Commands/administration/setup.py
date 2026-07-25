@@ -563,6 +563,79 @@ class MultiplierRoleSelectView(discord.ui.View):
     async def back(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.edit_message(view=self.parent_view)
 
+class XPManageModal(discord.ui.Modal, title="XP Yönetimi"):
+    def __init__(self, bot, target_user: discord.Member):
+        super().__init__()
+        self.bot = bot
+        self.target_user = target_user
+        
+        self.amount = discord.ui.TextInput(
+            label="Miktar",
+            placeholder="Örn: 500",
+            required=True,
+            max_length=10
+        )
+        self.operation = discord.ui.TextInput(
+            label="İşlem (ekle / cikar)",
+            placeholder="ekle veya cikar yazın",
+            required=True,
+            max_length=10
+        )
+        self.add_item(self.amount)
+        self.add_item(self.operation)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        amount_str = self.amount.value.strip()
+        op_str = self.operation.value.strip().lower()
+        
+        if not amount_str.isdigit() or int(amount_str) <= 0:
+            return await interaction.response.send_message("❌ Lütfen geçerli, pozitif bir miktar girin.", ephemeral=True)
+            
+        if op_str not in ["ekle", "cikar", "çıkar", "sil"]:
+            return await interaction.response.send_message("❌ İşlem tipi olarak 'ekle' veya 'cikar' yazmalısınız.", ephemeral=True)
+            
+        amount = int(amount_str)
+        user_id = str(self.target_user.id)
+        guild_id = str(interaction.guild.id)
+        
+        def _get_xp_needed(lvl):
+            return 100 * (lvl ** 2) + 100
+            
+        await self.bot.db.execute("INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)", user_id, guild_id)
+        profile = await self.bot.db.fetchone("SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?", user_id, guild_id)
+        current_xp = profile["xp"]
+        current_level = profile["level"]
+        
+        if op_str == "ekle":
+            new_xp = current_xp + amount
+            while new_xp >= _get_xp_needed(current_level):
+                new_xp -= _get_xp_needed(current_level)
+                current_level += 1
+            await self.bot.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
+            await interaction.response.send_message(f"✅ {self.target_user.mention} kullanıcısına başarıyla **{amount} XP** eklendi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})", ephemeral=True)
+        else:
+            new_xp = current_xp - amount
+            while new_xp < 0:
+                if current_level == 0:
+                    new_xp = 0
+                    break
+                current_level -= 1
+                new_xp += _get_xp_needed(current_level)
+            await self.bot.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
+            await interaction.response.send_message(f"✅ {self.target_user.mention} kullanıcısından **{amount} XP** silindi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})", ephemeral=True)
+
+class XPUserSelect(discord.ui.UserSelect):
+    def __init__(self, bot):
+        super().__init__(placeholder="🧑 XP Eklemek/Silmek için üye seçin...", min_values=1, max_values=1, row=4)
+        self.bot = bot
+        
+    async def callback(self, interaction: discord.Interaction):
+        user = self.values[0]
+        if isinstance(user, discord.Member):
+            await interaction.response.send_modal(XPManageModal(self.bot, user))
+        else:
+            await interaction.response.send_message("❌ Sadece sunucudaki üyeleri seçebilirsiniz.", ephemeral=True)
+
 class LevelSetupView(discord.ui.View):
     def __init__(self, bot: commands.Bot):
         super().__init__(timeout=None)
@@ -572,6 +645,7 @@ class LevelSetupView(discord.ui.View):
         
         self.add_item(LevelNotificationSelect(self))
         self.add_item(LevelIgnoreSelect(self))
+        self.add_item(XPUserSelect(self.bot))
 
     async def update_save_button(self, interaction: discord.Interaction):
         save_btn = [c for c in self.children if isinstance(c, discord.ui.Button) and c.label == "💾 Kaydet"][0]

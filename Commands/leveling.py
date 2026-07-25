@@ -997,10 +997,10 @@ class LeaderboardView(discord.ui.View):
         file = await self.get_page_content()
         await interaction.edit_original_response(content=f"Sayfa {self.current_page + 1}/{self.total_pages}", attachments=[file], view=self)
 
-    @commands.command(name="addxp")
+    @level_group.command(name="add")
     @commands.has_permissions(administrator=True)
     async def addxp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
-        """Bir üyeye manuel olarak XP ekler.\n\n**Kullanım:** `{prefix}addxp @kullanıcı <miktar>`"""
+        """Bir üyeye manuel olarak XP ekler.\n\n**Kullanım:** `{prefix}level add @kullanıcı <miktar>`"""
         if amount <= 0:
             return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
             
@@ -1022,10 +1022,10 @@ class LeaderboardView(discord.ui.View):
         await self.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
         await ctx.send(f"✅ {member.mention} kullanıcısına başarıyla **{amount} XP** eklendi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})")
 
-    @commands.command(name="removexp")
+    @level_group.command(name="remove")
     @commands.has_permissions(administrator=True)
     async def removexp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
-        """Bir üyeden manuel olarak XP siler.\n\n**Kullanım:** `{prefix}removexp @kullanıcı <miktar>`"""
+        """Bir üyeden manuel olarak XP siler.\n\n**Kullanım:** `{prefix}level remove @kullanıcı <miktar>`"""
         if amount <= 0:
             return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
             
