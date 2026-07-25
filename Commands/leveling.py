@@ -877,6 +877,60 @@ class Leveling(commands.Cog):
         view = LeaderboardView(ctx, rows, lb_type="voice")
         await view.start()
 
+    @level_group.command(name="add")
+    @commands.has_permissions(administrator=True)
+    async def addxp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
+        """Bir üyeye manuel olarak XP ekler.\n\n**Kullanım:** `{prefix}level add @kullanıcı <miktar>`"""
+        if amount <= 0:
+            return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
+            
+        user_id = str(member.id)
+        guild_id = str(ctx.guild.id)
+        
+        await self.db.execute("INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)", user_id, guild_id)
+        
+        profile = await self.db.fetchone("SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?", user_id, guild_id)
+        current_xp = profile["xp"]
+        current_level = profile["level"]
+        
+        new_xp = current_xp + amount
+        
+        while new_xp >= _get_xp_needed(current_level):
+            new_xp -= _get_xp_needed(current_level)
+            current_level += 1
+            
+        await self.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
+        await ctx.send(f"✅ {member.mention} kullanıcısına başarıyla **{amount} XP** eklendi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})")
+
+    @level_group.command(name="remove")
+    @commands.has_permissions(administrator=True)
+    async def removexp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
+        """Bir üyeden manuel olarak XP siler.\n\n**Kullanım:** `{prefix}level remove @kullanıcı <miktar>`"""
+        if amount <= 0:
+            return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
+            
+        user_id = str(member.id)
+        guild_id = str(ctx.guild.id)
+        
+        profile = await self.db.fetchone("SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?", user_id, guild_id)
+        if not profile:
+            return await ctx.send("❌ Bu kullanıcının sistemde hiç XP'si yok.")
+            
+        current_xp = profile["xp"]
+        current_level = profile["level"]
+        
+        new_xp = current_xp - amount
+        
+        while new_xp < 0:
+            if current_level == 0:
+                new_xp = 0
+                break
+            current_level -= 1
+            new_xp += _get_xp_needed(current_level)
+            
+        await self.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
+        await ctx.send(f"✅ {member.mention} kullanıcısından **{amount} XP** silindi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})")
+
 class LeaderboardView(discord.ui.View):
     def __init__(self, ctx: commands.Context, rows: list[dict], lb_type: str = "xp", per_page: int = 10):
         super().__init__(timeout=180)
@@ -997,59 +1051,7 @@ class LeaderboardView(discord.ui.View):
         file = await self.get_page_content()
         await interaction.edit_original_response(content=f"Sayfa {self.current_page + 1}/{self.total_pages}", attachments=[file], view=self)
 
-    @level_group.command(name="add")
-    @commands.has_permissions(administrator=True)
-    async def addxp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
-        """Bir üyeye manuel olarak XP ekler.\n\n**Kullanım:** `{prefix}level add @kullanıcı <miktar>`"""
-        if amount <= 0:
-            return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
-            
-        user_id = str(member.id)
-        guild_id = str(ctx.guild.id)
-        
-        await self.db.execute("INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)", user_id, guild_id)
-        
-        profile = await self.db.fetchone("SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?", user_id, guild_id)
-        current_xp = profile["xp"]
-        current_level = profile["level"]
-        
-        new_xp = current_xp + amount
-        
-        while new_xp >= _get_xp_needed(current_level):
-            new_xp -= _get_xp_needed(current_level)
-            current_level += 1
-            
-        await self.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
-        await ctx.send(f"✅ {member.mention} kullanıcısına başarıyla **{amount} XP** eklendi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})")
 
-    @level_group.command(name="remove")
-    @commands.has_permissions(administrator=True)
-    async def removexp_cmd(self, ctx: commands.Context, member: discord.Member, amount: int):
-        """Bir üyeden manuel olarak XP siler.\n\n**Kullanım:** `{prefix}level remove @kullanıcı <miktar>`"""
-        if amount <= 0:
-            return await ctx.send("❌ Lütfen 0'dan büyük bir değer girin.")
-            
-        user_id = str(member.id)
-        guild_id = str(ctx.guild.id)
-        
-        profile = await self.db.fetchone("SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?", user_id, guild_id)
-        if not profile:
-            return await ctx.send("❌ Bu kullanıcının sistemde hiç XP'si yok.")
-            
-        current_xp = profile["xp"]
-        current_level = profile["level"]
-        
-        new_xp = current_xp - amount
-        
-        while new_xp < 0:
-            if current_level == 0:
-                new_xp = 0
-                break
-            current_level -= 1
-            new_xp += _get_xp_needed(current_level)
-            
-        await self.db.execute("UPDATE levels SET xp = ?, level = ? WHERE user_id = ? AND guild_id = ?", new_xp, current_level, user_id, guild_id)
-        await ctx.send(f"✅ {member.mention} kullanıcısından **{amount} XP** silindi! (Yeni Seviye: {current_level}, XP: {new_xp}/{_get_xp_needed(current_level)})")
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Leveling(bot))
