@@ -74,13 +74,13 @@ def _generate_levelup_card_sync(member_name: str, avatar_bytes: bytes, new_level
 
     try:
         font_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "Data", "fonts")
-        font_title = ImageFont.truetype(os.path.join(font_dir, "Roboto-Black.ttf"), 110)
-        font_sub = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 70)
+        font_title = ImageFont.truetype(os.path.join(font_dir, "Roboto-Black.ttf"), 65)
+        font_sub = ImageFont.truetype(os.path.join(font_dir, "Roboto-Bold.ttf"), 40)
     except Exception as e:
         log.error(f"Font load error: {e}")
         font_title = font_sub = ImageFont.load_default()
 
-    draw.text((250, 70), "LEVEL UP!", fill=(16, 185, 129), font=font_title)
+    draw.text((250, 60), "LEVEL UP!", fill=(16, 185, 129), font=font_title)
     draw.text((250, 140), f"{member_name} \nSeviye {new_level} ulaştı!", fill=(255, 255, 255), font=font_sub)
 
     buf = io.BytesIO()
@@ -537,9 +537,9 @@ class Leveling(commands.Cog):
             if os.path.exists(bg_path):
                 try:
                     card = Image.open(bg_path).convert("RGBA")
+                    # Ensure it is 900x250
                     if card.size != (width, height):
-                        # Resize instead of fit to prevent cropping the image (matching dashboard preview)
-                        card = card.resize((width, height), Image.Resampling.LANCZOS)
+                        card = ImageOps.fit(card, (width, height), method=Image.Resampling.LANCZOS)
                     # Apply gaussian blur if set
                     if blur_amount > 0:
                         card = card.filter(ImageFilter.GaussianBlur(radius=blur_amount))
