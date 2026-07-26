@@ -1,0 +1,179 @@
+/* Navbar */
+.navbar {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+}
+
+.nav-pill {
+  background-color: var(--color-dark-bg);
+  padding: 0.5rem;
+  border-radius: 9999px;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-item {
+  color: var(--color-text-light);
+  text-decoration: none;
+  padding: 0.5rem 1.25rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-item.active {
+  background-color: var(--color-light-bg);
+  color: var(--color-text-dark);
+}
+
+/* Hero Section */
+.hero-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100vh;
+  padding-top: 80px; /* Space for navbar */
+}
+
+.hero-left {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.hero-image {
+  width: 400px;
+  height: 400px;
+  object-fit: contain;
+  /* Kumiho specific styling for the PP */
+  border-radius: 50%;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+}
+
+.hero-right {
+  flex: 1;
+  padding-left: 4rem;
+}
+
+.hero-subtitle {
+  color: var(--color-cyan);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
+.hero-title {
+  font-size: 4.5rem;
+  line-height: 1;
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--color-text-dark);
+}
+
+.hero-title span {
+  color: var(--color-text-muted);
+}
+
+.hero-desc {
+  font-size: 1.125rem;
+  color: var(--color-text-muted);
+  max-width: 450px;
+  margin-bottom: 2.5rem;
+}
+
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.link-action {
+  color: var(--color-text-dark);
+  text-decoration: none;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.link-action:hover {
+  text-decoration: underline;
+}
+
+/* Features Section */
+.features-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 3rem;
+  margin-top: 4rem;
+  max-width: 900px;
+  text-align: left;
+}
+
+.feature-card {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.feature-icon {
+  background-color: var(--color-dark-surface);
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-light);
+  flex-shrink: 0;
+}
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.feature-desc {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-content {
+    flex-direction: column;
+    text-align: center;
+    padding-top: 120px;
+  }
+  .hero-right {
+    padding-left: 0;
+    margin-top: 2rem;
+  }
+  .hero-actions {
+    justify-content: center;
+  }
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -11,21 +11,24 @@
 }
 
 :root {
-  /* Zengin HSL Tabanlı Modern Renk Paleti */
-  --bg-color: #050505;
-  --bg-gradient-1: rgba(16, 185, 129, 0.08); /* Zümrüt Yeşili */
-  --bg-gradient-2: rgba(59, 130, 246, 0.08); /* Okyanus Mavisi */
-  --panel-bg: rgba(20, 24, 30, 0.4);
-  --panel-bg-hover: rgba(30, 36, 45, 0.6);
-  --panel-border: rgba(255, 255, 255, 0.06);
-  --panel-border-glow: rgba(255, 255, 255, 0.15);
+  /* Lumi Style Colors - Dashboard */
+  --bg-color: #0b1528; /* Deep navy background */
+  --bg-gradient-1: transparent;
+  --bg-gradient-2: transparent;
   
-  --text-primary: #ffffff;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  /* Solid panels instead of glass */
+  --panel-bg: #111d35; 
+  --panel-bg-hover: #172a4d;
+  --panel-border: rgba(255, 255, 255, 0.04);
+  --panel-border-glow: rgba(0, 210, 255, 0.15);
   
-  --accent-green: #10b981;
-  --accent-green-glow: rgba(16, 185, 129, 0.4);
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  
+  /* Replace green with Lumi Cyan for main accents */
+  --accent-green: #00d2ff; 
+  --accent-green-glow: rgba(0, 210, 255, 0.25);
   --accent-blue: #3b82f6;
   --accent-blue-glow: rgba(59, 130, 246, 0.4);
   --accent-red: #f43f5e;
@@ -42,16 +45,12 @@
 }
 
 body {
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Inter', 'Plus Jakarta Sans', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   line-height: 1.6;
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 10% 20%, var(--bg-gradient-1), transparent 35%),
-    radial-gradient(circle at 90% 80%, var(--bg-gradient-2), transparent 35%);
-  background-attachment: fixed;
 }
 
 .dashboard-layout {
@@ -61,53 +60,47 @@ body {
 
 .glass-panel {
   background: var(--panel-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--panel-border);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255,0.05);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 24px; /* Lumi style large rounded corners */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2); /* Soft shadow */
+  transition: all 0.2s ease;
 }
 
 .glass-panel:hover {
   border-color: var(--panel-border-glow);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar {
   width: 280px;
   min-width: 280px;
-  padding: 24px;
+  padding: 32px 24px;
   display: flex;
   flex-direction: column;
   gap: 24px;
   border-right: 1px solid var(--panel-border);
-  background: rgba(10, 10, 10, 0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: #0b1528; /* Match bg color for flat clean look */
   z-index: 50;
-  box-shadow: 4px 0 24px rgba(0,0,0,0.2);
 }
 
 .sidebar-title {
-  font-family: 'Outfit', sans-serif;
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
+  font-weight: 800;
   display: flex;
   align-items: center;
   gap: 12px;
   color: #fff;
-  letter-spacing: -0.5px;
-  text-shadow: 0 0 20px var(--accent-green-glow);
+  letter-spacing: -0.02em;
 }
 
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 24px;
+  padding: 32px;
   gap: 24px;
   overflow-y: auto;
+  background-color: #0b1528;
 }
 
 .nav-item {
@@ -115,28 +108,25 @@ body {
   align-items: center;
   gap: 14px;
   padding: 12px 16px;
-  border-radius: 12px;
+  border-radius: 16px; /* Pill/rounded look */
   color: var(--text-secondary);
   text-decoration: none;
   font-weight: 600;
   font-size: 0.95rem;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.2s ease;
   border: 1px solid transparent;
-  position: relative;
-  overflow: hidden;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
   transform: translateX(4px);
 }
 
 .nav-item.active {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--accent-green);
-  border: 1px solid var(--accent-green-glow);
-  box-shadow: 0 0 20px var(--accent-green-glow), inset 0 0 10px rgba(16, 185, 129, 0.05);
+  background: rgba(0, 210, 255, 0.1);
+  color: var(--accent-green); /* Which is now Cyan */
+  border: 1px solid rgba(0, 210, 255, 0.2);
 }
 
 .stats-grid {
