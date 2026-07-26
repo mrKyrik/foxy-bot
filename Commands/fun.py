@@ -127,7 +127,7 @@ class Fun(commands.Cog):
         await ctx.send(embed=embed)
     @commands.command()
 
-    @commands.has_permissions(manage_messages=True)
+    @kumiho_check("owner")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def say(self, ctx: commands.Context, target: str = None, *, message: str = None) -> None:
         """Make the bot say something.\n\n**Usage:** `{prefix}say`"""
