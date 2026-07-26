@@ -11,7 +11,11 @@
 }
 
 .nav-pill {
-  background-color: var(--color-dark-bg);
+  background: rgba(11, 21, 40, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   padding: 0.5rem;
   border-radius: 9999px;
   display: flex;
@@ -155,16 +159,29 @@
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 3rem;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
   margin-top: 4rem;
-  max-width: 900px;
+  max-width: 1200px;
   text-align: left;
 }
 
 .feature-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 24px;
+  padding: 2rem;
   display: flex;
+  flex-direction: column;
   gap: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
 }
 
 .feature-icon {
@@ -191,6 +208,12 @@
 }
 
 /* Responsive */
+@media (max-width: 992px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 @media (max-width: 768px) {
   .hero-content {
     flex-direction: column;

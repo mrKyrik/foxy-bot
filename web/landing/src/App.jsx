@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowUpRight, Trophy, ShieldCheck, Headphones, Activity } from 'lucide-react'
+import { ArrowUpRight, Trophy, ShieldCheck, Headphones, Activity, Bot, Zap, MessageSquare } from 'lucide-react'
 import './App.css'
 
 function App() {
@@ -107,7 +107,9 @@ function App() {
               { icon: <Trophy />, title: "Seviye & Ekonomi", desc: "Üyelerinizi motive eden detaylı seviye sistemi ve tamamen özelleştirilebilir geniş kapsamlı ekonomi altyapısı." },
               { icon: <ShieldCheck />, title: "Moderasyon & Forum", desc: "Sarsılmaz moderasyon araçları ve sunucunuza özel, tamamen kişiselleştirilebilen gelişmiş forum sistemleri." },
               { icon: <Headphones />, title: "Dinamik Ses Odaları", desc: "Kullanıcıların kendi ses kanallarını oluşturup tam yetkiyle yönetebildiği otomatik ve sorunsuz ses odası ağı." },
-              { icon: <Activity />, title: "Timeline Tabanlı Loglar", desc: "Web panel üzerinden anlık izlenebilen, dünyanın en okunaklı ve detaylı 'zaman çizelgesi' (Timeline) tabanlı log sistemi." }
+              { icon: <Activity />, title: "Timeline Tabanlı Loglar", desc: "Web panel üzerinden anlık izlenebilen, dünyanın en okunaklı ve detaylı 'zaman çizelgesi' (Timeline) tabanlı log sistemi." },
+              { icon: <Bot />, title: "Yapay Zeka Destekli", desc: "Sorulara yanıt veren, sohbet eden ve sunucunuzun kültürüne ayak uyduran gelişmiş AI asistan entegrasyonu." },
+              { icon: <Zap />, title: "Gelişmiş Eğlence", desc: "Gelişmiş eğlence sistemleri, mini oyunlar ve reaksiyon tabanlı etkileşimlerle sunucunuzu daima aktif tutun." }
             ].map((feature, idx) => (
               <motion.div 
                 className="feature-card" 
@@ -123,6 +125,31 @@ function App() {
                   <p className="feature-desc">{feature.desc}</p>
                 </div>
               </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* PANEL 3: FAQ (Light) */}
+      <section id="faq" className="panel panel-light" style={{ minHeight: '80vh', padding: '6rem 2rem' }}>
+        <div className="container">
+          <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+            <h2 className="section-title">Sıkça Sorulan Sorular</h2>
+            <p className="hero-desc" style={{ margin: '0 auto' }}>Aklınıza takılan soruların yanıtları</p>
+          </div>
+          <div style={{ maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {[
+              { q: "Kumiho tamamen ücretsiz mi?", a: "Temel sunucu yönetim özelliklerinin tamamı ücretsizdir. Özel AI limitleri ve ileri düzey log tutma süreleri için premium seçeneklerimiz bulunmaktadır." },
+              { q: "Verilerim güvende mi?", a: "Tüm loglarınız ve sunucu ayarlarınız uçtan uca şifrelenmiş veritabanlarımızda güvenle saklanır ve kimseyle paylaşılmaz." },
+              { q: "Kurulumu ne kadar sürüyor?", a: "Sadece tek bir tıklamayla sunucunuza ekleyip saniyeler içinde web panelinden yönetmeye başlayabilirsiniz." },
+            ].map((item, i) => (
+              <div key={i} style={{ background: 'rgba(0,0,0,0.03)', padding: '1.5rem', borderRadius: '16px', display: 'flex', gap: '1rem' }}>
+                <MessageSquare style={{ color: 'var(--color-cyan)', flexShrink: 0 }} />
+                <div>
+                  <h4 style={{ fontSize: '1.1rem', fontWeight: '700', marginBottom: '0.5rem' }}>{item.q}</h4>
+                  <p style={{ color: 'var(--color-text-muted)' }}>{item.a}</p>
+                </div>
+              </div>
             ))}
           </div>
         </div>
