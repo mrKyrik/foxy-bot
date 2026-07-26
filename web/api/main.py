@@ -1693,8 +1693,7 @@ async def upload_banner(
 
     try:
         img = Image.open(io.BytesIO(content)).convert("RGBA")
-        # Resize instead of fit to prevent cropping the image (matching the dashboard preview)
-        img = img.resize((900, 250), Image.Resampling.LANCZOS)
+        img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
         # Apply blur before saving (bot reads raw file, blur baked in)
         if blur_amount > 0:
             from PIL import ImageFilter as _IF

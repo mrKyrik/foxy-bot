@@ -1,20 +1,48 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowUpRight, Trophy, ShieldCheck, Headphones, Activity } from 'lucide-react'
 import './App.css'
 
 function App() {
+  const [activeSection, setActiveSection] = useState('hero');
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { threshold: 0.5 }
+    );
+
+    const sections = document.querySelectorAll('section');
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div className="app-container">
       
       {/* Absolute Navbar */}
       <nav className="navbar">
         <div className="nav-pill">
-          <a href="#hero" className="nav-item active">Ana Sayfa</a>
-          <a href="#features" className="nav-item">Özellikler</a>
-          <a href="#pricing" className="nav-item">Premium</a>
-          <a href="#faq" className="nav-item">SSS</a>
+          <a href="#hero" className={`nav-item ${activeSection === 'hero' ? 'active-text' : ''}`}>
+            Ana Sayfa
+            {activeSection === 'hero' && <motion.div layoutId="underline" className="nav-underline" />}
+          </a>
+          <a href="#features" className={`nav-item ${activeSection === 'features' ? 'active-text' : ''}`}>
+            Özellikler
+            {activeSection === 'features' && <motion.div layoutId="underline" className="nav-underline" />}
+          </a>
           <a href="https://docs-foxy.duckdns.org" className="nav-item">Destek</a>
+          <div className="nav-divider"></div>
+          <a href="https://admin-foxy.duckdns.org" className="nav-item login-btn">
+            Giriş Yap <ArrowUpRight size={16} />
+          </a>
         </div>
       </nav>
 
@@ -47,7 +75,7 @@ function App() {
               Sunucu yönetimini akıllı moderasyon, dinamik etkileşimler ve eşsiz yapay zeka gücüyle kusursuzlaştırın.
             </p>
             <div className="hero-actions">
-              <a href="https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&scope=bot" className="btn btn-primary">
+              <a href="https://discord.com/oauth2/authorize?client_id=1514724443824328744&scope=bot" className="btn btn-primary" target="_blank" rel="noreferrer">
                 Sunucuya Ekle <ArrowUpRight size={18} />
               </a>
               <a href="#features" className="link-action">
@@ -97,25 +125,6 @@ function App() {
               </motion.div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* PANEL 3: Pricing Dummy (Light) */}
-      <section id="pricing" className="panel panel-light">
-         <div className="container features-content">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: false, amount: 0.5 }}
-          >
-            <div className="hero-subtitle">Premium</div>
-            <h2 className="section-title">Hangi Paket Size Göre?</h2>
-            <p className="hero-desc" style={{ margin: '0 auto', marginBottom: '2rem' }}>
-              Gelecek güncellemelerle Premium ayrıcalıklarına sahip olun.
-            </p>
-            <button className="btn btn-outline">Çok Yakında</button>
-          </motion.div>
         </div>
       </section>
       

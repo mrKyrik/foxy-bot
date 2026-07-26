@@ -32,9 +32,40 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.nav-item.active {
-  background-color: var(--color-light-bg);
-  color: var(--color-text-dark);
+.nav-item.active-text {
+  color: var(--color-text-light);
+  font-weight: 700;
+}
+
+.nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.nav-underline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--color-cyan);
+  border-radius: 2px;
+}
+
+.nav-divider {
+  width: 1px;
+  background-color: rgba(255, 255, 255, 0.2);
+  margin: 0.25rem 0.5rem;
+}
+
+.login-btn {
+  background-color: var(--color-cyan);
+  color: var(--color-text-dark) !important;
+  font-weight: 700;
+}
+.login-btn:hover {
+  background-color: rgba(0, 200, 255, 0.8) !important;
 }
 
 /* Hero Section */

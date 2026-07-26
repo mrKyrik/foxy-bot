@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sqlite3 kumiho.db \".tables\")",
+      "Bash(python \"C:\\\\Users\\\\kIrik\\\\OneDrive - ABDULLAH GUL UNIVERSITESI\\\\Masaüstü\\\\kumiho\\\\main.py\")",
+      "Bash(git -C \"C:\\\\Users\\\\kIrik\\\\OneDrive - ABDULLAH GUL UNIVERSITESI\\\\Masaüstü\\\\kumiho\" show HEAD:Commands/economy.py)",
+      "Bash(git:*)"
+    ]
+  }
+}

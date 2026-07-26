@@ -65,7 +65,37 @@ const LoginPage = ({ setAuthToken }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-primary)', padding: '24px' }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg-color)', color: 'var(--text-primary)', padding: '24px' }}>
+      
+      {/* Back to Landing Page Button */}
+      <a 
+        href="https://foxy-bot.duckdns.org" 
+        style={{
+          position: 'absolute',
+          top: '24px',
+          left: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          color: 'var(--text-secondary)',
+          textDecoration: 'none',
+          fontSize: '0.9rem',
+          fontWeight: 600,
+          background: 'var(--color-dark-surface)',
+          padding: '8px 16px',
+          borderRadius: '9999px',
+          transition: 'all 0.2s',
+          border: '1px solid rgba(255,255,255,0.05)'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text-primary)'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.background = 'var(--color-dark-surface)'; }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+        Ana Sayfaya Dön
+      </a>
+
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ textAlign: 'center', maxWidth: '400px' }}>
         <div style={{ marginBottom: '32px' }}>
           <img src="/foxy-bot-pp.webp" alt="Foxy Bot Logo" style={{ width: '120px', height: '120px', borderRadius: '50%', marginBottom: '24px', boxShadow: '0 8px 32px var(--accent-green-glow)' }} />
