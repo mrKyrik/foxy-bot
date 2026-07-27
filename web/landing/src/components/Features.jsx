@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Trophy, ShieldCheck, Headphones, Activity, Bot, Zap } from 'lucide-react'
+import { Trophy, ShieldCheck, Headphones, Activity, Ticket, Zap } from 'lucide-react'
 
 const Features = () => {
   return (
@@ -25,7 +25,7 @@ const Features = () => {
             { icon: <ShieldCheck />, title: "Moderasyon & Forum", desc: "Sarsılmaz moderasyon araçları ve sunucunuza özel, tamamen kişiselleştirilebilen gelişmiş forum sistemleri." },
             { icon: <Headphones />, title: "Dinamik Ses Odaları", desc: "Kullanıcıların kendi ses kanallarını oluşturup tam yetkiyle yönetebildiği otomatik ve sorunsuz ses odası ağı." },
             { icon: <Activity />, title: "Timeline Tabanlı Loglar", desc: "Web panel üzerinden anlık izlenebilen, dünyanın en okunaklı ve detaylı 'zaman çizelgesi' (Timeline) tabanlı log sistemi." },
-            { icon: <Bot />, title: "Yapay Zeka Destekli", desc: "Sorulara yanıt veren, sohbet eden ve sunucunuzun kültürüne ayak uyduran gelişmiş AI asistan entegrasyonu." },
+            { icon: <Ticket />, title: "Ticket & Form Sistemi", desc: "Kullanıcıların destek alabileceği, dinamik butonlu ve forum entegreli gelişmiş başvuru ve talep yönetimi." },
             { icon: <Zap />, title: "Gelişmiş Eğlence", desc: "Gelişmiş eğlence sistemleri, mini oyunlar ve reaksiyon tabanlı etkileşimlerle sunucunuzu daima aktif tutun." }
           ].map((feature, idx) => (
             <motion.div 

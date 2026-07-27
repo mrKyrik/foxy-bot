@@ -18,10 +18,14 @@ const Navbar = ({ activeSection }) => {
           Komutlar
           {activeSection === 'commands' && <motion.div layoutId="underline" className="nav-underline" />}
         </a>
-        <a href="https://docs-foxy.duckdns.org" className="nav-item">Destek</a>
+        <a href="#faq" className={`nav-item ${activeSection === 'faq' ? 'active-text' : ''}`}>
+          SSS
+          {activeSection === 'faq' && <motion.div layoutId="underline" className="nav-underline" />}
+        </a>
         <div className="nav-divider"></div>
+        <a href="https://docs-foxy.duckdns.org" className="nav-item">Dokümanlar</a>
         <a href="https://admin-foxy.duckdns.org" className="nav-item login-btn">
-          Giriş Yap <ArrowUpRight size={16} />
+          Admin Panel <ArrowUpRight size={16} />
         </a>
       </div>
     </nav>

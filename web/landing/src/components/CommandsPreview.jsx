@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Settings, BarChart3, Terminal } from 'lucide-react'
+import { Settings, BarChart3, Terminal, Wallet } from 'lucide-react'
 
 const CommandsPreview = () => {
   return (
@@ -75,6 +75,35 @@ const CommandsPreview = () => {
                       <div className="rank-level">Seviye 12 • Sıra #3</div>
                     </div>
                   </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+          {/* f.bal Command */}
+          <motion.div 
+            className="command-box"
+            initial={{ opacity: 0, x: -50 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            viewport={{ once: false, amount: 0.5 }}
+          >
+            <div className="command-header">
+              <Wallet size={24} className="command-icon" style={{ color: 'var(--color-primary)' }} />
+              <div className="command-title-area">
+                <h3>Ekonomi Sistemi</h3>
+                <p>Bakiye, envanter ve mağaza ile sunucunuza can katın.</p>
+              </div>
+            </div>
+            <div className="terminal-window">
+              <div className="terminal-header">
+                <span className="dot dot-red"></span>
+                <span className="dot dot-yellow"></span>
+                <span className="dot dot-green"></span>
+              </div>
+              <div className="terminal-body">
+                <p className="typing-text"><span className="prefix">f.</span>bal</p>
+                <div className="terminal-response">
+                  <BotIcon /> <span>💰 <b>User#1234</b> kullanıcısının cüzdanında <b>1,500</b> coin bulunuyor.</span>
                 </div>
               </div>
             </div>
