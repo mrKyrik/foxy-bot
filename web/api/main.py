@@ -11,7 +11,9 @@ import re
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, Depends, UploadFile, File, Form
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+import aiohttp
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import sqlite3
@@ -156,6 +158,11 @@ DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_DSN = os.getenv("DB_DSN")
 WALLET_DIR = os.path.join(BASE_DIR, "core", "wallet")
 
+LIMIT_1_RE = re.compile(r'(?i)\bLIMIT\s+1\b')
+LIMIT_N_RE = re.compile(r'(?i)\bLIMIT\s+(\d+)\b')
+LIMIT_PARAM_RE = re.compile(r'(?i)\bLIMIT\s+\?\b')
+INSERT_IGNORE_RE = re.compile(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)')
+
 class SyncOracleCursor:
     def __init__(self, cursor):
         self.cursor = cursor
@@ -170,12 +177,12 @@ class SyncOracleCursor:
 
     def _translate_query(self, query: str) -> str:
         if "LIMIT " in query.upper():
-            query = re.sub(r'(?i)\bLIMIT\s+1\b', 'FETCH FIRST 1 ROWS ONLY', query)
-            query = re.sub(r'(?i)\bLIMIT\s+(\d+)\b', r'FETCH FIRST \1 ROWS ONLY', query)
-            query = re.sub(r'(?i)\bLIMIT\s+\?\b', 'FETCH FIRST ? ROWS ONLY', query)
+            query = LIMIT_1_RE.sub('FETCH FIRST 1 ROWS ONLY', query)
+            query = LIMIT_N_RE.sub(r'FETCH FIRST \1 ROWS ONLY', query)
+            query = LIMIT_PARAM_RE.sub('FETCH FIRST ? ROWS ONLY', query)
             
         if "INSERT OR IGNORE" in query.upper():
-            query = re.sub(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)', r'BEGIN INSERT INTO \1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;', query)
+            query = INSERT_IGNORE_RE.sub(r'BEGIN INSERT INTO \1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;', query)
 
         # Basic ? to :1, :2 translation
         if '?' in query:
@@ -412,6 +419,28 @@ def delete_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
 
 import requests
 
+def fetch_kumiho_db_data():
+    try:
+        conn = get_db_connection(MAIN_DB_PATH)
+        if not conn: return set(), {}
+        cur = conn.cursor()
+        cur.execute("SELECT guild_id FROM log_settings")
+        kumiho_guilds = {str(row[0]) for row in cur.fetchall()}
+        
+        cur.execute("SELECT guild_id, role_id FROM role_permissions")
+        mod_roles = {}
+        for row in cur.fetchall():
+            g_id = str(row[0])
+            r_id = str(row[1])
+            if g_id not in mod_roles:
+                mod_roles[g_id] = set()
+            mod_roles[g_id].add(r_id)
+        conn.close()
+        return kumiho_guilds, mod_roles
+    except Exception as e:
+        print(f"DB Error fetching permissions: {e}")
+        return set(), {}
+
 @app.post("/api/auth/discord/callback")
 async def discord_callback(request: Request):
     data = await request.json()
@@ -438,133 +467,116 @@ async def discord_callback(request: Request):
         "User-Agent": "DiscordBot (https://github.com/kumiho, 1.0)"
     }
     
-    try:
-        res = requests.post(token_url, data=token_data, headers=headers, timeout=10)
-        if res.status_code != 200:
-            raise HTTPException(status_code=400, detail=f"Discord token hatası: {res.text}")
-        auth_response = res.json()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=400, detail=f"Discord yetkilendirme hatası (Bağlantı): {str(e)}")
-        
-    access_token = auth_response.get("access_token")
-    if not access_token:
-        raise HTTPException(status_code=400, detail="Access token alınamadı")
-        
-    headers_auth = {
-        "Authorization": f"Bearer {access_token}",
-        "User-Agent": "DiscordBot (https://github.com/kumiho, 1.0)"
-    }
-    
-    # Get User Info
-    try:
-        res_user = requests.get("https://discord.com/api/v10/users/@me", headers=headers_auth, timeout=10)
-        if res_user.status_code != 200:
-            raise HTTPException(status_code=400, detail="Kullanıcı bilgileri alınamadı")
-        user_info = res_user.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Kullanıcı bilgileri alınamadı (Bağlantı)")
-        
-    # Get User Guilds
-    try:
-        res_guilds = requests.get("https://discord.com/api/v10/users/@me/guilds", headers=headers_auth, timeout=10)
-        if res_guilds.status_code != 200:
-            raise HTTPException(status_code=400, detail="Sunucu bilgileri alınamadı")
-        guilds_data = res_guilds.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Sunucu bilgileri alınamadı")
-        
-    # Filter guilds (MANAGE_GUILD = 0x20, ADMINISTRATOR = 0x8)
-    allowed_guilds = []
-    owned_guilds = []
-    formatted_guilds = []
-    
-    OWNER_ID = os.getenv("OWNER_ID")
-    is_bot_owner = str(user_info["id"]) == str(OWNER_ID)
-    DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-    
-    # Eğer giriş yapan kişi bot sahibi ise, botun tüm sunucularını listeye ez.
-    if is_bot_owner and DISCORD_TOKEN:
+    async with aiohttp.ClientSession() as session:
         try:
-            headers_bot = {"Authorization": f"Bot {DISCORD_TOKEN}"}
-            res_bot_guilds = requests.get("https://discord.com/api/v10/users/@me/guilds", headers=headers_bot, timeout=10)
-            if res_bot_guilds.status_code == 200:
-                guilds_data = res_bot_guilds.json()
+            async with session.post(token_url, data=token_data, headers=headers, timeout=10) as res:
+                if res.status != 200:
+                    err_text = await res.text()
+                    raise HTTPException(status_code=400, detail=f"Discord token hatası: {err_text}")
+                auth_response = await res.json()
         except Exception as e:
-            print(f"Bot guilds fetch error: {e}")
-    
-    # 1. Fetch Bot Presence & Role Permissions from SQLite
-    try:
-
-        conn = get_db_connection(MAIN_DB_PATH)
-        cur = conn.cursor()
-        cur.execute("SELECT guild_id FROM log_settings")
-        kumiho_guilds = {str(row[0]) for row in cur.fetchall()}
-        
-        cur.execute("SELECT guild_id, role_id FROM role_permissions")
-        mod_roles = {}
-        for row in cur.fetchall():
-            g_id = str(row[0])
-            r_id = str(row[1])
-            if g_id not in mod_roles:
-                mod_roles[g_id] = set()
-            mod_roles[g_id].add(r_id)
-        conn.close()
-    except Exception as e:
-        print(f"DB Error fetching permissions: {e}")
-        kumiho_guilds = set()
-        mod_roles = {}
-    
-    print(f"DEBUG CALLBACK: user={user_info.get('username')}, is_bot_owner={is_bot_owner}, total_guilds={len(guilds_data)}")
-    
-    for g in guilds_data:
-        g_id = str(g["id"])
-        
-        # Sadece botun ekli olduğu sunucuları listele (Bot sahibi değilse)
-        if not is_bot_owner and g_id not in kumiho_guilds:
-            continue
+            raise HTTPException(status_code=400, detail=f"Discord yetkilendirme hatası (Bağlantı): {str(e)}")
             
-        perms = int(g.get("permissions", 0))
-        is_owner = g.get("owner", False)
-        has_access = False
+        access_token = auth_response.get("access_token")
+        if not access_token:
+            raise HTTPException(status_code=400, detail="Access token alınamadı")
+            
+        headers_auth = {
+            "Authorization": f"Bearer {access_token}",
+            "User-Agent": "DiscordBot (https://github.com/kumiho, 1.0)"
+        }
         
-        # Temel Discord yetki kontrolü
-        if is_bot_owner or is_owner or (perms & 0x20) == 0x20 or (perms & 0x8) == 0x8:
-            has_access = True
+        # Get User Info
+        try:
+            async with session.get("https://discord.com/api/v10/users/@me", headers=headers_auth, timeout=10) as res_user:
+                if res_user.status != 200:
+                    raise HTTPException(status_code=400, detail="Kullanıcı bilgileri alınamadı")
+                user_info = await res_user.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Kullanıcı bilgileri alınamadı (Bağlantı)")
+            
+        # Get User Guilds
+        try:
+            async with session.get("https://discord.com/api/v10/users/@me/guilds", headers=headers_auth, timeout=10) as res_guilds:
+                if res_guilds.status != 200:
+                    raise HTTPException(status_code=400, detail="Sunucu bilgileri alınamadı")
+                guilds_data = await res_guilds.json()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Sunucu bilgileri alınamadı")
+            
+        # Filter guilds
+        allowed_guilds = []
+        owned_guilds = []
+        formatted_guilds = []
         
-        # Derin Yetki Doğrulaması (Kumiho özel rolleri)
-        elif g_id in mod_roles and DISCORD_TOKEN:
+        OWNER_ID = os.getenv("OWNER_ID")
+        is_bot_owner = str(user_info["id"]) == str(OWNER_ID)
+        DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
+        
+        # Eğer giriş yapan kişi bot sahibi ise, botun tüm sunucularını listeye ez.
+        if is_bot_owner and DISCORD_TOKEN:
             try:
-                member_url = f"https://discord.com/api/v10/guilds/{g_id}/members/{user_info['id']}"
                 headers_bot = {"Authorization": f"Bot {DISCORD_TOKEN}"}
-                m_res = requests.get(member_url, headers_bot, timeout=5)
-                if m_res.status_code == 200:
-                    member_data = m_res.json()
-                    user_roles = set(member_data.get("roles", []))
-                    if user_roles.intersection(mod_roles[g_id]):
-                        has_access = True
+                async with session.get("https://discord.com/api/v10/users/@me/guilds", headers=headers_bot, timeout=10) as res_bot_guilds:
+                    if res_bot_guilds.status == 200:
+                        guilds_data = await res_bot_guilds.json()
             except Exception as e:
-                print(f"Error fetching member roles for {g_id}: {e}")
-        if has_access:
-            allowed_guilds.append(g_id)
-            if is_owner or is_bot_owner:
-                owned_guilds.append(g_id)
-            icon_url = f"https://cdn.discordapp.com/icons/{g_id}/{g['icon']}.png" if g.get("icon") else None
-            formatted_guilds.append({"id": g_id, "name": g["name"], "icon": icon_url})
-    
-    print(f"DEBUG CALLBACK: user={user_info.get('username')}, allowed_guilds={allowed_guilds}, owned_guilds={owned_guilds}")
+                print(f"Bot guilds fetch error: {e}")
+        
+        # Async run synchronous DB fetch
+        kumiho_guilds, mod_roles = await run_in_threadpool(fetch_kumiho_db_data)
+        
+        print(f"DEBUG CALLBACK: user={user_info.get('username')}, is_bot_owner={is_bot_owner}, total_guilds={len(guilds_data)}")
+        
+        for g in guilds_data:
+            g_id = str(g["id"])
             
-    # Generate local JWT
-    jwt_payload = {
-        "user_id": user_info["id"],
-        "username": user_info.get("username"),
-        "allowed_guilds": allowed_guilds,
-        "owned_guilds": owned_guilds,
-        "guilds_data": formatted_guilds,
-        "exp": datetime.utcnow() + timedelta(days=7)
-    }
-    local_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm="HS256")
-    
-    return {"status": "success", "token": local_token, "user": user_info}
+            # Sadece botun ekli olduğu sunucuları listele (Bot sahibi değilse)
+            if not is_bot_owner and g_id not in kumiho_guilds:
+                continue
+                
+            perms = int(g.get("permissions", 0))
+            is_owner = g.get("owner", False)
+            has_access = False
+            
+            # Temel Discord yetki kontrolü
+            if is_bot_owner or is_owner or (perms & 0x20) == 0x20 or (perms & 0x8) == 0x8:
+                has_access = True
+            
+            # Derin Yetki Doğrulaması (Kumiho özel rolleri)
+            elif g_id in mod_roles and DISCORD_TOKEN:
+                try:
+                    member_url = f"https://discord.com/api/v10/guilds/{g_id}/members/{user_info['id']}"
+                    headers_bot = {"Authorization": f"Bot {DISCORD_TOKEN}"}
+                    async with session.get(member_url, headers=headers_bot, timeout=5) as m_res:
+                        if m_res.status == 200:
+                            member_data = await m_res.json()
+                            user_roles = set(member_data.get("roles", []))
+                            if user_roles.intersection(mod_roles[g_id]):
+                                has_access = True
+                except Exception as e:
+                    print(f"Error fetching member roles for {g_id}: {e}")
+            if has_access:
+                allowed_guilds.append(g_id)
+                if is_owner or is_bot_owner:
+                    owned_guilds.append(g_id)
+                icon_url = f"https://cdn.discordapp.com/icons/{g_id}/{g['icon']}.png" if g.get("icon") else None
+                formatted_guilds.append({"id": g_id, "name": g["name"], "icon": icon_url})
+        
+        print(f"DEBUG CALLBACK: user={user_info.get('username')}, allowed_guilds={allowed_guilds}, owned_guilds={owned_guilds}")
+                
+        # Generate local JWT
+        jwt_payload = {
+            "user_id": user_info["id"],
+            "username": user_info.get("username"),
+            "allowed_guilds": allowed_guilds,
+            "owned_guilds": owned_guilds,
+            "guilds_data": formatted_guilds,
+            "exp": datetime.utcnow() + timedelta(days=7)
+        }
+        local_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm="HS256")
+        
+        return {"status": "success", "token": local_token, "user": user_info}
 
 
 @app.get("/api/global_stats")
