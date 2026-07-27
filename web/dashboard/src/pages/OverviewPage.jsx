@@ -30,7 +30,7 @@ const OverviewPage = () => {
       {stats ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginTop: '24px' }}>
           <div style={{ background: 'rgba(255,255,255,0.05)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-green)', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--color-cyan)', marginBottom: '10px' }}>
               <Activity size={24} /> <h3>Toplam Log</h3>
             </div>
             <div style={{ fontSize: '2rem', fontWeight: 'bold' }}>{stats.total_logs}</div>

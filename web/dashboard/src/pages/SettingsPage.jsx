@@ -62,7 +62,7 @@ const MultiSelectDropdown = ({ options, selected, onChange, placeholder }) => {
                 onMouseOut={(e) => e.currentTarget.style.background = selected.includes(opt.value) ? 'rgba(255,255,255,0.08)' : 'transparent'}
               >
                 <span>{opt.label}</span>
-                {selected.includes(opt.value) && <CheckCircle size={16} color="var(--accent-green)" />}
+                {selected.includes(opt.value) && <CheckCircle size={16} color="var(--color-cyan)" />}
               </div>
             ))
           )}
@@ -142,10 +142,10 @@ const MotionToggle = ({ isOn, toggle }) => (
     onClick={toggle}
     style={{
       width: '48px', height: '26px', borderRadius: '13px',
-      backgroundColor: isOn ? 'var(--accent-green)' : 'rgba(255, 255, 255, 0.1)',
+      backgroundColor: isOn ? 'var(--color-cyan)' : 'rgba(255, 255, 255, 0.1)',
       display: 'flex', alignItems: 'center', padding: '0 3px', cursor: 'pointer',
-      border: '1px solid', borderColor: isOn ? 'var(--accent-green-glow)' : 'rgba(255, 255, 255, 0.2)',
-      transition: 'background-color 0.3s ease', boxShadow: isOn ? '0 0 12px var(--accent-green-glow)' : 'none',
+      border: '1px solid', borderColor: isOn ? 'var(--color-cyan-glow)' : 'rgba(255, 255, 255, 0.2)',
+      transition: 'background-color 0.3s ease', boxShadow: isOn ? '0 0 12px var(--color-cyan-glow)' : 'none',
       flexShrink: 0
     }}
   >
@@ -359,9 +359,9 @@ const SettingsPage = () => {
                 onClick={() => setActiveCategory(cat.id)}
                 style={{
                   padding: '12px 16px', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px',
-                  fontWeight: 600, fontSize: '0.95rem', color: isActive ? 'var(--accent-green)' : 'var(--text-secondary)',
+                  fontWeight: 600, fontSize: '0.95rem', color: isActive ? 'var(--color-cyan)' : 'var(--text-secondary)',
                   background: isActive ? 'rgba(16, 185, 129, 0.1)' : 'transparent',
-                  border: `1px solid ${isActive ? 'var(--accent-green-glow)' : 'transparent'}`,
+                  border: `1px solid ${isActive ? 'var(--color-cyan-glow)' : 'transparent'}`,
                   transition: 'background 0.2s, color 0.2s'
                 }}
               >
@@ -380,7 +380,7 @@ const SettingsPage = () => {
           ) : activeCategory === 'oda' ? (
             <motion.div key="oda" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <Headphones size={28} color="var(--accent-green)" />
+                <Headphones size={28} color="var(--color-cyan)" />
                 Özel Oda Sistemi
               </h2>
               
@@ -395,7 +395,7 @@ const SettingsPage = () => {
                       onClick={handleSetupPrivateVoice}
                       disabled={pvLoading}
                       style={{
-                        padding: '12px 24px', background: 'var(--accent-green)', color: '#fff', fontWeight: 600,
+                        padding: '12px 24px', background: 'var(--color-cyan)', color: '#fff', fontWeight: 600,
                         border: 'none', borderRadius: '8px', cursor: pvLoading ? 'not-allowed' : 'pointer',
                         display: 'flex', alignItems: 'center', gap: '8px', opacity: pvLoading ? 0.7 : 1
                       }}
@@ -409,7 +409,7 @@ const SettingsPage = () => {
                   </div>
                 ) : (
                   <div>
-                    <div style={{ fontSize: '1.1rem', color: 'var(--accent-green)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ fontSize: '1.1rem', color: 'var(--color-cyan)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '1.3rem' }}>✅</span> Sistem Aktif ve Çalışıyor
                     </div>
                     <div style={{ background: 'rgba(255,255,255,0.03)', padding: '16px', borderRadius: '12px', marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -526,7 +526,7 @@ const SettingsPage = () => {
                 )}
 
                 {channelSettings['oda_channel'] && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-green)', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-cyan)', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     ✓ Seçili kanal ID: {channelSettings['oda_channel']}
                     <span style={{ color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 600, padding: '4px 8px', background: 'rgba(244, 63, 94, 0.1)', borderRadius: '6px' }} onClick={() => handleChannelChange('oda_channel', null)}>
                       Temizle
@@ -558,7 +558,7 @@ const SettingsPage = () => {
           ) : (
             <motion.div key={activeCategory} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.3 }}>
               <h2 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#fff', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                {React.cloneElement(activeCat.icon, { size: 28, color: 'var(--accent-green)' })}
+                {React.cloneElement(activeCat.icon, { size: 28, color: 'var(--color-cyan)' })}
                 {activeCat?.label}
               </h2>
 
@@ -601,7 +601,7 @@ const SettingsPage = () => {
                 )}
 
                 {channelSettings[activeCat?.channelKey] && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--accent-green)', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--color-cyan)', marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     ✓ Seçili kanal ID: {channelSettings[activeCat?.channelKey]}
                     <span style={{ color: 'var(--accent-red)', cursor: 'pointer', fontWeight: 600, padding: '4px 8px', background: 'rgba(244, 63, 94, 0.1)', borderRadius: '6px' }} onClick={() => handleChannelChange(activeCat.channelKey, null)}>
                       Temizle
@@ -729,7 +729,7 @@ const SettingsPage = () => {
                        onClick={handleTicketSave} 
                        disabled={ticketSaving} 
                        style={{
-                         padding: '12px 24px', background: 'var(--accent-green)', color: '#fff', fontWeight: 600,
+                         padding: '12px 24px', background: 'var(--color-cyan)', color: '#fff', fontWeight: 600,
                          border: 'none', borderRadius: '8px', cursor: ticketSaving ? 'not-allowed' : 'pointer',
                          alignSelf: 'flex-start', marginTop: '8px'
                        }}

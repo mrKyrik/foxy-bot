@@ -213,7 +213,7 @@ const FormManagementPage = () => {
               <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
                 <button 
                   onClick={() => openSummon(form)}
-                  style={{ flex: 1, background: 'rgba(16, 185, 129, 0.15)', color: 'var(--accent-green)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600, transition: 'all 0.2s' }}
+                  style={{ flex: 1, background: 'rgba(16, 185, 129, 0.15)', color: 'var(--color-cyan)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '10px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontWeight: 600, transition: 'all 0.2s' }}
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.25)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(16, 185, 129, 0.15)'}
                 >
@@ -333,7 +333,7 @@ const FormManagementPage = () => {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <label style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Sorular (Max 5)</label>
                   {formData.questions.length < 5 && (
-                    <button type="button" onClick={addQuestion} style={{ background: 'none', border: 'none', color: 'var(--accent-green)', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <button type="button" onClick={addQuestion} style={{ background: 'none', border: 'none', color: 'var(--color-cyan)', fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Plus size={14} /> Soru Ekle
                     </button>
                   )}
@@ -377,7 +377,7 @@ const FormManagementPage = () => {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
           <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass-panel" style={{ width: '400px', maxWidth: '90%', padding: '24px', borderRadius: '16px' }}>
             <h2 style={{ margin: '0 0 16px 0', fontSize: '1.25rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Send size={20} color="var(--accent-green)" /> Formu Discord'a Gönder
+              <Send size={20} color="var(--color-cyan)" /> Formu Discord'a Gönder
             </h2>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '24px' }}>
               <strong>{activeForm.title}</strong> isimli formu kullanıcıların doldurabilmesi için bir kanala mesaj ve buton olarak göndereceksiniz.
@@ -395,7 +395,7 @@ const FormManagementPage = () => {
               <button type="button" onClick={() => setIsSummonModalOpen(false)} style={{ padding: '8px 16px', background: 'transparent', color: 'var(--text-secondary)', border: '1px solid var(--panel-border)', borderRadius: '8px', cursor: 'pointer' }}>
                 İptal
               </button>
-              <button type="button" onClick={handleSummon} disabled={!summonChannel} style={{ padding: '8px 16px', background: 'var(--accent-green)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: summonChannel ? 'pointer' : 'not-allowed', opacity: summonChannel ? 1 : 0.5 }}>
+              <button type="button" onClick={handleSummon} disabled={!summonChannel} style={{ padding: '8px 16px', background: 'var(--color-cyan)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: summonChannel ? 'pointer' : 'not-allowed', opacity: summonChannel ? 1 : 0.5 }}>
                 Şimdi Gönder
               </button>
             </div>

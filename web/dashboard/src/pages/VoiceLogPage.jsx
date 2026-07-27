@@ -5,10 +5,10 @@ import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent } from '../utils/time';
 
 const EVENT_OPTIONS = [
-  { value: 'ses_join', label: 'Kanala Katıldı', color: 'var(--accent-green)' },
+  { value: 'ses_join', label: 'Kanala Katıldı', color: 'var(--color-cyan)' },
   { value: 'ses_leave', label: 'Kanaldan Ayrıldı', color: 'var(--accent-red)' },
   { value: 'ses_move', label: 'Kanal Değiştirdi', color: 'var(--accent-blue)' },
-  { value: 'ses_camera', label: 'Kamera', color: 'var(--accent-green)' },
+  { value: 'ses_camera', label: 'Kamera', color: 'var(--color-cyan)' },
   { value: 'ses_stream', label: 'Ekran Paylaşımı', color: 'var(--accent-purple)' }
 ];
 
@@ -94,7 +94,7 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
     <LogPageLayout
       title="Ses Hareketleri"
       icon={<Mic />}
-      iconColor="var(--accent-green)"
+      iconColor="var(--color-cyan)"
       eventOptions={EVENT_OPTIONS}
       selectedEvents={selectedEvents}
       setSelectedEvents={setSelectedEvents}
@@ -115,7 +115,7 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
         {Object.values(parsed.channels).map(channel => (
           <div key={channel.id} style={{ marginBottom: '24px' }}>
             <h4 style={{ color: 'var(--text-secondary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1rem' }}>
-              <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'var(--accent-green)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-green)' }}></span>
+              <span style={{ display: 'inline-block', width: '10px', height: '10px', background: 'var(--color-cyan)', borderRadius: '50%', boxShadow: '0 0 8px var(--color-cyan)' }}></span>
               {channel.name !== channel.id ? channel.name : (channel.id === 'Bilinmeyen Kanal' ? channel.id : `<#${channel.id}>`)}
             </h4>
             
@@ -168,7 +168,7 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
                               const actualEnd = cam.end ? cam.end : (session.leave ? session.leave : nowTS);
                               const cEnd = getPercent(actualEnd, timeMin, timeMax);
                               if (cEnd < 0 || cStart > 100) return null;
-                              return <div key={'c'+i} style={{ position: 'absolute', left: `${Math.max(0, cStart)}%`, width: `${Math.min(100 - Math.max(0, cStart), cEnd - Math.max(0, cStart))}%`, top: '20px', height: '6px', background: 'var(--accent-green)', borderRadius: '2px', boxShadow: '0 0 8px var(--accent-green)' }} title="Kamera" />
+                              return <div key={'c'+i} style={{ position: 'absolute', left: `${Math.max(0, cStart)}%`, width: `${Math.min(100 - Math.max(0, cStart), cEnd - Math.max(0, cStart))}%`, top: '20px', height: '6px', background: 'var(--color-cyan)', borderRadius: '2px', boxShadow: '0 0 8px var(--color-cyan)' }} title="Kamera" />
                            })}
                            
                            {session.streams.map((str, i) => {

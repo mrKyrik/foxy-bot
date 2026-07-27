@@ -134,7 +134,7 @@ const MessageLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selected
                                   ) : (
                                     <>
                                     <div style={{color: 'var(--accent-red)', marginBottom: '4px', textDecoration: 'line-through', opacity: 0.8}}>{ev.details_obj.old_content}</div>
-                                    <div style={{color: 'var(--accent-green)', marginTop: '4px'}}>{ev.details_obj.new_content}</div>
+                                    <div style={{color: 'var(--color-cyan)', marginTop: '4px'}}>{ev.details_obj.new_content}</div>
                                     {ev.details_obj.message_url && <a href={ev.details_obj.message_url} target="_blank" rel="noreferrer" style={{color: 'var(--accent-blue)', display: 'block', marginTop: '8px', fontSize: '0.8rem'}}>Mesaja Git</a>}
                                     </>
                                   )

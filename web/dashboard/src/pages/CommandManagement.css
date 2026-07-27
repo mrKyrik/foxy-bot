@@ -200,7 +200,7 @@
 
 .cmd-card.enabled {
   background: rgba(16, 185, 129, 0.05);
-  border-color: var(--accent-green-glow);
+  border-color: var(--color-cyan-glow);
 }
 .cmd-card.disabled {
   opacity: 0.6;
@@ -243,9 +243,9 @@
   flex-shrink: 0;
 }
 .toggle-switch.on {
-  background-color: var(--accent-green);
-  border-color: var(--accent-green-glow);
-  box-shadow: 0 0 12px var(--accent-green-glow);
+  background-color: var(--color-cyan);
+  border-color: var(--color-cyan-glow);
+  box-shadow: 0 0 12px var(--color-cyan-glow);
 }
 .toggle-thumb {
   width: 18px;

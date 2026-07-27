@@ -329,7 +329,7 @@ const CommandManagementPage = () => {
     <div className="cmd-mgmt-container">
       <header className="cmd-header">
         <h1 className="cmd-title">
-          <Command size={32} color="var(--accent-green)" />
+          <Command size={32} color="var(--color-cyan)" />
           Komut Yönetimi
         </h1>
         <p className="cmd-subtitle">
@@ -475,7 +475,7 @@ const CommandManagementPage = () => {
                               <span className="empty-roles" style={{
                                 padding: '4px 10px', 
                                 background: cmd.default_access === 'owner' ? 'rgba(234, 179, 8, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                color: cmd.default_access === 'owner' ? 'var(--accent-yellow)' : 'var(--accent-green)',
+                                color: cmd.default_access === 'owner' ? 'var(--accent-yellow)' : 'var(--color-cyan)',
                                 borderRadius: '6px',
                                 fontSize: '0.8rem',
                                 fontWeight: '600'

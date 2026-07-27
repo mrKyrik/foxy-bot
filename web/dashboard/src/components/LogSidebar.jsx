@@ -28,7 +28,7 @@ const LogSidebar = ({ availableTags, selectedTags, setSelectedTags }) => {
           animate={{ rotate: 360 }}
           transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
         >
-          <Filter size={24} color="var(--accent-green)" />
+          <Filter size={24} color="var(--color-cyan)" />
         </motion.div>
         Log Sistemi
       </div>

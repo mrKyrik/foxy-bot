@@ -7,7 +7,7 @@ import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent } from '../utils/time';
 
 const EVENT_OPTIONS = [
-  { value: 'oda_create', label: 'Oda Oluşturma', color: 'var(--accent-green)' },
+  { value: 'oda_create', label: 'Oda Oluşturma', color: 'var(--color-cyan)' },
   { value: 'oda_delete', label: 'Oda Silinme', color: 'var(--accent-red)' },
   { value: 'oda_update', label: 'Oda Ayar Değişikliği', color: 'var(--accent-blue)' },
   { value: 'oda_participant', label: 'Oda Katılımcı Hareketi', color: 'var(--accent-purple)' }
@@ -142,7 +142,7 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
   const renderLogDetail = (ev) => {
     let color = 'rgba(255,255,255,0.2)';
     let text = ev.event_type;
-    if (ev.event_type === 'oda_create') { color = 'var(--accent-green)'; text = 'Oda Oluşturuldu'; }
+    if (ev.event_type === 'oda_create') { color = 'var(--color-cyan)'; text = 'Oda Oluşturuldu'; }
     if (ev.event_type === 'oda_delete') { color = 'var(--accent-red)'; text = 'Oda Silindi'; }
     if (ev.event_type === 'oda_update') { color = 'var(--accent-blue)'; text = 'Oda Ayarı Değişti'; }
 
@@ -204,7 +204,7 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
             if (pct < 0 || pct > 100) return null;
 
             let dotColor = 'rgba(255,255,255,0.5)';
-            if (ev.event_type === 'oda_create') dotColor = 'var(--accent-green)';
+            if (ev.event_type === 'oda_create') dotColor = 'var(--color-cyan)';
             if (ev.event_type === 'oda_delete') dotColor = 'var(--accent-red)';
             if (ev.event_type === 'oda_update') dotColor = 'var(--accent-blue)';
 
@@ -299,7 +299,7 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
                       const actualEnd = cam.end ? cam.end : (session.leave ? session.leave : nowTS);
                       const cEnd = getPercent(actualEnd, timeMin, timeMax);
                       if (cEnd < 0 || cStart > 100) return null;
-                      return <div key={'c'+i} style={{ position: 'absolute', left: `${Math.max(0, cStart)}%`, width: `${Math.min(100 - Math.max(0, cStart), cEnd - Math.max(0, cStart))}%`, top: '20px', height: '6px', background: 'var(--accent-green)', borderRadius: '2px', boxShadow: '0 0 8px var(--accent-green)' }} title="Kamera" />
+                      return <div key={'c'+i} style={{ position: 'absolute', left: `${Math.max(0, cStart)}%`, width: `${Math.min(100 - Math.max(0, cStart), cEnd - Math.max(0, cStart))}%`, top: '20px', height: '6px', background: 'var(--color-cyan)', borderRadius: '2px', boxShadow: '0 0 8px var(--color-cyan)' }} title="Kamera" />
                     })}
                     
                     {session.streams && session.streams.map((str, i) => {
