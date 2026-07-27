@@ -135,7 +135,7 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
     if (type.includes('msg')) return { icon: <MessageSquare size={14} />, color: 'var(--accent-yellow)', bg: 'rgba(234, 179, 8, 0.2)' };
     if (type.includes('mod') || type.includes('warn')) return { icon: <ShieldAlert size={14} />, color: 'var(--accent-red)', bg: 'var(--accent-red-glow)' };
     if (type.includes('role')) return { icon: <Tag size={14} />, color: 'var(--accent-purple)', bg: 'var(--accent-purple-glow)' };
-    if (type.includes('channel')) return { icon: <Hash size={14} />, color: '#10b981', bg: 'var(--accent-green-glow)' };
+    if (type.includes('channel')) return { icon: <Hash size={14} />, color: '#10b981', bg: 'var(--color-cyan-glow)' };
     return { icon: <Calendar size={14} />, color: '#fff', bg: 'rgba(255,255,255,0.1)' };
   };
 

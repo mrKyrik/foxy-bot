@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
 import axios from 'axios';
 import { Routes, Route, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import LogSidebar from '../components/LogSidebar';
 import TimelineMinimap from '../components/TimelineMinimap';
 import GlobalTimePicker from '../components/GlobalTimePicker';
@@ -127,7 +128,12 @@ const LogSystemLayout = () => {
       <LogSidebar availableTags={availableTags} selectedTags={selectedTags} setSelectedTags={setSelectedTags} />
       
       <main className="main-content" style={{ display: 'flex', flexDirection: 'column' }}>
-        <div style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+        >
           
           {!isSettings && (
             <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexShrink: 0, position: 'relative' }}>
@@ -161,7 +167,7 @@ const LogSystemLayout = () => {
             </div>
           )}
           
-        </div>
+        </motion.div>
       </main>
 
       {selectedUserForLook && (

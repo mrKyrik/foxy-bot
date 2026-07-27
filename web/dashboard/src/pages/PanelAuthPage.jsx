@@ -1,21 +1,11 @@
 import React, { useState, useEffect, useContext, useRef } from "react";
-import {
-  Shield,
-  Plus,
-  Trash2,
-  User,
-  Users,
-  AlertTriangle,
-  ChevronDown,
-  Check,
-  Search,
-} from "lucide-react";
+import { Shield, Plus, Trash2, User, Users, AlertTriangle, ChevronDown, Check, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { GuildContext } from "../GuildContext";
 
-// --- Custom Select Component with Search ---
+// --- Custom Select Component ---
 const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -39,22 +29,29 @@ const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
   const selectedItem = items.find((i) => i.id === value);
 
   return (
-    <div ref={wrapperRef} className="relative w-full">
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <div
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full bg-gray-900/50 backdrop-blur-md border border-gray-600/50 rounded-xl p-3 flex justify-between items-center cursor-pointer hover:border-kumiho-primary/50 transition-colors"
+        style={{
+          width: '100%',
+          background: 'rgba(0,0,0,0.2)',
+          border: '1px solid var(--panel-border)',
+          borderRadius: '8px',
+          padding: '10px 12px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          cursor: 'pointer'
+        }}
       >
-        <span className={selectedItem ? "text-white" : "text-gray-400"}>
+        <span style={{ color: selectedItem ? '#fff' : 'var(--text-muted)' }}>
           {selectedItem
             ? type === "role"
               ? selectedItem.name
               : selectedItem.username
             : placeholder}
         </span>
-        <ChevronDown
-          size={18}
-          className={`text-gray-400 transition-transform ${isOpen ? "rotate-180" : ""}`}
-        />
+        <ChevronDown size={18} style={{ color: 'var(--text-secondary)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
       </div>
 
       <AnimatePresence>
@@ -63,24 +60,32 @@ const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden"
+            style={{
+              position: 'absolute',
+              zIndex: 50,
+              width: '100%',
+              marginTop: '8px',
+              background: 'var(--panel-bg)',
+              border: '1px solid var(--panel-border)',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+            }}
           >
-            <div className="p-2 border-b border-gray-700 flex items-center">
-              <Search size={16} className="text-gray-400 mr-2" />
+            <div style={{ padding: '8px', borderBottom: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center' }}>
+              <Search size={16} style={{ color: 'var(--text-secondary)', marginRight: '8px' }} />
               <input
                 type="text"
                 autoFocus
                 placeholder="Ara..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-white text-sm"
+                style={{ width: '100%', background: 'transparent', border: 'none', outline: 'none', color: '#fff', fontSize: '0.9rem' }}
               />
             </div>
-            <div className="max-h-60 overflow-y-auto">
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
               {filteredItems.length === 0 ? (
-                <div className="p-3 text-sm text-gray-400 text-center">
-                  Sonuç bulunamadı.
-                </div>
+                <div style={{ padding: '12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Sonuç bulunamadı.</div>
               ) : (
                 filteredItems.map((item) => (
                   <div
@@ -90,9 +95,11 @@ const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
                       setIsOpen(false);
                       setQuery("");
                     }}
-                    className="p-3 hover:bg-gray-700/50 cursor-pointer flex items-center justify-between transition-colors"
+                    style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.02)' }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <div className="flex items-center gap-3">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {type === "user" ? (
                         <img
                           src={
@@ -101,25 +108,25 @@ const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
                               : "https://cdn.discordapp.com/embed/avatars/0.png"
                           }
                           alt="avatar"
-                          className="w-6 h-6 rounded-full"
+                          style={{ width: '24px', height: '24px', borderRadius: '50%' }}
                         />
                       ) : (
                         <div
-                          className="w-4 h-4 rounded-full"
                           style={{
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '50%',
                             backgroundColor: item.color
                               ? `#${item.color.toString(16).padStart(6, "0")}`
                               : "#99aab5",
                           }}
                         />
                       )}
-                      <span className="text-white text-sm">
+                      <span style={{ color: '#fff', fontSize: '0.9rem' }}>
                         {type === "role" ? item.name : item.username}
                       </span>
                     </div>
-                    {value === item.id && (
-                      <Check size={16} className="text-kumiho-primary" />
-                    )}
+                    {value === item.id && <Check size={16} color="var(--color-cyan)" />}
                   </div>
                 ))
               )}
@@ -148,9 +155,7 @@ const PanelAuthPage = () => {
       fetchData();
     } else if (guildPermission !== "owner") {
       setLoading(false);
-      setError(
-        "Bu sayfayı görüntülemek için Sunucu Sahibi (Owner) yetkisine sahip olmalısınız.",
-      );
+      setError("Bu sayfayı görüntülemek için Sunucu Sahibi (Owner) yetkisine sahip olmalısınız.");
     }
   }, [activeGuildId, guildPermission]);
 
@@ -231,93 +236,70 @@ const PanelAuthPage = () => {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <div className="w-12 h-12 border-4 border-kumiho-primary border-t-transparent rounded-full animate-spin" />
-      </div>
+      <div style={{ padding: '32px', color: 'var(--text-secondary)' }}>Yükleniyor...</div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-8 h-full flex flex-col items-center justify-center">
+      <div style={{ padding: '32px', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="bg-red-500/10 border border-red-500/20 p-8 rounded-2xl flex flex-col items-center max-w-lg text-center"
+          className="glass-panel"
+          style={{ padding: '48px', textAlign: 'center', borderRadius: '16px', maxWidth: '400px' }}
         >
-          <AlertTriangle size={64} className="text-red-400 mb-6" />
-          <h2 className="text-2xl font-bold text-white mb-2">
-            Erişim Engellendi
-          </h2>
-          <p className="text-gray-400">{error}</p>
+          <AlertTriangle size={64} style={{ color: 'var(--accent-red)', marginBottom: '24px', opacity: 0.8 }} />
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#fff', marginBottom: '12px' }}>Erişim Engellendi</h2>
+          <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
         </motion.div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto w-full">
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="mb-10"
-      >
-        <h1 className="text-4xl font-bold flex items-center mb-4 text-white">
-          <Shield
-            className="mr-4 text-kumiho-primary drop-shadow-[0_0_15px_rgba(234,88,12,0.5)]"
-            size={36}
-          />
-          Panel Yetkilendirme
-        </h1>
-        <p className="text-gray-400 text-lg leading-relaxed max-w-3xl">
-          Kumiho Web Paneli'ne kimlerin erişebileceğini ve hangi düzeyde
-          müdahale edebileceğini buradan güvenle yönetin.
-        </p>
-      </motion.div>
+    <div style={{ padding: '32px', height: '100%', overflowY: 'auto' }}>
+      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+        <div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 800, color: '#fff', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Shield size={32} color="var(--accent-orange)" /> Panel Yetkilendirme
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', marginTop: '8px' }}>
+            Kumiho Web Paneli'ne kimlerin erişebileceğini ve hangi düzeyde müdahale edebileceğini buradan güvenle yönetin.
+          </p>
+        </div>
+      </header>
 
       {/* Ekleme Kartı */}
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.1 }}
-        className="glass-panel p-8 mb-10 relative overflow-hidden group"
+        className="glass-panel"
+        style={{ padding: '24px', borderRadius: '16px', marginBottom: '32px', borderTop: '2px solid var(--accent-orange)' }}
       >
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-kumiho-primary to-orange-400 opacity-80" />
-
-        <h2 className="text-xl font-semibold mb-6 text-white flex items-center">
-          <Plus size={20} className="mr-2 text-kumiho-primary" />
-          Yeni Yetki Kuralı Oluştur
+        <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '24px' }}>
+          <Plus size={20} color="var(--accent-orange)" /> Yeni Yetki Kuralı Oluştur
         </h2>
 
-        <form
-          onSubmit={handleAddPermission}
-          className="grid grid-cols-1 md:grid-cols-12 gap-6 items-end"
-        >
-          <div className="md:col-span-3">
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Hedef Türü
-            </label>
-            <div className="relative">
-              <select
-                value={newTargetType}
-                onChange={(e) => {
-                  setNewTargetType(e.target.value);
-                  setNewTargetId("");
-                }}
-                className="w-full bg-gray-900/50 backdrop-blur-md border border-gray-600/50 rounded-xl p-3 text-white appearance-none focus:border-kumiho-primary focus:ring-1 focus:ring-kumiho-primary outline-none transition-all cursor-pointer"
-              >
-                <option value="role">Discord Rolü</option>
-                <option value="user">Discord Kullanıcısı</option>
-              </select>
-              <ChevronDown
-                size={16}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              />
-            </div>
+        <form onSubmit={handleAddPermission} style={{ display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 200px' }}>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px' }}>Hedef Türü</label>
+            <select
+              value={newTargetType}
+              onChange={(e) => {
+                setNewTargetType(e.target.value);
+                setNewTargetId("");
+              }}
+              style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}
+            >
+              <option value="role">Discord Rolü</option>
+              <option value="user">Discord Kullanıcısı</option>
+            </select>
           </div>
 
-          <div className="md:col-span-4 z-20">
-            <label className="block text-sm font-medium text-gray-400 mb-2">
+          <div style={{ flex: '2 1 300px' }}>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px' }}>
               {newTargetType === "role" ? "Rol Seçin" : "Kullanıcı Seçin"}
             </label>
             <SearchableSelect
@@ -329,34 +311,38 @@ const PanelAuthPage = () => {
             />
           </div>
 
-          <div className="md:col-span-3">
-            <label className="block text-sm font-medium text-gray-400 mb-2">
-              Yetki Seviyesi
-            </label>
-            <div className="relative">
-              <select
-                value={newPermission}
-                onChange={(e) => setNewPermission(e.target.value)}
-                className="w-full bg-gray-900/50 backdrop-blur-md border border-gray-600/50 rounded-xl p-3 text-white appearance-none focus:border-kumiho-primary focus:ring-1 focus:ring-kumiho-primary outline-none transition-all cursor-pointer"
-              >
-                <option value="read">👁️ Sadece Oku</option>
-                <option value="write">✍️ Düzenleme Yetkisi</option>
-              </select>
-              <ChevronDown
-                size={16}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-              />
-            </div>
+          <div style={{ flex: '1 1 200px' }}>
+            <label style={{ display: 'block', color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '8px' }}>Yetki Seviyesi</label>
+            <select
+              value={newPermission}
+              onChange={(e) => setNewPermission(e.target.value)}
+              style={{ width: '100%', padding: '10px 12px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', color: '#fff', borderRadius: '8px', outline: 'none' }}
+            >
+              <option value="read">👁️ Sadece Oku</option>
+              <option value="write">✍️ Düzenleme Yetkisi</option>
+            </select>
           </div>
 
-          <div className="md:col-span-2">
+          <div style={{ flex: '0 0 auto' }}>
             <button
               type="submit"
               disabled={!newTargetId}
-              className="w-full bg-kumiho-primary hover:bg-orange-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl transition-all shadow-[0_0_15px_rgba(234,88,12,0.3)] hover:shadow-[0_0_25px_rgba(234,88,12,0.5)] flex justify-center items-center h-[46px]"
+              style={{ 
+                background: 'var(--accent-orange)', 
+                color: '#fff', 
+                border: 'none', 
+                padding: '10px 24px', 
+                borderRadius: '8px', 
+                fontWeight: 600, 
+                cursor: newTargetId ? 'pointer' : 'not-allowed',
+                opacity: newTargetId ? 1 : 0.5,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                height: '42px'
+              }}
             >
-              <Plus size={18} className="mr-2" />
-              Ekle
+              <Plus size={18} /> Ekle
             </button>
           </div>
         </form>
@@ -364,119 +350,95 @@ const PanelAuthPage = () => {
 
       {/* Yetki Listesi */}
       <motion.div
-        initial={{ y: 20, opacity: 0 }}
+        initial={{ y: 10, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.2 }}
-        className="glass-panel overflow-hidden"
+        className="glass-panel"
+        style={{ borderRadius: '16px', overflow: 'hidden' }}
       >
-        <div className="p-6 border-b border-gray-700/50 bg-gray-800/30 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-white">Mevcut İzinler</h3>
-          <span className="bg-gray-800 text-gray-300 text-xs py-1 px-3 rounded-full border border-gray-700">
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.1)' }}>
+          <h3 style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', margin: 0 }}>Mevcut İzinler</h3>
+          <span style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)', fontSize: '0.8rem', padding: '4px 10px', borderRadius: '99px', border: '1px solid rgba(255,255,255,0.1)' }}>
             {permissions.length} Kural
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
             <thead>
-              <tr className="bg-gray-900/40 text-gray-400 text-xs uppercase tracking-wider">
-                <th className="py-4 px-6 font-medium">Hedef</th>
-                <th className="py-4 px-6 font-medium">Tür</th>
-                <th className="py-4 px-6 font-medium">Yetki Seviyesi</th>
-                <th className="py-4 px-6 font-medium text-right">İşlem</th>
+              <tr style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid var(--panel-border)' }}>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Hedef</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Tür</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500 }}>Yetki Seviyesi</th>
+                <th style={{ padding: '16px 24px', fontWeight: 500, textAlign: 'right' }}>İşlem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700/50">
+            <tbody>
               <AnimatePresence>
                 {permissions.length === 0 ? (
                   <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <td colSpan="4" className="py-12 text-center text-gray-500">
-                      <div className="flex flex-col items-center justify-center">
-                        <Shield size={48} className="mb-4 opacity-20" />
-                        <p className="text-base">
-                          Henüz özel bir yetki kuralı eklenmemiş.
-                        </p>
-                        <p className="text-sm mt-1">
-                          Sunucu sahibi haricindeki diğer yöneticiler varsayılan
-                          olarak "Sadece Oku" yetkisiyle paneli görür.
-                        </p>
-                      </div>
+                    <td colSpan="4" style={{ padding: '48px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <Shield size={48} style={{ opacity: 0.2, marginBottom: '16px' }} />
+                      <p>Henüz özel bir yetki kuralı eklenmemiş.</p>
+                      <p style={{ fontSize: '0.85rem', marginTop: '8px' }}>Sunucu sahibi haricindeki diğer yöneticiler varsayılan olarak "Sadece Oku" yetkisiyle paneli görür.</p>
                     </td>
                   </motion.tr>
                 ) : (
                   permissions.map((p, index) => (
                     <motion.tr
                       key={`${p.target_type}-${p.target_id}`}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      transition={{ delay: index * 0.05 }}
-                      className="hover:bg-gray-800/40 transition-colors group"
+                      style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}
                     >
-                      <td className="py-4 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-gray-800 flex items-center justify-center border border-gray-700">
-                            {p.target_type === "role" ? (
-                              <Users size={16} className="text-blue-400" />
-                            ) : (
-                              <User size={16} className="text-green-400" />
-                            )}
+                      <td style={{ padding: '16px 24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(0,0,0,0.2)', border: '1px solid var(--panel-border)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {p.target_type === "role" ? <Users size={18} color="var(--accent-blue)" /> : <User size={18} color="var(--accent-green)" />}
                           </div>
                           <div>
-                            <p className="text-white font-medium">
-                              {getEntityName(p.target_id, p.target_type)}
-                            </p>
-                            <p className="text-xs text-gray-500 font-mono">
-                              {p.target_id}
-                            </p>
+                            <div style={{ color: '#fff', fontWeight: 500 }}>{getEntityName(p.target_id, p.target_type)}</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontFamily: 'monospace' }}>{p.target_id}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="py-4 px-6">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${p.target_type === "role" ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"}`}
-                        >
-                          {p.target_type === "role"
-                            ? "Discord Rolü"
-                            : "Kullanıcı"}
+                      <td style={{ padding: '16px 24px' }}>
+                        <span style={{ 
+                          padding: '4px 10px', 
+                          borderRadius: '99px', 
+                          fontSize: '0.75rem', 
+                          fontWeight: 600,
+                          background: p.target_type === "role" ? 'rgba(59, 130, 246, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                          color: p.target_type === "role" ? 'var(--accent-blue)' : 'var(--accent-green)',
+                          border: `1px solid ${p.target_type === "role" ? 'rgba(59, 130, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`
+                        }}>
+                          {p.target_type === "role" ? "Discord Rolü" : "Kullanıcı"}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
-                        <div className="relative inline-block w-48">
-                          <select
-                            value={p.permission_level}
-                            onChange={(e) =>
-                              handlePermissionChange(
-                                p.target_id,
-                                p.target_type,
-                                e.target.value,
-                              )
-                            }
-                            className={`w-full appearance-none bg-transparent border-b ${p.permission_level === "write" ? "border-orange-500/50 text-orange-400 focus:border-orange-500" : "border-gray-600 text-gray-300 focus:border-gray-400"} py-1.5 pr-8 outline-none transition-colors cursor-pointer font-medium`}
-                          >
-                            <option
-                              value="read"
-                              className="bg-gray-900 text-white"
-                            >
-                              👁️ Sadece Oku
-                            </option>
-                            <option
-                              value="write"
-                              className="bg-gray-900 text-white"
-                            >
-                              ✍️ Düzenleme Yetkisi
-                            </option>
-                          </select>
-                          <ChevronDown
-                            size={14}
-                            className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                          />
-                        </div>
+                      <td style={{ padding: '16px 24px' }}>
+                        <select
+                          value={p.permission_level}
+                          onChange={(e) => handlePermissionChange(p.target_id, p.target_type, e.target.value)}
+                          style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: p.permission_level === "write" ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                            fontWeight: p.permission_level === "write" ? 600 : 500,
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <option value="read" style={{ background: 'var(--bg-color)', color: '#fff' }}>👁️ Sadece Oku</option>
+                          <option value="write" style={{ background: 'var(--bg-color)', color: '#fff' }}>✍️ Düzenleme Yetkisi</option>
+                        </select>
                       </td>
-                      <td className="py-4 px-6 text-right">
+                      <td style={{ padding: '16px 24px', textAlign: 'right' }}>
                         <button
                           onClick={() => handleDelete(p.target_id)}
-                          className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 outline-none"
+                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '8px' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-red)'; e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'; e.currentTarget.style.borderRadius = '8px'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'transparent'; }}
                           title="Yetkiyi Kaldır"
                         >
                           <Trash2 size={18} />
@@ -489,13 +451,9 @@ const PanelAuthPage = () => {
             </tbody>
           </table>
         </div>
-        <div className="p-4 bg-gray-900/50 border-t border-gray-700/50 text-sm text-gray-400 flex items-start gap-2">
-          <Shield size={16} className="text-kumiho-primary shrink-0 mt-0.5" />
-          <p>
-            <strong>Not:</strong> Sunucu Sahibi (Owner) her zaman{" "}
-            <strong>Tam Yetki'ye</strong> sahiptir ve tüm sınırlandırmalardan
-            muaftır. Bu kişileri tabloya eklemenize gerek yoktur.
-          </p>
+        <div style={{ padding: '16px 24px', background: 'rgba(0,0,0,0.1)', borderTop: '1px solid var(--panel-border)', fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Shield size={16} color="var(--accent-orange)" />
+          <span><strong>Not:</strong> Sunucu Sahibi (Owner) her zaman <strong>Tam Yetki'ye</strong> sahiptir ve tablodan bağımsızdır.</span>
         </div>
       </motion.div>
     </div>

@@ -91,7 +91,7 @@ const RoomAdminPanel = ({ channelId, guildId }) => {
     <div style={{ background: 'rgba(0,0,0,0.3)', borderRadius: '8px', padding: '16px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
         <h4 style={{ margin: 0, color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Activity size={18} color="var(--accent-green)" /> Canlı Oda Durumu
+          <Activity size={18} color="var(--color-cyan)" /> Canlı Oda Durumu
         </h4>
         <div style={{ display: 'flex', gap: '12px' }}>
             <button 

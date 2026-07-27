@@ -1,0 +1,8 @@
+{
+  "label": "🛡️ Yönetim ve Moderasyon",
+  "position": 3,
+  "link": {
+    "type": "generated-index",
+    "description": "Sunucu yönetimi ve moderasyon komutları."
+  }
+}

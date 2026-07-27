@@ -186,7 +186,7 @@ const RoomSettingsModal = ({ isOpen, onClose, userId, userName }) => {
                 disabled={saving}
                 style={{
                   width: '100%', padding: '12px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                  background: 'var(--accent-green)', color: '#000', fontWeight: 600,
+                  background: 'var(--color-cyan)', color: '#000', fontWeight: 600,
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   marginTop: '12px', opacity: saving ? 0.7 : 1
                 }}
