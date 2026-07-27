@@ -1,0 +1,91 @@
+---
+title: Şans Oyunları
+sidebar_position: 4
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🎰 Şans Oyunları (Gambling)
+
+Kazandığınız coin'leri katlamak (veya kaybetmek) isterseniz Kumiho Bot'un gelişmiş kumar ve şans oyunları sistemini kullanabilirsiniz. Sistem rastgeleliğe dayalıdır (RNG). 
+
+## 1. Slot Makinesi (`slots`)
+
+Klasik slot makinesi oyunudur. Sembolleri eşleştirerek bahis miktarınızı 1.5x ile 5x arasına kadar katlayabilirsiniz. `lucky_gem` ve `clover` (yonca) eşyalarınız varsa kazanma oranınız/miktarınız artar.
+
+### 📌 Kullanım
+`f.slots <bahis | all>`
+
+### 🖼️ Görsel Çıktı (Kazanma Örneği)
+
+<DiscordEmbed 
+  color="#2ECC71" 
+  title="🎰 Slot Machine" 
+  description="```
+[ 💎 | 💎 | 💎 ]
+```
+🎉 **YOU WON 25,000 coins**!">
+</DiscordEmbed>
+
+---
+
+## 2. Yazı Tura (`gamble` / `cfg`)
+
+Klasik "Yazı mı Tura mı?" (Heads or Tails) bahsidir. Doğru tahmin ederseniz paranız 2'ye katlanır.
+
+### 📌 Kullanım
+`f.gamble <heads|tails> <bahis | all>`
+
+### 🖼️ Görsel Çıktı (Kaybetme Örneği)
+
+<DiscordEmbed 
+  color="#ED4245" 
+  title="🪙 High-Stakes Coin Flip" 
+  description="😢 **YOU LOST!** Coin: **tails**. You lost **500 coins**.">
+</DiscordEmbed>
+
+---
+
+## 3. Rulet (`roulette`)
+
+Fransız ruleti mantığıyla çalışır. Kırmızı (red), Siyah (black), Yeşil (green) veya doğrudan 0-36 arası belirli bir sayıya bahis yapabilirsiniz.
+
+- Renk bahsi (Red/Black) tutarsa: Bahis miktarınız kadar ekstra kazanırsınız (x2).
+- Nokta atışı sayı veya Yeşil (0) tutarsa: Büyük ödül (x36).
+
+### 📌 Kullanım
+`f.roulette <red|black|green|0-36> <bahis | all>`
+
+---
+
+## 4. Hırsızlık (`rob`)
+
+*(Şans Oyunu olmasa da bir risk içerir)*
+Diğer oyuncuların **cüzdanındaki (wallet)** parayı çalmayı deneyebilirsiniz. Başarılı olursanız paranın belli bir yüzdesini alırsınız. Ancak yakalanırsanız polise ceza ödersiniz! Kurbanınızın `padlock` kalkanı varsa soygununuz engellenir.
+
+### 📌 Kullanım
+`f.rob <@kullanıcı>`
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+`Commands/economy.py` dosyasındaki Slot makinesinin RNG (Rastgelelik) hesaplama mantığı:
+
+```python
+        inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
+        choices = ["🍋", "🍒", "🍊", "🍇", "💎", "💎", "👑", "👑"] if inv.get("lucky_gem", 0) > 0 \
+                  else ["🍋", "🍒", "🍊", "🍇", "💎", "👑"]
+
+        s1, s2, s3 = random.choice(choices), random.choice(choices), random.choice(choices)
+
+        winnings = 0
+        if s1 == s2 == s3:
+            mult = 5 if s1 == "👑" else 4 if s1 == "💎" else 3
+            winnings = bet_amount * mult
+        elif s1 == s2 or s2 == s3 or s1 == s3:
+            winnings = int(bet_amount * 1.5)
+
+        if winnings > 0 and inv.get("clover", 0) > 0:
+            winnings = int(winnings * 1.10)
+```

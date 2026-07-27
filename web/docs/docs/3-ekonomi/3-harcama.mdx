@@ -1,0 +1,117 @@
+---
+title: Market & Harcama
+sidebar_position: 3
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🛒 Market & Eşya Kullanımı
+
+Kumiho Bot ekonomi sisteminde kazandığınız paraları markette harcayabilir, envanterinize eşya satın alabilir, satabilir veya özel eşyaları kullanabilirsiniz. Tüm işlemler doğrudan veritabanına işlenir.
+
+## 🏪 Market (`shop`)
+
+Markette toplayıcılık için ekipmanlar, şans oyunları için güçlendirmeler ve hesap güvenliği (çalınmaya karşı) için eşyalar bulunur. 
+
+### 📌 Kullanım
+`f.shop` veya `f.store`
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#5865F2" 
+  title="🏪 Server Item Shop" 
+  description="Buy equipment, shields, perks, and more!
+
+**Fishing Rod 🎣 — 500 coins**
+Allows fishing via `f.fish`
+`ID: fishing_rod`
+
+**Lucky Gem 💎 — 2,500 coins**
+Boosts work & gamble payouts by +25%
+`ID: lucky_gem`">
+  *Buy with: f.buy &lt;item_id&gt;*
+</DiscordEmbed>
+
+---
+
+## 💳 Eşya Satın Alma (`buy`)
+
+Marketten bir eşya satın almak için eşyanın IDsini belirtmeniz gerekir. (Örneğin: `fishing_rod`).
+
+### 📌 Kullanım
+`f.buy <item_id>`
+
+### 🖼️ Görsel Çıktı
+Bot normal bir mesaj ile yanıt verir:
+> 🎉 Purchased **Fishing Rod 🎣** for **500 coins**!
+
+---
+
+## 🎒 Envanter (`inventory` / `inv`)
+
+Satın aldığınız veya toplayıcılıktan elde ettiğiniz eşyaları görüntülemek için envanterinize bakabilirsiniz. Başka birinin envanterine de bakabilirsiniz.
+
+### 📌 Kullanım
+`f.inventory [@kullanıcı]`
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#E67E22" 
+  title="Kyrik's Inventory" 
+  description="• **Fishing Rod 🎣** — Quantity: `1`
+• **Lucky Gem 💎** — Quantity: `1`
+• **Common Fish 🐟** — Quantity: `14`">
+</DiscordEmbed>
+
+---
+
+## 💰 Eşya Satma (`sell`)
+
+Topladığınız ganimetleri veya fazlalık eşyaları markete geri satıp cüzdanınıza anında para ekleyebilirsiniz.
+
+### 📌 Kullanım
+`f.sell <item_id> [miktar | all]`
+
+- Belirli miktarda satmak: `f.sell common_fish 10`
+- Hepsini satmak: `f.sell common_fish all`
+
+### 🖼️ Görsel Çıktı
+> 💰 Sold **10x Common Fish 🐟** for **500 coins**!
+
+---
+
+## 🧪 Eşya Kullanımı (`use`)
+
+`padlock` (Kalkan) veya `scratch_card` (Kazı Kazan) gibi belirli tüketilebilir veya özel eşyaları kullanmak için `f.use` komutunu kullanmalısınız.
+
+### 📌 Kullanım
+`f.use <item_id>`
+Örnek: `f.use padlock`
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+`Commands/economy.py` dosyasından `shop` komutunun yapısı:
+
+```python
+    @commands.command(name="shop", aliases=["store"])
+    @kumiho_check("public")
+    async def shop(self, ctx: commands.Context) -> None:
+        """shop işlemini güvenli bir şekilde gerçekleştirir."""
+        embed = discord.Embed(
+            title="🏪 Server Item Shop",
+            description="Buy equipment, shields, perks, and more!",
+            color=discord.Color.blurple(),
+        )
+        for key, item in SHOP_ITEMS.items():
+            embed.add_field(
+                name=f"{item['name']} — {item['price']:,} coins",
+                value=f"{item['desc']}\n`ID: {key}`",
+                inline=False,
+            )
+        embed.set_footer(text=f"Buy with: {ctx.prefix}buy <item_id>")
+        await ctx.send(embed=embed)
+```

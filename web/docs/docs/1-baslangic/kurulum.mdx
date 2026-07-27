@@ -1,0 +1,45 @@
+---
+title: Kumiho'yu Kurmak
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🚀 Kumiho Bot Kurulum Rehberi
+
+Kumiho Bot'u sunucunuza eklemek ve temel ayarlarını yapmak oldukça basittir. Gelişmiş sistemleri ister Discord üzerinden komutlarla, ister **Web Dashboard** üzerinden arayüzle yapılandırabilirsiniz.
+
+## 1. Botu Davet Etme
+
+Botu sunucunuza davet etmek için [buraya tıklayarak](#) davet bağlantısına gidebilirsiniz.
+- **Gerekli Yetkiler:** Yönetici (Administrator) yetkisi vermeniz şiddetle tavsiye edilir. Çünkü botun kanal açma, log gönderme, kullanıcıları banlama/atma, rol verme gibi işlemleri sorunsuz yapabilmesi için bu yetkilere ihtiyacı vardır.
+
+## 2. Temel Log Kurulumu (`f.log`)
+
+Sunucunuza girenleri, çıkanları, silinen mesajları ve yönetim işlemlerini takip edebilmek için log sistemini kurmalısınız.
+
+**Komut:** `f.log`
+Bu komutu yazdığınızda bot size bir menü sunar:
+- **Hızlı Kurulum:** Sizin için `Kumiho-Logs` adında bir kategori açar ve içine gerekli tüm metin kanallarını kurar.
+- **Detaylı Ayarlar:** Kendi açtığınız kanalları seçerek logları yönlendirebilirsiniz.
+
+*(Bu işlemi ayrıca Web Dashboard üzerinden de yapabilirsiniz!)*
+
+## 3. Web Dashboard'a Giriş
+
+Discord arayüzü yerine web tabanlı bir panel kullanmak isterseniz:
+1. `https://kumiho.com` adresine gidin. (Projenin yayında olduğu adres)
+2. **Discord ile Giriş Yap** butonuna tıklayın.
+3. Sunucunuzu seçin ve anında ayarları değiştirmeye başlayın!
+
+## 4. Yardım Menüsü (`f.help`)
+
+Botun tüm komutlarını kategoriler halinde görebilmek için:
+- **Komut:** `f.help` veya `f.yardım`
+
+<DiscordEmbed 
+  color="#F1C40F" 
+  title="🦊 Kumiho Bot Yardım" 
+  description="Lütfen kategorileri görmek için aşağıdaki menüyü kullanın.
+Sistemler: `Ekonomi`, `Moderasyon`, `Seviye`, `Eğlence` ...">
+</DiscordEmbed>

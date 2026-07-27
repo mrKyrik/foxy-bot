@@ -1,0 +1,92 @@
+---
+title: Temel Ekonomi (Bakiye & Banka)
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 💰 Temel Ekonomi Sistemi
+
+Kumiho Bot, kullanıcıların oyun içi bakiye (wallet) ve banka (bank) hesaplarını yönettiği geniş kapsamlı, veritabanı tabanlı (SQLite) bir ekonomi sistemi sunar.
+
+## 💳 Bakiye Sorgulama (`balance` / `bal` / `wallet`)
+
+Kendi bakiyenizi veya başka bir üyenin bakiyesini görüntüleyebilirsiniz. Bakiye sorgulandığında bot, cüzdanınızdaki (Wallet) ve bankanızdaki (Bank) parayı ayrı ayrı gösterir. Eğer "Custom Title" özelliğiniz varsa isminizin yanında belirir.
+
+### 📌 Kullanım
+`f.balance [@kullanıcı]`
+
+### 🛡️ Yetkiler
+- **Kimler Kullanabilir:** Herkes (Herkese Açık).
+- **Bot Yetkisi:** Mesaj Gönderme.
+- **Bekleme Süresi:** Yok.
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#F1C40F" 
+  title="👑 [Zengin] Kyrik's Balance" 
+  description="**Wallet:** 15,200 coins
+**Bank:** 50,000 coins
+**Total:** 65,200 coins">
+</DiscordEmbed>
+
+---
+
+## 🏦 Bankaya Para Yatırma (`deposit` / `dep`)
+
+Cüzdanınızdaki paranın çalınmasını (`f.rob`) engellemek için paranızı güvenli bir şekilde bankaya yatırabilirsiniz. 
+
+### 📌 Kullanım
+`f.deposit <miktar | all>`
+
+- Belirli miktar yatırmak için: `f.deposit 500`
+- Cüzdandaki tüm parayı yatırmak için: `f.deposit all`
+
+### 🖼️ Görsel Çıktı
+Bot normal bir mesaj ile yanıt verir:
+> 🏦 Deposited **5,000 coins** to your bank.
+
+---
+
+## 🏧 Bankadan Para Çekme (`withdraw` / `with`)
+
+Marketten bir eşya satın alırken paranızın cüzdanınızda (wallet) olması gerekir. Gerekli durumlarda bankanızdan nakit çekebilirsiniz.
+
+### 📌 Kullanım
+`f.withdraw <miktar | all>`
+
+- Belirli miktar çekmek için: `f.withdraw 500`
+- Bankadaki tüm parayı çekmek için: `f.withdraw all`
+
+### 🖼️ Görsel Çıktı
+Bot normal bir mesaj ile yanıt verir:
+> 💰 Withdrew **5,000 coins** to your wallet.
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+`Commands/economy.py` dosyasından `balance` komutunun nasıl çalıştığını inceleyebilirsiniz:
+
+```python
+    @commands.command(name="balance", aliases=["bal", "wallet"])
+    @kumiho_check("public")
+    async def balance(self, ctx: commands.Context, member: discord.Member = None) -> None:
+        """balance işlemini güvenli bir şekilde gerçekleştirir."""
+        member = member or ctx.author
+        eco = await self.get_economy(ctx.guild.id, member.id)
+        extras = await self.get_extras(ctx.guild.id, member.id)
+
+        wallet, bank = eco["wallet"], eco["bank"]
+        custom_title = extras["custom_title_text"]
+        title = f"👑 [{custom_title}] {member.display_name}'s Balance" if custom_title else f"{member.display_name}'s Balance"
+
+        embed = discord.Embed(title=title, color=discord.Color.gold())
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.add_field(name="Wallet", value=f"{wallet:,} coins", inline=True)
+        embed.add_field(name="Bank", value=f"{bank:,} coins", inline=True)
+        embed.add_field(name="Total", value=f"{wallet + bank:,} coins", inline=False)
+        embed.set_footer(text=f"Requested by {ctx.author.name}")
+        await ctx.send(embed=embed)
+```

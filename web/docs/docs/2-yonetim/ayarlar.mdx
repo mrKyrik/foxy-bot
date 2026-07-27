@@ -1,0 +1,84 @@
+---
+title: Sunucu Ayarları ve Log Sistemi
+sidebar_position: 2
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# ⚙️ Sunucu Ayarları ve Log Sistemi (`log`)
+
+Kumiho Bot, sunucunuzdaki tüm olayları Discord kanallarında ve aynı zamanda (varsa) Web Dashboard'da görebilmeniz için veritabanında kaydeder. `f.log` komutu ile sistemin hem Discord'a mesaj gönderme kısmını hem de veritabanı loglama ayarlarını yönetebilirsiniz.
+
+## 📝 Log Sistemi Kurulumu
+
+Tüm log ayarları için tek bir arayüz mevcuttur.
+
+### 📌 Kullanım
+`f.log`
+
+### 🛡️ Yetkiler ve Sınırlar
+- **Kimler Kullanabilir:** Sunucu Yöneticisi (`Owner` yetkisi veya log izni).
+- **Bot Yetkisi:** Kanalları Yönet, Mesaj Gönder, Embed Gönder.
+
+### 🖼️ Görsel Çıktı (Arayüz)
+
+<DiscordEmbed 
+  color="#5865F2" 
+  title="📝 Log Sistemi Kurulumu" 
+  description="**Hızlı Kurulum** ile tüm kanalları otomatik açabilir veya **Detaylı Ayarlar** menüsünden tekli şalterleri ve kanal seçimlerini yönetebilirsiniz.">
+  *Butonlar: [Hızlı Kurulum] [Detaylı Ayarlar]*
+</DiscordEmbed>
+
+---
+
+## 🔧 Spesifik Log Kanalı Ayarlama (`log set`)
+
+Otomatik kurulum yerine her bir kategoriyi (örn. mod, ses, mesaj) manuel olarak belirli bir kanala ayarlayabilirsiniz.
+
+### 📌 Kullanım
+`f.log set <log_türü> <#kanal>`
+
+**Geçerli Log Türleri:** `mesaj`, `ses`, `uyari`, `ticket`, `mod`, `basvuru`, `davet`, `sunucu`, `rol`
+
+---
+
+## 🎚️ Log Şalterleri (`log text/voice vb.`)
+
+Bazen belirli bir olayın kanala loglanmasını istemeyebilirsiniz. (Örneğin sadece silinen mesajları loglamak ama düzenlenenleri kapatmak gibi).
+
+- **Mesaj Silinmesi:** `f.log text delete <on|off>`
+- **Mesaj Düzenlenmesi:** `f.log text edit <on|off>`
+- **Sese Katılma:** `f.log voice join <on|off>`
+
+*Bu şalterler hem Discord kanal loglarını hem de veritabanına olan kayıt (Web Dashboard görünürlüğü) sistemini senkronize açar veya kapatır.*
+
+### 🖼️ Görsel Çıktı (Şalter İşlemi)
+> ✅ Silinen mesaj kanal logları ve veritabanı olay kaydı senkronize olarak **kapatıldı**.
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Log şalterleri çalıştığında veritabanında (`log_settings` ve `db_log_settings`) yapılan senkronize güncelleme fonksiyonu `Commands/administration/settings.py` dosyasında şu şekildedir:
+
+```python
+    async def _toggle_log(self, ctx, column_name: str, state: str, log_name: str):
+        state = state.lower()
+        if state not in ["on", "off"]:
+            return await ctx.send("❌ Geçersiz durum! Lütfen `on` veya `off` kullanın.")
+        val = 1 if state == "on" else 0
+        
+        # Update log_settings (DC Embeds)
+        await self.bot.db.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
+        await self.bot.db.execute(f"UPDATE log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+
+        # Sync db_log_settings (Web Dashboard)
+        try:
+            await self.bot.db.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
+            await self.bot.db.execute(f"UPDATE db_log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
+        except Exception:
+            pass
+        
+        durum = "açıldı" if val == 1 else "kapatıldı"
+        await ctx.send(f"✅ {log_name} kanal logları ve veritabanı olay kaydı senkronize olarak **{durum}**.")
+```

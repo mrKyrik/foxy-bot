@@ -1,0 +1,94 @@
+---
+title: Seviye Komutları
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🌟 Seviye Sistemi (Leveling)
+
+Kumiho Bot, sunucunuzdaki üyelerin sohbet ve ses aktifliklerini ölçen ve buna göre onlara **XP (Deneyim Puanı)** veren gelişmiş bir seviye sistemine sahiptir. Seviye atlandığında kullanıcılara belirtilen kanalda görsel bir tebrik kartı gönderilir. (Eğer `Pillow` kütüphanesi aktifse özel tasarım kart üretilir, aksi halde standart bir mesaj atılır.)
+
+## 🎖️ Seviye Kartı (`rank`)
+
+Kendi seviyenizi ve sıralamanızı özel oluşturulmuş bir resim kartı veya embed üzerinde görebilirsiniz. Başka birinin seviyesini görmek için de etiketleyebilirsiniz.
+
+### 📌 Kullanım
+`f.rank [@kullanıcı]`
+
+### 🖼️ Görsel Çıktı (Simülasyon)
+
+<DiscordEmbed 
+  color="#3498DB" 
+  title="🎖️ Kyrik's Rank" 
+  description="**Level**: `15`
+**Rank**: `#1`
+**XP Progress**: `5,400 / 22,600 XP`">
+  *Not: Sistemde Pillow (Görsel İşleme) yüklüyse bu bilgileri içeren harika bir arka planlı Resim Kartı (Image) gönderilir!*
+</DiscordEmbed>
+
+---
+
+## 🏆 Liderlik Tablosu (`leaderboard` / `lb`)
+
+Sunucudaki en aktif üyeleri görmek için kullanılır. Hem yazılı (mesaj xp) hem de sesli sohbet sıralamasına bakabilirsiniz. 
+
+### 📌 Kullanım
+`f.leaderboard [text | voice]`
+- `f.leaderboard` veya `f.lb` -> Varsayılan olarak metin/XP sıralamasını gösterir.
+- `f.lb voice` -> Sesli sohbette en çok vakit geçirenleri (dakika) gösterir.
+
+### 🖼️ Görsel Çıktı
+
+Tıpkı rank komutu gibi, eğer görsel kütüphane aktifse tüm üyeleri alt alta sıralayan şık bir **Liderlik Tablosu Görseli** oluşturulur. Aktif değilse Discord Embed'i ile Top 10 listesi gönderilir.
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Kullanıcının veritabanından XP ve Sıralamasını çeken `rank` fonksiyonunun kod yapısı (`Commands/leveling.py`):
+
+```python
+    @commands.command(name="rank")
+    @commands.guild_only()
+    @kumiho_check("public")
+    async def rank(self, ctx: commands.Context, member: discord.Member = None) -> None:
+        """Kullanıcının seviyesini ve XP durumunu gösterir."""
+        member = member or ctx.author
+        if member.bot:
+            return await ctx.send("❌ Bots do not earn XP!")
+
+        # UPSERT -> Kullanıcı veritabanında yoksa sıfırdan ekle
+        await self.db.execute(
+            "INSERT OR IGNORE INTO levels (user_id, guild_id, xp, level, message_count) VALUES (?, ?, 0, 0, 0)",
+            str(member.id), str(ctx.guild.id)
+        )
+        
+        # Kullanıcının güncel durumunu çek
+        profile = await self.db.fetchone(
+            "SELECT xp, level FROM levels WHERE user_id = ? AND guild_id = ?",
+            str(member.id), str(ctx.guild.id)
+        )
+        xp, level = profile["xp"], profile["level"]
+        needed = _get_xp_needed(level) # XP hesaplama formülü (100 * level^2 + 100)
+
+        # O(log N) Rank Sorgusu (Sıralamadaki yerini bul)
+        rank_row = await self.db.fetchone(
+            "SELECT COUNT(*) as rank FROM levels WHERE guild_id = ? AND (level > ? OR (level = ? AND xp > ?))",
+            str(ctx.guild.id), level, level, xp
+        )
+        rank_pos = rank_row["rank"] + 1
+
+        # Eğer Pillow yüklü değilse düz Embed yolla:
+        if not _PILLOW:
+            embed = discord.Embed(
+                title=f"🎖️ {member.display_name}'s Rank", color=discord.Color.blue()
+            )
+            embed.set_thumbnail(url=member.display_avatar.url)
+            embed.add_field(name="Level", value=f"`{level}`", inline=True)
+            embed.add_field(name="Rank", value=f"`#{rank_pos}`", inline=True)
+            embed.add_field(name="XP Progress", value=f"`{xp} / {needed} XP`", inline=False)
+            return await ctx.send(embed=embed)
+            
+        # Pillow yüklüyse _generate_leaderboard_image_sync çalıştırılır...
+```

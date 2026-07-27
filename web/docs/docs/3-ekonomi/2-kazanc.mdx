@@ -1,0 +1,126 @@
+---
+title: Para Kazanma & Toplama
+sidebar_position: 2
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 💼 Para Kazanma & Toplama Komutları
+
+Kumiho Bot ekonomi sisteminde para kazanmak için kullanabileceğiniz standart komutlar ve çeşitli toplayıcılık (Gathering) aktiviteleri bulunur.
+
+## 🎁 Günlük Ödül (`daily`)
+
+Her 24 saatte bir çalıştırabileceğiniz bedava para kazanma komutudur.
+
+### 📌 Kullanım
+`f.daily`
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#2ECC71" 
+  title="🎁 Daily Reward" 
+  description="You claimed **750 coins**!">
+</DiscordEmbed>
+
+---
+
+## 💼 Çalışmak (`work`)
+
+Yarım saatte bir çalışarak rastgele bir meslekten (Örn. Uzay Kaşifi, Pizza Dağıtıcısı vb.) para kazanırsınız. Eğer envanterinizde `lucky_gem` veya `bank_card` varsa ek gelir elde edersiniz!
+
+### 📌 Kullanım
+`f.work`
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#3498DB" 
+  title="💼 Shift Completed" 
+  description="You worked as a **Space Explorer** and earned **600 coins**! *(Gem +25%)*">
+</DiscordEmbed>
+
+---
+
+## 🎣 Toplayıcılık Komutları (Gathering)
+
+Aşağıdaki komutları kullanabilmek için `f.shop` komutu ile marketten ilgili aletleri satın almış olmanız gerekmektedir. Topladığınız eşyalar envanterinize gelir ve bunları satarak (`f.sell`) ciddi miktarda para elde edebilirsiniz!
+
+### 1. Balık Tutmak (`fish`)
+- **Gereksinim:** Fishing Rod 🎣
+- **Bekleme Süresi:** 2 dakika
+- **Olası Çıktılar:** Junk Boot, Common Fish, Salmon, Golden Bass
+- **Kullanım:** `f.fish`
+
+### 2. Avlanmak (`hunt`)
+- **Gereksinim:** Hunting Rifle 🎯
+- **Bekleme Süresi:** 3 dakika
+- **Olası Çıktılar:** Rabbit, Deer, Wild Boar, Golden Dragon
+- **Kullanım:** `f.hunt`
+
+### 3. Madencilik (`mine`)
+- **Gereksinim:** Steel Pickaxe ⛏️
+- **Bekleme Süresi:** 3 dakika
+- **Olası Çıktılar:** Coal, Iron, Gold, Diamond, Emerald
+- **Kullanım:** `f.mine`
+
+### 🖼️ Toplayıcılık Görsel Çıktı Örneği
+
+<DiscordEmbed 
+  color="#1ABC9C" 
+  title="🎣 Fishing Success" 
+  description="You caught a **Golden Bass 🐡**!
+Sell via `f.sell golden_bass`.">
+</DiscordEmbed>
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+`Commands/economy.py` dosyasından `work` komutunun nasıl çalıştığı:
+
+```python
+    @commands.command(name="work")
+    @kumiho_check("public")
+    async def work(self, ctx: commands.Context) -> None:
+        """work işlemini güvenli bir şekilde gerçekleştirir."""
+        eco = await self.get_economy(ctx.guild.id, ctx.author.id)
+        now = time.time()
+        cd = eco["work_cooldown"] or 0.0
+
+        if now < cd:
+            return await ctx.send(f"⏱️ Rest! Wait **{_fmt_cd(cd - now)}**.")
+
+        jobs = [
+            ("Madagascar Penguin Researcher", 150, 300),
+            ("Discord Bot Developer",         200, 450),
+            ("Pizza Delivery Driver",         100, 200),
+            ("Submarine Pilot",               250, 500),
+            ("Sticker Designer",               80, 180),
+            ("Space Explorer",                300, 600),
+            ("Cyber Security Consultant",     220, 480),
+        ]
+        job_name, mn, mx = random.choice(jobs)
+        payout = random.randint(mn, mx)
+
+        inv = await self.get_inventory(ctx.guild.id, ctx.author.id)
+        boost = ""
+        if inv.get("lucky_gem", 0) > 0:
+            payout = int(payout * 1.25)
+            boost += " *(Gem +25%)*"
+        if inv.get("bank_card", 0) > 0:
+            payout = int(payout * 1.15)
+            boost += " *(Card +15%)*"
+
+        await self.db.execute(
+            "UPDATE economy SET wallet=wallet+?, work_cooldown=? WHERE user_id=? AND guild_id=?",
+            payout, now + 1800, str(ctx.author.id), str(ctx.guild.id),
+        )
+        embed = discord.Embed(
+            title="💼 Shift Completed",
+            description=f"You worked as a **{job_name}** and earned **{payout:,} coins**!{boost}",
+            color=discord.Color.blue(),
+        )
+        await ctx.send(embed=embed)
+```

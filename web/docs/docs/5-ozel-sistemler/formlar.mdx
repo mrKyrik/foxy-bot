@@ -1,0 +1,87 @@
+---
+title: Gelişmiş Form Sistemi
+sidebar_position: 2
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 📝 Gelişmiş Form Sistemi (`form`)
+
+Kumiho Bot, sunucu içerisinde kullanıcıların başvuru, geri bildirim, itiraf vb. formları doldurabilmesini sağlayan gelişmiş bir form/başvuru altyapısına sahiptir. Tüm formlar botun **Web Dashboard**'u üzerinden detaylıca oluşturulur ve yönetilir.
+
+## 📌 Form Doldurma (Kullanıcı)
+
+Formlar sunucuda yöneticiler tarafından belirlenmiş bir kanala butonlu bir mesaj olarak gönderilir. Kullanıcılar bu butona tıklayarak formu doldurabilir. Ayrıca doğrudan form ID'si ile komut üzerinden de form çağrılabilir.
+
+### Kullanım
+`f.form <form_id>` veya `f.basvuru <form_id>`
+
+Kullanıcı komutu yazdığında veya butona tıkladığında bir Discord Modal (Açılır Pencere) penceresi açılır. Kullanıcı sorulara yanıtlarını yazar ve gönderir.
+
+### 🖼️ Görsel Çıktı (Yönetici Paneline Gelen Form)
+
+<DiscordEmbed 
+  color="#F1C40F" 
+  title="📄 Yeni Form Yanıtı: Yetkili Alımı" 
+  description="**Gönderen:** <@123456789>
+  
+**1. Adınız Yaşınız?**
+Kyrik, 25
+
+**2. Neden yetkili olmak istiyorsunuz?**
+Sunucunun düzenini korumak için.">
+  *Butonlar: [Onayla] [Reddet]*
+</DiscordEmbed>
+
+---
+
+## ⚙️ Form Onaylama / Reddetme (Yetkili)
+
+Kullanıcı formu gönderdiğinde, yetkililerin bulunduğu onay kanalına (Dashboard'dan seçilen kanal) düşer. Yetkililer formun altındaki **Onayla** veya **Reddet** butonlarına tıklayabilirler.
+
+Herhangi birine tıklandığında yetkilinin karşısına **Sebep (Opsiyonel)** penceresi açılır. Girilen sebep ile birlikte formun kararı kesinleşir ve kullanıcıya Özel Mesaj (DM) ile sonuç bildirilir.
+
+### Otomatik İşlemler (Form Tipleri)
+Form türüne göre bot onaylandığında ekstra işlemler yapabilir:
+1. **Standart Form:** Sadece onaylar ve DM atar.
+2. **Oto-Rol Formu:** Onaylandığında, form ayarlarında seçilmiş olan rolü doğrudan başvuran kişiye verir.
+3. **Yayınlama Formu (İtiraf):** Onaylandığında, form içeriğini anonim bir şekilde genel bir kanala (örn. İtiraf Kanalı) mesaj olarak atar.
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Yetkilinin kararını işleyen butonun kod parçası (`Commands/forms.py`):
+
+```python
+    async def on_submit(self, interaction: discord.Interaction):
+        await interaction.response.defer()
+        
+        reason = self.reason_input.value or "Belirtilmedi"
+        embed = self.original_message.embeds[0]
+        
+        if self.action == "approve":
+            karar = f"✅ Onaylandı • {interaction.user.mention}"
+            renk = discord.Color.green()
+            dm_baslik = f"🎉 Form Başvurunuz Onaylandı: {self.form_data['title']}"
+            
+            # ... Rol verme / Kanalda yayınlama vb. ek işlemler ...
+
+        else:
+            karar = f"❌ Reddedildi • {interaction.user.mention}"
+            renk = discord.Color.red()
+            dm_baslik = f"😔 Form Başvurunuz Reddedildi: {self.form_data['title']}"
+
+        embed.color = renk
+        embed.add_field(name="Karar", value=karar, inline=False)
+        embed.add_field(name="Sebep", value=reason, inline=False)
+
+        await self.original_message.edit(embed=embed, view=None)
+
+        # Kullanıcıya DM ile bildirim
+        dm_user = interaction.client.get_user(self.submitter_id)
+        if dm_user:
+            dm_embed = discord.Embed(title=dm_baslik, color=renk)
+            dm_embed.add_field(name="Sebep", value=reason, inline=False)
+            await dm_user.send(embed=dm_embed)
+```

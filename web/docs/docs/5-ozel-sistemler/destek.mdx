@@ -1,0 +1,76 @@
+---
+title: Destek Talebi (Ticket) Sistemi
+sidebar_position: 3
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🎫 Destek Talebi (Ticket) Sistemi
+
+Kumiho Bot, sunucu üyelerinin yetkililerle özel olarak iletişime geçmesini sağlayan **Ticket (Destek)** sistemine sahiptir. Sistem tamamen Discord Modalleri (Açılır pencereler) ve Veritabanı entegrasyonu ile çalışır.
+
+## 📌 Destek Talebi Açmak
+
+Yöneticilerin belirlediği bir kanalda **"Destek Talebi Oluştur"** butonu bulunur. Kullanıcı butona tıkladığında bir Modal açılır ve sorununu kısaca özetlemesi istenir. 
+
+Form gönderildiğinde, bot sadece kullanıcının ve destek yetkililerinin görebileceği özel bir metin kanalı (Örn: `#001-kyrik`) oluşturur.
+
+### 🖼️ Görsel Çıktı (Ticket Kanalı İçi)
+
+<DiscordEmbed 
+  color="#5865F2" 
+  title="🎫 Destek Talebi" 
+  description="Hoş geldin <@123456789>, yetkililerimiz en kısa sürede seninle ilgilenecektir.
+
+**Sebep:** Sunucuya arkadaşımı davet edemiyorum, sanırım bir hatayla karşılaşıyorum.">
+  *Butonlar: [🔒 Kapat] [👤 Kullanıcı Ekle/Çıkar] [🗑️ Kanalı Sil] [💾 Transcript Al]*
+</DiscordEmbed>
+
+---
+
+## ⚙️ Bilet Yönetimi (Ticket Management)
+
+Özel ticket kanalının içerisine gönderilen menü ile hem bilet sahibi hem de yetkililer işlemi kolayca yönetebilir:
+
+1. **🔒 Kapat (Close):** Bileti geçici olarak kilitler. Sadece yetkililer okuyabilir/yazabilir hale gelir.
+2. **👤 Kullanıcı Ekle/Çıkar:** Bilet içerisine dışarıdan birini (Örneğin bir moderatörü veya sorunu çözecek başka bir üyeyi) davet edebilirsiniz veya silebilirsiniz.
+3. **🗑️ Kanalı Sil (Delete):** Bileti tamamen veritabanından ve sunucudan siler.
+4. **💾 Transcript Al:** Kanal silinmeden önce geçmiş konuşmaları ve atılan resimleri **HTML formatında** indirip özel mesaj veya log kanalına gönderir.
+
+---
+
+## 🛡️ Sınırlar ve Kurallar
+
+- **Aktif Bilet Limiti:** Bir kullanıcı aynı anda en fazla **3 aktif bilet** açabilir. Limit dolduğunda hata mesajı alır.
+- **Güvenlik:** Ticket kapatıldıktan sonra veya silinirken HTML transcriptleri, eğer yönetici ayarladıysa doğrudan *Log Kanalına* düşer.
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Ticket oluşturulurken kullanıcıya açılan Modal arayüzünün parçası (`Commands/tickets.py`):
+
+```python
+class TicketReasonModal(discord.ui.Modal, title='Destek Talebi Aç'):
+    reason = discord.ui.TextInput(
+        label='Lütfen iletişime geçme sebebinizi belirtin',
+        style=discord.TextStyle.paragraph,
+        placeholder='Örn: Üyeliğim hakkında bir sorun yaşıyorum...',
+        required=True,
+        max_length=1000
+    )
+
+    async def on_submit(self, interaction: discord.Interaction):
+        user = interaction.user
+        g_id = str(self.guild.id)
+        
+        # Check active tickets
+        active = await self.cog.bot.db.fetchall("SELECT ticket_id FROM active_tickets WHERE guild_id=? AND owner_id=? AND status='open'", g_id, str(user.id))
+        if len(active) >= 3:
+            return await interaction.response.send_message("❌ Aynı anda en fazla 3 aktif bilet açabilirsiniz.", ephemeral=True)
+            
+        ticket_num = self.ticket_counter + 1
+        ticket_id = f"{ticket_num:03d}-{user.name}"
+        
+        # ... kanal oluşturma işlemleri ...
+```
