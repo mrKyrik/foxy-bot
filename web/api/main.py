@@ -683,8 +683,8 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
         start_str = start_dt.strftime('%Y-%m-%d %H:%M:%S')
         end_str = end_dt.strftime('%Y-%m-%d %H:%M:%S')
 
-        date_filter_user = "AND e.timestamp >= TO_TIMESTAMP(?, 'YYYY-MM-DD HH24:MI:SS') AND e.timestamp <= TO_TIMESTAMP(?, 'YYYY-MM-DD HH24:MI:SS')"
-        date_filter_admin = "AND e.timestamp >= TO_TIMESTAMP(?, 'YYYY-MM-DD HH24:MI:SS') AND e.timestamp <= TO_TIMESTAMP(?, 'YYYY-MM-DD HH24:MI:SS')"
+        date_filter_user = "AND e.timestamp >= TO_TIMESTAMP(:2, 'YYYY-MM-DD HH24:MI:SS') AND e.timestamp <= TO_TIMESTAMP(:3, 'YYYY-MM-DD HH24:MI:SS')"
+        date_filter_admin = "AND e.timestamp >= TO_TIMESTAMP(:2, 'YYYY-MM-DD HH24:MI:SS') AND e.timestamp <= TO_TIMESTAMP(:3, 'YYYY-MM-DD HH24:MI:SS')"
 
         params_user.extend([start_str, end_str])
         params_admin.extend([start_str, end_str])
@@ -712,7 +712,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
             LEFT JOIN user_cache u ON e.user_id = u.user_id
             LEFT JOIN channel_cache c ON e.channel_id = c.channel_id
             LEFT JOIN roles r ON e.channel_id = r.role_id AND e.guild_id = r.guild_id
-            WHERE e.guild_id = ? {date_filter_user}
+            WHERE e.guild_id = :1 {date_filter_user}
             ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
         """
             cursor.execute(query, tuple(params_user))
@@ -742,7 +742,6 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
     if admin_conn:
         try:
             cursor = admin_conn.cursor()
-            cursor.execute(f"ATTACH DATABASE '{MAIN_DB_PATH}' AS userdb")
             query = f"""
                 SELECT
                     e.event_id as id,
@@ -763,7 +762,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
                 LEFT JOIN user_cache t_u ON e.target_id = t_u.user_id
                 LEFT JOIN channel_cache t_c ON e.target_id = t_c.channel_id
                 LEFT JOIN roles t_r ON e.target_id = t_r.role_id
-                WHERE e.guild_id = ? {date_filter_admin}
+                WHERE e.guild_id = :1 {date_filter_admin}
                 ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
             """
             cursor.execute(query, tuple(params_admin))
