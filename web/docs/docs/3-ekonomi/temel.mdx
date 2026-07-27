@@ -4,6 +4,7 @@ sidebar_position: 1
 ---
 
 import DiscordEmbed from '@site/src/components/DiscordEmbed';
+import BotSimulator from '@site/src/components/BotSimulator';
 
 # 💰 Temel Ekonomi Sistemi
 
@@ -21,15 +22,35 @@ Kendi bakiyenizi veya başka bir üyenin bakiyesini görüntüleyebilirsiniz. Ba
 - **Bot Yetkisi:** Mesaj Gönderme.
 - **Bekleme Süresi:** Yok.
 
-### 🖼️ Görsel Çıktı
+### 🕹️ İnteraktif Deneyim (Dene ve Gör)
+Aşağıdaki terminale `f.balance`, `f.deposit 500` veya `f.withdraw 500` yazarak test edebilirsiniz.
 
-<DiscordEmbed 
-  color="#F1C40F" 
-  title="👑 [Zengin] Kyrik's Balance" 
-  description="**Wallet:** 15,200 coins
-**Bank:** 50,000 coins
-**Total:** 65,200 coins">
-</DiscordEmbed>
+<BotSimulator 
+  scenarios={[
+    {
+      command: 'f.balance',
+      response: {
+        embed: {
+          color: '#F1C40F',
+          title: '👑 [Zengin] Kyrik\'s Balance',
+          description: '**Wallet:** 15,200 coins\n**Bank:** 50,000 coins\n**Total:** 65,200 coins'
+        }
+      }
+    },
+    {
+      command: 'f.deposit 500',
+      response: {
+        text: '🏦 Deposited **500 coins** to your bank.'
+      }
+    },
+    {
+      command: 'f.withdraw 500',
+      response: {
+        text: '💰 Withdrew **500 coins** to your wallet.'
+      }
+    }
+  ]}
+/>
 
 ---
 

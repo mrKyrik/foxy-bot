@@ -3,11 +3,37 @@ title: Oyunlar & Eğlence Komutları
 sidebar_position: 2
 ---
 
-import DiscordEmbed from '@site/src/components/DiscordEmbed';
+import BotSimulator from '@site/src/components/BotSimulator';
 
 # 🎮 Oyunlar ve Eğlence
 
 Kumiho Bot, sunucuda arkadaşlarınızla vakit geçirebileceğiniz çeşitli mini oyunlar ve eğlenceli metin komutları sunar. 
+
+### 🕹️ İnteraktif Deneyim (Dene ve Gör)
+Aşağıdaki terminale `f.8ball Yarın hava güzel olacak mı?` veya `f.joke` yazarak Kumiho'nun komutlara nasıl tepki verdiğini simüle edebilirsiniz!
+
+<BotSimulator 
+  scenarios={[
+    {
+      command: 'f.8ball Yarın hava güzel olacak mı?',
+      response: {
+        embed: {
+          color: '#5865F2',
+          title: 'Magic 8-Ball 🎱',
+          description: '**Question**\nYarın hava güzel olacak mı?\n\n**Answer**\nKesinlikle evet!'
+        }
+      }
+    },
+    {
+      command: 'f.joke',
+      response: {
+        text: 'Neden bilgisayar üşümüş? \n\n*...Çünkü Windows açık kalmış!*'
+      }
+    }
+  ]}
+/>
+
+---
 
 ## 🎱 Sihirli 8-Top (`8ball`)
 
@@ -15,18 +41,6 @@ Bota evet/hayır tarzı sorular sorarak efsanevi sihirli kürenin cevabını ö�
 
 ### 📌 Kullanım
 `f.8ball <soru>`
-
-### 🖼️ Görsel Çıktı
-
-<DiscordEmbed 
-  color="#5865F2" 
-  title="Magic 8-Ball 🎱" 
-  description="**Question**
-Yarın hava güzel olacak mı?
-
-**Answer**
-Yes">
-</DiscordEmbed>
 
 ---
 
