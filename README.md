@@ -1,4 +1,4 @@
-# 🦊 Kumiho Bot (Azalea)
+# 🦊 Kumiho Bot
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?style=for-the-badge&logo=python&logoColor=white)
 ![Discord.py](https://img.shields.io/badge/discord.py-2.4.0-blue?style=for-the-badge&logo=discord&logoColor=white)
@@ -6,7 +6,7 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
 
-Kumiho (eski adıyla Azalea), gelişmiş özelliklere sahip, modüler, tam kapsamlı ve **Oracle Cloud Autonomous Database** destekli profesyonel bir Discord botudur. Hem gelişmiş sunucu içi komutlara, hem de sunucunuzu tek bir tıkla yönetebileceğiniz modern bir **Web Dashboard**'a sahiptir.
+Kumiho, gelişmiş özelliklere sahip, modüler, tam kapsamlı ve **Oracle Cloud Autonomous Database** destekli profesyonel bir Discord botudur. Hem gelişmiş sunucu içi komutlara, hem de sunucunuzu tek bir tıkla yönetebileceğiniz modern bir **Web Dashboard**'a sahiptir.
 
 ---
 
@@ -52,7 +52,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # 5. Oracle cüzdanını ayarlayın
-# 'wallet' adında bir klasör oluşturup Oracle Cloud'dan indirdiğiniz cüzdan dosyalarını buraya çıkartın.
+# 'core/wallet' adında bir klasör oluşturun ve ana dizindeki 'Wallet_kumihodb.zip' dosyasının içindekileri buraya çıkartın.
 
 # 6. Botu başlatın (Geliştirme için)
 python main.py

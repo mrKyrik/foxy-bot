@@ -5,16 +5,16 @@ sidebar_position: 2
 
 import DiscordEmbed from '@site/src/components/DiscordEmbed';
 
-# ⚙️ Sunucu Ayarları ve Log Sistemi (`log`)
+# ⚙️ Sunucu Ayarları ve Log Sistemi (`setup`)
 
-Kumiho Bot, sunucunuzdaki tüm olayları Discord kanallarında ve aynı zamanda (varsa) Web Dashboard'da görebilmeniz için veritabanında kaydeder. `f.log` komutu ile sistemin hem Discord'a mesaj gönderme kısmını hem de veritabanı loglama ayarlarını yönetebilirsiniz.
+Kumiho Bot, sunucunuzdaki tüm olayları Discord kanallarında ve aynı zamanda (varsa) Web Dashboard'da görebilmeniz için veritabanında kaydeder. `f.setup` komutu ile sistemin hem Discord'a mesaj gönderme kısmını hem de veritabanı loglama ayarlarını kolayca yönetebilirsiniz.
 
 ## 📝 Log Sistemi Kurulumu
 
-Tüm log ayarları için tek bir arayüz mevcuttur.
+Tüm ayarlar için tek bir görsel menü (UI) mevcuttur.
 
 ### 📌 Kullanım
-`f.log`
+`f.setup`
 
 ### 🛡️ Yetkiler ve Sınırlar
 - **Kimler Kullanabilir:** Sunucu Yöneticisi (`Owner` yetkisi veya log izni).
@@ -59,26 +59,25 @@ Bazen belirli bir olayın kanala loglanmasını istemeyebilirsiniz. (Örneğin s
 
 ## 💻 Kaynak Kod (Meraklısına)
 
-Log şalterleri çalıştığında veritabanında (`log_settings` ve `db_log_settings`) yapılan senkronize güncelleme fonksiyonu `Commands/administration/settings.py` dosyasında şu şekildedir:
+Eski sistemdeki komut bazlı şalterler yerine yeni sistemde UI bileşenleri (Dropdown & Buton) ve Oracle veritabanı entegrasyonu kullanılmaktadır. `Commands/administration/setup.py` içerisindeki yeni mantık:
 
 ```python
-    async def _toggle_log(self, ctx, column_name: str, state: str, log_name: str):
-        state = state.lower()
-        if state not in ["on", "off"]:
-            return await ctx.send("❌ Geçersiz durum! Lütfen `on` veya `off` kullanın.")
-        val = 1 if state == "on" else 0
-        
-        # Update log_settings (DC Embeds)
-        await self.bot.db.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
-        await self.bot.db.execute(f"UPDATE log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
-
-        # Sync db_log_settings (Web Dashboard)
-        try:
-            await self.bot.db.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(ctx.guild.id))
-            await self.bot.db.execute(f"UPDATE db_log_settings SET {column_name}=? WHERE guild_id=?", val, str(ctx.guild.id))
-        except Exception:
-            pass
-        
-        durum = "açıldı" if val == 1 else "kapatıldı"
-        await ctx.send(f"✅ {log_name} kanal logları ve veritabanı olay kaydı senkronize olarak **{durum}**.")
+    def make_callback(self, button, col_name, state):
+        async def callback(interaction: discord.Interaction):
+            await interaction.response.defer()
+            new_state = 0 if state == 1 else 1
+            
+            # Update log_settings (DC Embeds)
+            await self.bot.db.execute(f"UPDATE log_settings SET {col_name}=? WHERE guild_id=?", new_state, str(interaction.guild.id))
+            
+            # Sync db_log_settings (Web Dashboard)
+            try:
+                await self.bot.db.execute(f"UPDATE db_log_settings SET {col_name}=? WHERE guild_id=?", new_state, str(interaction.guild.id))
+            except: pass
+            
+            # UI Refresh
+            row_db = await self.bot.db.fetchone("SELECT * FROM log_settings WHERE guild_id=?", str(interaction.guild.id))
+            new_view = LogToggleView(self.bot, self.category_key, dict(row_db) if row_db else {})
+            await interaction.edit_original_response(view=new_view)
+        return callback
 ```

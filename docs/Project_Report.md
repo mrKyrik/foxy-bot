@@ -1,4 +1,7 @@
 # Kumiho Project Security & Performance Report
+> [!WARNING]
+> **[ARCHIVED/RESOLVED]** Bu raporda belirtilen (şifrelerin hardcoded bırakılması vb.) kritik güvenlik açıkları düzeltilmiş ve `.env` sistemine geçilmiştir. Bu rapor tarihi amaçlarla saklanmaktadır.
+
 **Date:** 2026-07-21
 **Prepared by:** Antigravity (Product Manager)
 
