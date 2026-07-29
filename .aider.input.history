@@ -1,0 +1,72 @@
+
+# 2026-07-15 16:04:38.332073
++y
+
+# 2026-07-15 16:06:21.301238
++benim için projemizin forum kısını oku ve analiz raporu hazırla
+
+# 2026-07-15 16:07:32.199673
++y
+
+# 2026-07-15 16:42:39.906698
++harika peki benim için web ui den forumlar kısmını da incele. botun suncuğu forum özelliklerinin ne kadarı ui den kişiselleştirilebiliyor. web ui nin bu kısımda eksiklikleri var mı? 
+
+# 2026-07-15 16:44:45.151898
++bu forum kişiselleştirmeleri doğrudan forums sayfasından yapılıyor
+
+# 2026-07-15 16:44:47.928974
++y
+
+# 2026-07-15 16:50:38.883241
++bu özellik hali hazırda forms sayfasından kontrol ediliyor. log sayfasındaki değişiklikleri geri almalı forum sayfasını özetlemeli bana yapılacaklar planı sunmadan kod yazmamalısın
+
+# 2026-07-15 16:53:13.257732
++harika plan şu yapılan değişiklikleri geri al ve forums sayfasındaki kişiselleştirme olaylarını özetle
+
+# 2026-07-21 09:32:14.156360
++y
+
+# 2026-07-21 09:32:25.932605
++n
+
+# 2026-07-21 10:47:23.204149
++/model
+
+# 2026-07-21 10:47:28.044053
++/models
+
+# 2026-07-21 10:48:53.727242
++/models deepseek/deepseek-v4-pro
+
+# 2026-07-21 10:49:07.733713
++/model
+
+# 2026-07-21 10:49:14.039021
++/model deepseek/deepseek-v4-pro
+
+# 2026-07-21 10:50:13.693461
++/model openrouter/deepseek/deepseek-v4-pro
+
+# 2026-07-21 11:09:17.079365
++/model openrouter/tencent/hy3:free
+
+# 2026-07-21 11:09:22.874407
++/weak-model openrouter/deepseek/deepseek-v4-lite
+
+# 2026-07-21 11:13:38.628031
++You are a product manager, and your goal is to write a sustainable Discord bot. Before doing that, you need to prepare reports with commit IDs in the docs, thoroughly examine the project, and identify any vulnerabilities or performance issues. After completing everything, you should mention how to fix these vulnerabilities at the end of the report. You must carefully read the .agent folder and follow all the rules.
+
+# 2026-07-21 11:15:39.207085
++/model openrouter/nvidia/nemotron-3-ultra-550b-a55b:free
+
+# 2026-07-21 11:16:16.658079
++ You are a product manager, and your goal is to write a sustainable Discord bot. Before doing that, you need to prepar
++> e reports with commit IDs in the docs, thoroughly examine the project, and identify any vulnerabilities or performanc
++> e issues. After completing everything, you should mention how to fix these vulnerabilities at the end of the report.
++> You must carefully read the .agent folder and follow all the rules.
+
+# 2026-07-21 11:20:21.497446
++y
+
+# 2026-07-21 12:12:12.806435
++Next, I'll explain in Turkish the things you did to me.

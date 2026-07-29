@@ -31,6 +31,42 @@ ANSWERS_FILE = Path("Data/answers.json")
 RAGE_FILE = Path("Data/ragepoints.json")
 
 
+class FunMemberSelectView(discord.ui.View):
+    def __init__(self, action: str, cog: commands.Cog, ctx: commands.Context, reason: str = None):
+        super().__init__(timeout=60)
+        self.action = action
+        self.cog = cog
+        self.ctx = ctx
+        self.reason = reason
+
+    @discord.ui.select(
+        cls=discord.ui.UserSelect,
+        placeholder="Kimi seçmek istersin? (Birini seç)",
+        min_values=1,
+        max_values=1,
+    )
+    async def select_user(self, interaction: discord.Interaction, select: discord.ui.UserSelect):
+        if interaction.user.id != self.ctx.author.id:
+            return await interaction.response.send_message("❌ Bu menüyü sadece komutu yazan kişi kullanabilir.", ephemeral=True)
+            
+        user = select.values[0]
+        if not isinstance(user, discord.Member):
+            user = self.ctx.guild.get_member(user.id)
+            if not user:
+                return await interaction.response.send_message("❌ Sadece sunucudaki üyeleri seçebilirsiniz.", ephemeral=True)
+
+        await interaction.message.delete()
+        
+        if self.action == "slap":
+            await self.cog.slap.callback(self.cog, self.ctx, member=user, reason=self.reason)
+        else:
+            method = getattr(self.cog, self.action, None)
+            if method:
+                await method.callback(self.cog, self.ctx, member=user)
+            else:
+                await interaction.channel.send(f"❌ Bilinmeyen eylem: {self.action}")
+
+
 class Fun(commands.Cog):
     category = "Eğlence ve Araçlar"
     category_emoji = "🛠️"
@@ -707,7 +743,12 @@ class Fun(commands.Cog):
     async def slap(self, ctx: commands.Context, member: discord.Member = None, *, reason: str = None) -> None:
         """Slap someone.\n\n**Usage:** `{prefix}slap`"""
         if not member:
-            return await ctx.send(f"Usage: `{ctx.prefix}slap @user [reason]`")
+            embed = discord.Embed(
+                title="Kimi tokatlayacaksın?",
+                description="Lütfen tokatlamak istediğin kişiyi aşağıdaki menüden seç.",
+                color=discord.Color.from_rgb(255, 100, 0)
+            )
+            return await ctx.send(embed=embed, view=FunMemberSelectView("slap", self, ctx, reason=reason))
         msgs = [
             f"slapped {member.mention} with a giant smelly wet trout! 🐟",
             f"slapped {member.mention} with a squeaky rubber chicken! 🐔",
@@ -725,7 +766,12 @@ class Fun(commands.Cog):
 
     async def _send_reaction(self, ctx, action, member, self_msg, other_msg, color):
         if not member:
-            return await ctx.send(f"Usage: `{ctx.prefix}{action} @user`")
+            embed = discord.Embed(
+                title="Kimi seçeceksin?",
+                description=f"Lütfen `{action}` eylemini kime uygulamak istediğini aşağıdaki menüden seç.",
+                color=discord.Color.from_rgb(*color)
+            )
+            return await ctx.send(embed=embed, view=FunMemberSelectView(action, self, ctx))
         gif = await self.get_reaction_gif(action)
         msg = self_msg if member.id == ctx.author.id else other_msg
         embed = self._reaction_embed(msg, color)

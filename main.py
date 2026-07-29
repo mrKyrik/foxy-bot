@@ -528,18 +528,24 @@ async def on_ready():
     log.info("Sunucu sayısı: %d", len(bot.guilds))
     log.info("=" * 40)
 
-    # Önbellek Senkronizasyonu (ID'leri isimlerle eşleştirmek için)
-    log.info("Önbellek senkronizasyonu başlatılıyor...")
-    for guild in bot.guilds:
-        for role in guild.roles:
-            await bot.db.update_role_cache(str(guild.id), str(role.id), role.name)
-        # Kanalları toplu ve guild_id ile senkronize et
-        channel_list = [(str(ch.id), ch.name) for ch in guild.channels]
-        await bot.db.bulk_sync_channel_cache(str(guild.id), channel_list)
-        for member in guild.members:
-            avatar = member.display_avatar.url if member.display_avatar else None
-            await bot.db.update_user_cache(str(member.id), member.name, avatar)
-    log.info("Önbellek senkronizasyonu tamamlandı.")
+    async def bg_sync_cache():
+        try:
+            log.info("Önbellek senkronizasyonu başlatılıyor...")
+            for guild in bot.guilds:
+                for role in guild.roles:
+                    await bot.db.update_role_cache(str(guild.id), str(role.id), role.name)
+                # Kanalları toplu ve guild_id ile senkronize et
+                channel_list = [(str(ch.id), ch.name) for ch in guild.channels]
+                await bot.db.bulk_sync_channel_cache(str(guild.id), channel_list)
+                for member in guild.members:
+                    avatar = member.display_avatar.url if member.display_avatar else None
+                    await bot.db.update_user_cache(str(member.id), member.name, avatar)
+            log.info("Önbellek senkronizasyonu tamamlandı.")
+        except Exception as e:
+            log.error(f"Önbellek senkronizasyonu sırasında hata oluştu: {e}")
+
+    # Arka planda asenkron olarak başlat, botun açılışını engellemesin
+    bot.loop.create_task(bg_sync_cache())
 
     await bot.change_presence(
         activity=discord.Activity(
@@ -633,8 +639,7 @@ async def on_guild_channel_update(before: discord.abc.GuildChannel, after: disco
 
 
 
-@bot.event
-async def on_command_error(ctx, error):
+async def _handle_command_error(ctx, error):
     if isinstance(error, commands.CommandNotFound):
         await ctx.send("❌ Komut bulunamadı!")
         return
@@ -703,6 +708,21 @@ async def on_command_error(ctx, error):
         return
 
     log.error("Komut hatası [%s]: %s", ctx.command, error, exc_info=error)
+
+@bot.event
+async def on_command_error(ctx, error):
+    import discord
+    try:
+        await _handle_command_error(ctx, error)
+    except discord.Forbidden:
+        try:
+            await ctx.author.send(
+                f"❌ **{ctx.guild.name}** sunucusundaki `{ctx.channel.name}` kanalında "
+                "mesaj gönderme veya embed yollama yetkim olmadığı için işlem sonucunu "
+                "kanala iletemedim. Lütfen sunucu yöneticisine durumu bildirin."
+            )
+        except Exception:
+            pass
 
 
 @bot.tree.error

@@ -5,6 +5,9 @@ from discord.ext import commands, tasks
 from discord import app_commands
 import datetime
 import json
+import time
+
+_form_cooldowns: dict[int, float] = {}
 
 # ---------------------------------------------------------
 # UI COMPONENTS
@@ -272,6 +275,16 @@ class DynamicFormModal(discord.ui.Modal):
             self.add_item(inp)
 
     async def on_submit(self, interaction: discord.Interaction):
+        user_id = interaction.user.id
+        now = time.time()
+        last_submit = _form_cooldowns.get(user_id, 0.0)
+        
+        if now - last_submit < 20.0:
+            remaining = int(20.0 - (now - last_submit))
+            return await interaction.response.send_message(f"⏳ Çok hızlı işlem yapıyorsunuz! Lütfen yeni bir form göndermek için **{remaining} saniye** bekleyin.", ephemeral=True)
+            
+        _form_cooldowns[user_id] = now
+
         guild = interaction.guild
         target_channel = interaction.client.get_channel(int(self.form_data["channel_id"]))
         

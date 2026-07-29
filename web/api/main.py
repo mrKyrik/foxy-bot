@@ -36,15 +36,18 @@ class PrivateVoiceSettingsUpdate(BaseModel):
 app = FastAPI(title="Kumiho Log Dashboard API")
 
 # İzin verilen originler
+origins = ["https://kyrik.duckdns.org"]
+if os.getenv("ENVIRONMENT") == "development":
+    origins.extend([
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:3000"
+    ])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",  # Vite dev server
-        "http://localhost:3000",  # CRA / alternatif
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "https://kyrik.duckdns.org",
-    ],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -66,7 +69,7 @@ if not JWT_SECRET:
 
 security = HTTPBearer()
 
-def verify_token(creds: HTTPAuthorizationCredentials = Depends(security)):
+async def verify_token(creds: HTTPAuthorizationCredentials = Depends(security)):
     token = creds.credentials
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
@@ -74,7 +77,7 @@ def verify_token(creds: HTTPAuthorizationCredentials = Depends(security)):
     except Exception:
         raise HTTPException(status_code=401, detail="Giriş oturumu geçersiz veya süresi dolmuş.")
 
-def verify_guild_access(guild_id: str, payload: dict = Depends(verify_token)):
+async def verify_guild_access(guild_id: str, payload: dict = Depends(verify_token)):
     allowed_guilds = payload.get("allowed_guilds", [])
     if guild_id not in allowed_guilds:
         print(f"403 ERROR PREVENTED: requested_guild={guild_id}, allowed_guilds={allowed_guilds}")
@@ -87,30 +90,30 @@ def verify_guild_access(guild_id: str, payload: dict = Depends(verify_token)):
         payload["guild_permission"] = "owner"
     else:
         # Check panel_access_controls using user_id and user_current_roles
-        conn = get_db_connection(MAIN_DB_PATH)
+        conn = await get_db_connection(MAIN_DB_PATH)
         if conn:
             c = conn.cursor()
             
             # 1. Check user_id explicitly
-            c.execute("SELECT permission_level FROM panel_access_controls WHERE guild_id = ? AND target_id = ? AND target_type = 'user'", (guild_id, user_id))
-            user_perm = c.fetchone()
+            await c.execute("SELECT permission_level FROM panel_access_controls WHERE guild_id = ? AND target_id = ? AND target_type = 'user'", (guild_id, user_id))
+            user_perm = await c.fetchone()
             
             # 2. Check roles
-            c.execute("SELECT role_id FROM user_current_roles WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
-            user_roles = [r["role_id"] for r in c.fetchall()]
+            await c.execute("SELECT role_id FROM user_current_roles WHERE guild_id = ? AND user_id = ?", (guild_id, user_id))
+            user_roles = [r["role_id"] for r in await c.fetchall()]
             
             role_perm_level = None
             if user_roles:
                 placeholders = ",".join("?" * len(user_roles))
                 query = f"SELECT permission_level FROM panel_access_controls WHERE guild_id = ? AND target_type = 'role' AND target_id IN ({placeholders})"
-                c.execute(query, [guild_id] + user_roles)
-                role_perms = [row["permission_level"] for row in c.fetchall()]
+                await c.execute(query, [guild_id] + user_roles)
+                role_perms = [row["permission_level"] for row in await c.fetchall()]
                 if "write" in role_perms:
                     role_perm_level = "write"
                 elif "read" in role_perms:
                     role_perm_level = "read"
             
-            conn.close()
+            await conn.close()
             
             # Resolve highest permission: write > read
             final_perm = "read" # Default to read if they have basic access from allowed_guilds but no specific panel_access_controls (legacy support)
@@ -126,12 +129,12 @@ def verify_guild_access(guild_id: str, payload: dict = Depends(verify_token)):
             
     return payload
 
-def verify_write_access(payload: dict = Depends(verify_guild_access)):
+async def verify_write_access(payload: dict = Depends(verify_guild_access)):
     if payload.get("guild_permission") not in ["write", "owner"]:
         raise HTTPException(status_code=403, detail="Bu işlemi yapmak için düzenleme (yazma) yetkiniz yok.")
     return payload
 
-def verify_owner_access(payload: dict = Depends(verify_guild_access)):
+async def verify_owner_access(payload: dict = Depends(verify_guild_access)):
     if payload.get("guild_permission") != "owner":
         raise HTTPException(status_code=403, detail="Bu işlem için Sunucu Sahibi (Owner) yetkisi gereklidir.")
     return payload
@@ -163,181 +166,83 @@ LIMIT_N_RE = re.compile(r'(?i)\bLIMIT\s+(\d+)\b')
 LIMIT_PARAM_RE = re.compile(r'(?i)\bLIMIT\s+\?\b')
 INSERT_IGNORE_RE = re.compile(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)')
 
-class SyncOracleCursor:
-    def __init__(self, cursor):
+
+from core.database import Database
+shared_db = Database()
+
+class AsyncOracleCursor:
+    async def __init__(self, cursor):
         self.cursor = cursor
         
     @property
-    def description(self):
+    async def description(self):
         return self.cursor.description
 
     @property
-    def rowcount(self):
+    async def rowcount(self):
         return self.cursor.rowcount
 
-    def _translate_query(self, query: str) -> str:
-        if "LIMIT " in query.upper():
-            query = LIMIT_1_RE.sub('FETCH FIRST 1 ROWS ONLY', query)
-            query = LIMIT_N_RE.sub(r'FETCH FIRST \1 ROWS ONLY', query)
-            query = LIMIT_PARAM_RE.sub('FETCH FIRST ? ROWS ONLY', query)
-            
-        if "INSERT OR IGNORE" in query.upper():
-            query = INSERT_IGNORE_RE.sub(r'BEGIN INSERT INTO \1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;', query)
-
-        # Basic ? to :1, :2 translation
-        if '?' in query:
-            parts = query.split('?')
-            new_query = parts[0]
-            param_idx = 1
-            for part in parts[1:]:
-                # If we replaced LIMIT ? earlier, don't replace again. BUT we just did basic substitution.
-                # Since Oracle handles positional binds as :1, :2
-                new_query += f":{param_idx}" + part
-                param_idx += 1
-            query = new_query
-
-        # Remove ATTACH DATABASE syntax
-        if "ATTACH DATABASE" in query.upper():
-            return "SELECT 1 FROM DUAL" # dummy
-
-        return query
-
-    def execute(self, query, params=()):
+    async def execute(self, query, params=()):
         if isinstance(params, list):
             params = tuple(params)
-            
-        # Specific hack for ON CONFLICT DO UPDATE SET in commands update
-        if "ON CONFLICT" in query.upper():
-            if "command_permissions" in query.lower() and "allowed_roles" in query.lower():
-                query = """
-                MERGE INTO command_permissions t
-                USING (SELECT :1 as guild_id, :2 as command_name, :3 as is_enabled, :4 as allowed_roles FROM DUAL) s
-                ON (t.guild_id = s.guild_id AND t.command_name = s.command_name)
-                WHEN MATCHED THEN
-                    UPDATE SET is_enabled = s.is_enabled, allowed_roles = s.allowed_roles
-                WHEN NOT MATCHED THEN
-                    INSERT (guild_id, command_name, is_enabled, allowed_roles)
-                    VALUES (s.guild_id, s.command_name, s.is_enabled, s.allowed_roles)
-                """
-            elif "panel_access_controls" in query.lower():
-                query = """
-                MERGE INTO panel_access_controls t
-                USING (SELECT :1 as guild_id, :2 as target_id, :3 as target_type, :4 as permission_level FROM DUAL) s
-                ON (t.guild_id = s.guild_id AND t.target_id = s.target_id)
-                WHEN MATCHED THEN
-                    UPDATE SET permission_level = s.permission_level, target_type = s.target_type
-                WHEN NOT MATCHED THEN
-                    INSERT (guild_id, target_id, target_type, permission_level)
-                    VALUES (s.guild_id, s.target_id, s.target_type, s.permission_level)
-                """
-            elif "private_voice_hubs" in query.lower():
-                query = """
-                MERGE INTO private_voice_hubs t
-                USING (SELECT :1 as guild_id, :2 as hub_id, :3 as category_id FROM DUAL) s
-                ON (t.guild_id = s.guild_id)
-                WHEN MATCHED THEN
-                    UPDATE SET hub_id = s.hub_id, category_id = s.category_id
-                WHEN NOT MATCHED THEN
-                    INSERT (guild_id, hub_id, category_id)
-                    VALUES (s.guild_id, s.hub_id, s.category_id)
-                """
-            elif "private_voice_settings" in query.lower():
-                query = """
-                MERGE INTO private_voice_settings t
-                USING (SELECT :1 as user_id, :2 as room_name, :3 as user_limit, :4 as bitrate, :5 as is_locked, :6 as is_hidden FROM DUAL) s
-                ON (t.user_id = s.user_id)
-                WHEN MATCHED THEN
-                    UPDATE SET room_name = s.room_name, user_limit = s.user_limit, bitrate = s.bitrate, is_locked = s.is_locked, is_hidden = s.is_hidden
-                WHEN NOT MATCHED THEN
-                    INSERT (user_id, room_name, user_limit, bitrate, is_locked, is_hidden)
-                    VALUES (s.user_id, s.room_name, s.user_limit, s.bitrate, s.is_locked, s.is_hidden)
-                """
-        else:
-            query = self._translate_query(query)
-            
+        
+        query = shared_db._translate_query(query)
         try:
-            self.cursor.execute(query, params)
+            await self.cursor.execute(query, params)
         except Exception as e:
             print(f"Oracle Execution Error: {e} - Query: {query} - Params: {params}")
         return self
 
-    def fetchone(self):
+    async def fetchone(self):
         try:
-            row = self.cursor.fetchone()
+            row = await self.cursor.fetchone()
             if not row: return None
             return dict(zip([d[0].lower() for d in self.cursor.description], row))
         except Exception as e:
             print(f"Fetchone error: {e}")
             return None
 
-    def fetchall(self):
+    async def fetchall(self):
         try:
-            rows = self.cursor.fetchall()
+            rows = await self.cursor.fetchall()
             if not rows: return []
             cols = [d[0].lower() for d in self.cursor.description]
             return [dict(zip(cols, row)) for row in rows]
         except Exception as e:
             print(f"Fetchall error: {e}")
             return []
+
+class AsyncOracleConnection:
+    async def __init__(self, conn):
+        self.conn = conn
             
-oracle_pool = None
-
-@app.on_event("startup")
-def startup_event():
-    global oracle_pool
-    try:
-        oracle_pool = oracledb.create_pool(
-            user=DB_USER,
-            password=DB_PASSWORD,
-            dsn=DB_DSN,
-            min=2,
-            max=20,
-            increment=2,
-            config_dir=WALLET_DIR,
-            wallet_location=WALLET_DIR,
-            wallet_password=DB_PASSWORD
-        )
-        print("Oracle DB Sync Pool created successfully.")
-    except Exception as e:
-        print(f"Failed to create Oracle DB pool: {e}")
-
-@app.on_event("shutdown")
-def shutdown_event():
-    global oracle_pool
-    if oracle_pool:
-        oracle_pool.close()
-        print("Oracle DB Sync Pool closed.")
-
-class SyncOracleConnection:
-    def __init__(self):
-        try:
-            self.conn = oracle_pool.acquire() if oracle_pool else None
-        except Exception as e:
-            print(f"Oracle Connection Acquire Error: {e}")
-            self.conn = None
-            
-    def cursor(self):
+    async def cursor(self):
         if not self.conn:
             return None
-        return SyncOracleCursor(self.conn.cursor())
+        return AsyncOracleCursor(self.conn.cursor())
         
-    def commit(self):
+    async def commit(self):
         if self.conn:
-            self.conn.commit()
+            await self.conn.commit()
             
-    def close(self):
+    async def close(self):
         if self.conn and oracle_pool:
-            oracle_pool.release(self.conn)
+            await oracle_pool.release(self.conn)
             self.conn = None
 
-def get_db_connection(db_path=None):
-    return SyncOracleConnection()
+async def get_db_connection(db_path=None):
+    try:
+        conn = await oracle_pool.acquire() if oracle_pool else None
+        return AsyncOracleConnection(conn)
+    except Exception as e:
+        print(f"Oracle Connection Acquire Error: {e}")
+        return AsyncOracleConnection(None)
 
 def init_db():
     pass
 
 @app.post("/api/settings/oda-kurulum/{guild_id}")
-def setup_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
+async def setup_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
     headers = {
         "Authorization": f"Bot {DISCORD_TOKEN}",
         "Content-Type": "application/json"
@@ -366,38 +271,38 @@ def setup_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
     hub_id = vc_data["id"]
     
     # 3. DB'ye kaydet
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute(
+            await c.execute(
                 "INSERT INTO private_voice_hubs (guild_id, hub_id, category_id) VALUES (?, ?, ?) "
                 "ON CONFLICT(guild_id) DO UPDATE SET hub_id=excluded.hub_id, category_id=excluded.category_id",
                 (guild_id, str(hub_id), str(category_id))
             )
-            user_conn.commit()
+            await user_conn.commit()
         finally:
-            user_conn.close()
+            await user_conn.close()
             
     return {"status": "success", "hub_id": hub_id, "category_id": category_id}
 
 @app.delete("/api/settings/oda-kurulum/{guild_id}")
-def delete_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
+async def delete_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
     # 1) Veritabanından mevcut kayıtları çekelim ki Discord'dan kanalları da silelim
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     hub_id = None
     category_id = None
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute("SELECT hub_id, category_id FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
-            row = c.fetchone()
+            await c.execute("SELECT hub_id, category_id FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
             if row:
                 hub_id, category_id = row
-            c.execute("DELETE FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
-            user_conn.commit()
+            await c.execute("DELETE FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
+            await user_conn.commit()
         finally:
-            user_conn.close()
+            await user_conn.close()
             
     # 2) Discord API üzerinden kanalları sil (Eğer varsa)
     headers = {"Authorization": f"Bot {DISCORD_TOKEN}"}
@@ -419,23 +324,23 @@ def delete_private_voice(guild_id: str, _: dict = Depends(verify_write_access)):
 
 import requests
 
-def fetch_kumiho_db_data():
+async def fetch_kumiho_db_data():
     try:
-        conn = get_db_connection(MAIN_DB_PATH)
+        conn = await get_db_connection(MAIN_DB_PATH)
         if not conn: return set(), {}
         cur = conn.cursor()
-        cur.execute("SELECT guild_id FROM log_settings")
-        kumiho_guilds = {str(row[0]) for row in cur.fetchall()}
+        await cur.execute("SELECT guild_id FROM log_settings")
+        kumiho_guilds = {str(row[0]) for row in await cur.fetchall()}
         
-        cur.execute("SELECT guild_id, role_id FROM role_permissions")
+        await cur.execute("SELECT guild_id, role_id FROM role_permissions")
         mod_roles = {}
-        for row in cur.fetchall():
+        for row in await cur.fetchall():
             g_id = str(row[0])
             r_id = str(row[1])
             if g_id not in mod_roles:
                 mod_roles[g_id] = set()
             mod_roles[g_id].add(r_id)
-        conn.close()
+        await conn.close()
         return kumiho_guilds, mod_roles
     except Exception as e:
         print(f"DB Error fetching permissions: {e}")
@@ -524,7 +429,7 @@ async def discord_callback(request: Request):
                 print(f"Bot guilds fetch error: {e}")
         
         # Async run synchronous DB fetch
-        kumiho_guilds, mod_roles = await run_in_threadpool(fetch_kumiho_db_data)
+        kumiho_guilds, mod_roles = await fetch_kumiho_db_data()
         
         print(f"DEBUG CALLBACK: user={user_info.get('username')}, is_bot_owner={is_bot_owner}, total_guilds={len(guilds_data)}")
         
@@ -580,72 +485,72 @@ async def discord_callback(request: Request):
 
 
 @app.get("/api/global_stats")
-def get_global_stats():
-    conn = get_db_connection()
+async def get_global_stats():
+    conn = await get_db_connection()
     if not conn:
         return {"total_guilds": 0, "total_users": 0}
         
     cursor = conn.cursor()
     try:
         # We count distinct guilds from channel_cache because guild_settings might be empty if users haven't configured anything
-        cursor.execute("SELECT COUNT(DISTINCT guild_id) as c FROM channel_cache")
-        row = cursor.fetchone()
+        await cursor.execute("SELECT COUNT(DISTINCT guild_id) as c FROM channel_cache")
+        row = await cursor.fetchone()
         guilds_in_db = row["c"] if row else 0
     except Exception as e:
         print(f"Error fetching guilds_in_db: {e}")
         guilds_in_db = 0
     
     try:
-        cursor.execute("SELECT COUNT(*) as c FROM user_cache")
-        row = cursor.fetchone()
+        await cursor.execute("SELECT COUNT(*) as c FROM user_cache")
+        row = await cursor.fetchone()
         total_users = row["c"] if row else 0
     except Exception as e:
         print(f"Error fetching total_users: {e}")
         total_users = 0
         
     if hasattr(conn, 'close'):
-        conn.close()
+        await conn.close()
         
     return {"total_guilds": guilds_in_db, "total_users": total_users}
 
 @app.get("/api/guilds")
-def get_guilds(payload: dict = Depends(verify_token)):
+async def get_guilds(payload: dict = Depends(verify_token)):
     # JWT içinden kullanıcının yetkili olduğu sunucuları direkt dön
     return {"guilds": payload.get("guilds_data", [])}
 
 @app.get("/api/stats/{guild_id}")
-def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     guild_permission = payload.get("guild_permission", "read")
     if not conn:
         return {"total_logs": 0, "total_warns": 0, "total_admin_actions": 0, "recent_logs": [], "guild_permission": guild_permission}
     
     c = conn.cursor()
     try:
-        c.execute("SELECT COUNT(*) as c FROM db_event_logs WHERE guild_id = ?", (guild_id,))
-        total_logs = c.fetchone()["c"]
+        await c.execute("SELECT COUNT(*) as c FROM db_event_logs WHERE guild_id = ?", (guild_id,))
+        total_logs = await c.fetchone()["c"]
     except Exception:
         total_logs = 0
 
     try:
-        c.execute("SELECT COUNT(*) as c FROM warns WHERE guild_id = ?", (guild_id,))
-        total_warns = c.fetchone()["c"]
+        await c.execute("SELECT COUNT(*) as c FROM warns WHERE guild_id = ?", (guild_id,))
+        total_warns = await c.fetchone()["c"]
     except Exception:
         total_warns = 0
 
     try:
-        c.execute("SELECT COUNT(*) as c FROM admin_events WHERE guild_id = ?", (guild_id,))
-        total_admin_actions = c.fetchone()["c"]
+        await c.execute("SELECT COUNT(*) as c FROM admin_events WHERE guild_id = ?", (guild_id,))
+        total_admin_actions = await c.fetchone()["c"]
     except Exception:
         total_admin_actions = 0
 
     try:
-        c.execute("SELECT * FROM db_event_logs WHERE guild_id = ? ORDER BY timestamp DESC LIMIT 5", (guild_id,))
-        recent_logs = c.fetchall()
+        await c.execute("SELECT * FROM db_event_logs WHERE guild_id = ? ORDER BY timestamp DESC LIMIT 5", (guild_id,))
+        recent_logs = await c.fetchall()
     except Exception:
         recent_logs = []
 
-    conn.close()
+    await conn.close()
     return {
         "total_logs": total_logs,
         "total_warns": total_warns,
@@ -659,22 +564,22 @@ def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_access))
 # ---------------------------------------------------------------------------
 
 @app.get("/api/users/{guild_id}/{user_id}/roles")
-def get_user_current_roles(guild_id: str, user_id: str, _: dict = Depends(verify_guild_access)):
+async def get_user_current_roles(guild_id: str, user_id: str, _: dict = Depends(verify_guild_access)):
     try:
-        conn = get_db_connection(MAIN_DB_PATH)
+        conn = await get_db_connection(MAIN_DB_PATH)
         cur = conn.cursor()
-        cur.execute(
+        await cur.execute(
             "SELECT role_id, role_name FROM user_current_roles WHERE guild_id=? AND user_id=?", 
             (guild_id, user_id)
         )
-        roles = [dict(row) for row in cur.fetchall()]
-        conn.close()
+        roles = [dict(row) for row in await cur.fetchall()]
+        await conn.close()
         return {"roles": roles}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/logs/{guild_id}")
-def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end_time: int = None, _: dict = Depends(verify_guild_access)):
+async def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end_time: int = None, _: dict = Depends(verify_guild_access)):
     """
     Belirli bir sunucunun tüm loglarını db_event_logs ve admin_events
     tablolarından çeker ve zaman damgasına göre sıralı olarak birleştirir.
@@ -703,7 +608,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
         limit = 50000
 
     # 1. USER-DB.db → db_event_logs
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             cursor = user_conn.cursor()
@@ -727,8 +632,8 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
             WHERE e.guild_id = :1 {date_filter_user}
             ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
         """
-            cursor.execute(query, tuple(params_user))
-            rows = cursor.fetchall()
+            await cursor.execute(query, tuple(params_user))
+            rows = await cursor.fetchall()
             import json
             for r in rows:
                 r_dict = dict(r)
@@ -747,10 +652,10 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
         except Exception as e:
             print("USER-DB okuma hatası:", e)
         finally:
-            user_conn.close()
+            await user_conn.close()
 
     # 2. ADMIN-EVENTS.db → admin_events
-    admin_conn = get_db_connection(MAIN_DB_PATH)
+    admin_conn = await get_db_connection(MAIN_DB_PATH)
     if admin_conn:
         try:
             cursor = admin_conn.cursor()
@@ -777,9 +682,9 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
                 WHERE e.guild_id = :1 {date_filter_admin}
                 ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
             """
-            cursor.execute(query, tuple(params_admin))
+            await cursor.execute(query, tuple(params_admin))
 
-            admin_logs = cursor.fetchall()
+            admin_logs = await cursor.fetchall()
             for al in admin_logs:
                 al_dict = dict(al)
                 target = al_dict.pop('target_name')
@@ -790,7 +695,7 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
         except Exception as e:
             print("ADMIN-EVENTS okuma hatası:", e)
         finally:
-            admin_conn.close()
+            await admin_conn.close()
 
     logs.sort(key=lambda x: x["timestamp"], reverse=True)
     return {"guild_id": guild_id, "logs": logs[:limit]}
@@ -802,26 +707,26 @@ def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = None, end
 # ---------------------------------------------------------------------------
 
 @app.get("/api/channels/{guild_id}")
-def get_channels(guild_id: str, _: dict = Depends(verify_guild_access)):
+async def get_channels(guild_id: str, _: dict = Depends(verify_guild_access)):
     """
     channel_cache tablosundan sunucudaki tüm kanalları döndürür.
     DiscordSettings dropdown'ı bu listeyi kullanır.
     Bot çevrimiçi değilse veya henüz kanal cache'lenmemişse boş liste döner.
     """
     channels = []
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute(
+            await c.execute(
                 "SELECT channel_id, channel_name FROM channel_cache WHERE guild_id = ? ORDER BY channel_name ASC",
                 (guild_id,)
             )
-            channels = c.fetchall()
+            channels = await c.fetchall()
         except Exception as e:
             print("Kanallar okunamadı:", e)
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"guild_id": guild_id, "channels": channels}
 
 
@@ -855,13 +760,13 @@ def get_discord_channels_live(guild_id: str, _: dict = Depends(verify_guild_acce
     }
 
 @app.get("/api/voice_rooms/{channel_id}")
-def get_voice_room_live(channel_id: str, _: dict = Depends(verify_token)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def get_voice_room_live(channel_id: str, _: dict = Depends(verify_token)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute("SELECT live_data FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
-            row = c.fetchone()
+            await c.execute("SELECT live_data FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
+            row = await c.fetchone()
             if row and row["live_data"]:
                 return json.loads(row["live_data"])
             else:
@@ -869,17 +774,17 @@ def get_voice_room_live(channel_id: str, _: dict = Depends(verify_token)):
         except Exception as e:
             return {"error": str(e)}
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.get("/api/voice_settings/{user_id}")
-def get_user_voice_settings(user_id: str, _: dict = Depends(verify_token)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def get_user_voice_settings(user_id: str, _: dict = Depends(verify_token)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute("SELECT room_name, user_limit, bitrate, is_locked, is_hidden FROM private_voice_settings WHERE user_id = ?", (user_id,))
-            row = c.fetchone()
+            await c.execute("SELECT room_name, user_limit, bitrate, is_locked, is_hidden FROM private_voice_settings WHERE user_id = ?", (user_id,))
+            row = await c.fetchone()
             if row:
                 return {
                     "room_name": row["room_name"],
@@ -893,18 +798,18 @@ def get_user_voice_settings(user_id: str, _: dict = Depends(verify_token)):
         except Exception as e:
             return {"error": str(e)}
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.patch("/api/voice_settings/{user_id}")
-def update_user_voice_settings(user_id: str, settings: PrivateVoiceSettingsUpdate, guild_id: Optional[str] = None, payload: dict = Depends(verify_token)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def update_user_voice_settings(user_id: str, settings: PrivateVoiceSettingsUpdate, guild_id: Optional[str] = None, payload: dict = Depends(verify_token)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             admin_id = payload.get("user_id", "unknown") if payload else "unknown"
             c = user_conn.cursor()
-            c.execute("SELECT room_name, user_limit, bitrate, is_locked, is_hidden FROM private_voice_settings WHERE user_id = ?", (user_id,))
-            row = c.fetchone()
+            await c.execute("SELECT room_name, user_limit, bitrate, is_locked, is_hidden FROM private_voice_settings WHERE user_id = ?", (user_id,))
+            row = await c.fetchone()
             
             rn = settings.room_name if settings.room_name is not None else (row["room_name"] if row else None)
             ul = settings.user_limit if settings.user_limit is not None else (row["user_limit"] if row else 0)
@@ -912,7 +817,7 @@ def update_user_voice_settings(user_id: str, settings: PrivateVoiceSettingsUpdat
             il = settings.is_locked if settings.is_locked is not None else (bool(row["is_locked"]) if row else False)
             ih = settings.is_hidden if settings.is_hidden is not None else (bool(row["is_hidden"]) if row else False)
 
-            c.execute("""
+            await c.execute("""
                 INSERT INTO private_voice_settings (user_id, room_name, user_limit, bitrate, is_locked, is_hidden)
                 VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id) DO UPDATE SET
@@ -928,27 +833,27 @@ def update_user_voice_settings(user_id: str, settings: PrivateVoiceSettingsUpdat
                 details = f"Admin Panelinden Güncelleme - Odanın yeni ayarları: {rn}, Limit: {ul}, Bitrate: {br}, Kilitli: {il}, Gizli: {ih}"
                 
                 # Admin Loglarına yaz
-                c.execute("""
+                await c.execute("""
                     INSERT INTO admin_events (guild_id, admin_id, action_type, target_id, reason)
                     VALUES (?, ?, ?, ?, ?)
                 """, (guild_id, admin_id, "UPDATE_VOICE_SETTINGS", user_id, details))
                 
                 # Sistem Loglarına yaz (Oda timeline'ında görünmesi için)
-                c.execute("""
+                await c.execute("""
                     INSERT INTO db_event_logs (guild_id, event_type, user_id, details)
                     VALUES (?, ?, ?, ?)
                 """, (guild_id, "oda_update", user_id, details))
                 
-            user_conn.commit()
+            await user_conn.commit()
             return {"success": True}
         except Exception as e:
             return {"error": str(e)}
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.delete("/api/voice_rooms/{channel_id}")
-def delete_voice_room_force(channel_id: str, payload: dict = Depends(verify_token)):
+async def delete_voice_room_force(channel_id: str, payload: dict = Depends(verify_token)):
     # Sunucu doğrulama yapılamıyor çünkü channel_id sadece odaya ait. 
     # Güvenlik açısından burada guild_id istenebilir ama şimdilik doğrudan discord API'ye DELETE atıyoruz.
     if not DISCORD_TOKEN:
@@ -960,16 +865,16 @@ def delete_voice_room_force(channel_id: str, payload: dict = Depends(verify_toke
     
     if res.status_code == 200 or res.status_code == 204:
         # DB'den temizle
-        user_conn = get_db_connection(MAIN_DB_PATH)
+        user_conn = await get_db_connection(MAIN_DB_PATH)
         if user_conn:
             try:
                 c = user_conn.cursor()
-                c.execute("DELETE FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
-                user_conn.commit()
+                await c.execute("DELETE FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
+                await user_conn.commit()
             except:
                 pass
             finally:
-                user_conn.close()
+                await user_conn.close()
         return {"success": True, "message": "Oda başarıyla silindi."}
     else:
         return {"error": f"Discord API Error: {res.status_code}"}
@@ -1006,25 +911,25 @@ class ManualVoiceSetup(BaseModel):
     hub_id: str
 
 @app.post("/api/settings/oda-kurulum/manual/{guild_id}")
-def setup_manual_private_voice(guild_id: str, data: ManualVoiceSetup, _: dict = Depends(verify_write_access)):
+async def setup_manual_private_voice(guild_id: str, data: ManualVoiceSetup, _: dict = Depends(verify_write_access)):
     """
     Kullanıcının seçtiği mevcut bir kategori ve ses kanalını Özel Oda Sistemi olarak kaydeder.
     """
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
-            c.execute(
+            await c.execute(
                 "INSERT INTO private_voice_hubs (guild_id, hub_id, category_id) VALUES (?, ?, ?) "
                 "ON CONFLICT(guild_id) DO UPDATE SET hub_id=excluded.hub_id, category_id=excluded.category_id",
                 (guild_id, data.hub_id, data.category_id)
             )
-            user_conn.commit()
+            await user_conn.commit()
             return {"success": True, "message": "Oda sistemi başarıyla yapılandırıldı!"}
         except Exception as e:
             return {"error": str(e)}
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"error": "DB_CONNECTION_FAILED"}
 
 # ---------------------------------------------------------------------------
@@ -1042,7 +947,7 @@ class ChannelSettingUpdate(BaseModel):
 
 
 @app.get("/api/settings/{guild_id}")
-def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)):
+async def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)):
     """
     Belirli bir sunucunun şalter (db_log_settings) ve
     Discord kanal (log_settings) ayarlarını birlikte döndürür.
@@ -1050,27 +955,27 @@ def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)):
     settings = {}
     channels = {}
 
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
 
             # 1) ON/OFF şalterleri — db_log_settings
-            c.execute("SELECT * FROM db_log_settings WHERE guild_id = ?", (guild_id,))
-            row_db = c.fetchone() or {}
+            await c.execute("SELECT * FROM db_log_settings WHERE guild_id = ?", (guild_id,))
+            row_db = await c.fetchone() or {}
             for tk in TOGGLE_COLUMNS:
                 val = row_db.get(tk)
                 settings[tk] = "on" if val == 1 else "off"
 
             # 2) Discord kanal seçimleri — log_settings
-            c.execute("SELECT * FROM log_settings WHERE guild_id = ?", (guild_id,))
-            row_ls = c.fetchone() or {}
+            await c.execute("SELECT * FROM log_settings WHERE guild_id = ?", (guild_id,))
+            row_ls = await c.fetchone() or {}
             for ck in CHANNEL_COLUMNS:
                 channels[ck] = row_ls.get(ck)  # None ise kanal seçilmemiş
                 
             # 3) Private Voice (Oda Sistemi) durumu
-            c.execute("SELECT hub_id, category_id FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
-            pv_row = c.fetchone()
+            await c.execute("SELECT hub_id, category_id FROM private_voice_hubs WHERE guild_id = ?", (guild_id,))
+            pv_row = await c.fetchone()
             private_voice = {}
             if pv_row:
                 private_voice = {"hub_id": pv_row["hub_id"], "category_id": pv_row["category_id"]}
@@ -1080,8 +985,8 @@ def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)):
             
         try:
             # 4) Ticket Settings
-            c.execute("SELECT * FROM ticket_settings WHERE guild_id = ?", (guild_id,))
-            ticket_row = c.fetchone()
+            await c.execute("SELECT * FROM ticket_settings WHERE guild_id = ?", (guild_id,))
+            ticket_row = await c.fetchone()
             ticket_settings = {}
             if ticket_row:
                 ticket_settings = dict(ticket_row)
@@ -1090,7 +995,7 @@ def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)):
             ticket_settings = {}
             
         finally:
-            user_conn.close()
+            await user_conn.close()
 
     return {"guild_id": guild_id, "settings": settings, "channels": channels, "private_voice": private_voice, "ticket_settings": ticket_settings}
 
@@ -1105,8 +1010,8 @@ class TicketSettingsUpdate(BaseModel):
     panel_channel_id: Optional[str] = None
 
 @app.post("/api/settings/tickets/{guild_id}")
-def update_ticket_settings(guild_id: str, update: TicketSettingsUpdate, _: dict = Depends(verify_write_access)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def update_ticket_settings(guild_id: str, update: TicketSettingsUpdate, _: dict = Depends(verify_write_access)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if not user_conn:
         raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
     try:
@@ -1114,37 +1019,37 @@ def update_ticket_settings(guild_id: str, update: TicketSettingsUpdate, _: dict 
         
         # Ensure support_user_ids column exists
         try:
-            c.execute("ALTER TABLE ticket_settings ADD COLUMN support_user_ids TEXT DEFAULT '[]'")
+            await c.execute("ALTER TABLE ticket_settings ADD COLUMN support_user_ids TEXT DEFAULT '[]'")
         except Exception:
             pass  # Column might already exist
             
-        c.execute("SELECT * FROM ticket_settings WHERE guild_id = ?", (guild_id,))
-        if c.fetchone() is None:
-            c.execute("INSERT INTO ticket_settings (guild_id) VALUES (?)", (guild_id,))
+        await c.execute("SELECT * FROM ticket_settings WHERE guild_id = ?", (guild_id,))
+        if await c.fetchone() is None:
+            await c.execute("INSERT INTO ticket_settings (guild_id) VALUES (?)", (guild_id,))
             
         if update.category_id is not None:
-            c.execute("UPDATE ticket_settings SET category_id = ? WHERE guild_id = ?", (update.category_id, guild_id))
+            await c.execute("UPDATE ticket_settings SET category_id = ? WHERE guild_id = ?", (update.category_id, guild_id))
         if update.support_role_id is not None:
-            c.execute("UPDATE ticket_settings SET support_role_id = ? WHERE guild_id = ?", (update.support_role_id, guild_id))
+            await c.execute("UPDATE ticket_settings SET support_role_id = ? WHERE guild_id = ?", (update.support_role_id, guild_id))
         if update.support_user_ids is not None:
-            c.execute("UPDATE ticket_settings SET support_user_ids = ? WHERE guild_id = ?", (update.support_user_ids, guild_id))
+            await c.execute("UPDATE ticket_settings SET support_user_ids = ? WHERE guild_id = ?", (update.support_user_ids, guild_id))
         if update.admin_role_id is not None:
-            c.execute("UPDATE ticket_settings SET admin_role_id = ? WHERE guild_id = ?", (update.admin_role_id, guild_id))
+            await c.execute("UPDATE ticket_settings SET admin_role_id = ? WHERE guild_id = ?", (update.admin_role_id, guild_id))
         if update.log_channel_id is not None:
-            c.execute("UPDATE ticket_settings SET log_channel_id = ? WHERE guild_id = ?", (update.log_channel_id, guild_id))
+            await c.execute("UPDATE ticket_settings SET log_channel_id = ? WHERE guild_id = ?", (update.log_channel_id, guild_id))
         if update.panel_title is not None:
-            c.execute("UPDATE ticket_settings SET panel_title = ? WHERE guild_id = ?", (update.panel_title, guild_id))
+            await c.execute("UPDATE ticket_settings SET panel_title = ? WHERE guild_id = ?", (update.panel_title, guild_id))
         if update.panel_desc is not None:
-            c.execute("UPDATE ticket_settings SET panel_desc = ? WHERE guild_id = ?", (update.panel_desc, guild_id))
+            await c.execute("UPDATE ticket_settings SET panel_desc = ? WHERE guild_id = ?", (update.panel_desc, guild_id))
         if update.panel_channel_id is not None:
-            c.execute("UPDATE ticket_settings SET panel_channel_id = ? WHERE guild_id = ?", (update.panel_channel_id, guild_id))
+            await c.execute("UPDATE ticket_settings SET panel_channel_id = ? WHERE guild_id = ?", (update.panel_channel_id, guild_id))
             
-        user_conn.commit()
+        await user_conn.commit()
     except Exception as e:
         print("Ticket settings update error:", e)
         raise HTTPException(status_code=500, detail="Ticket ayarları güncellenemedi")
     finally:
-        user_conn.close()
+        await user_conn.close()
     return {"status": "ok"}
 
 @app.get("/api/discord-roles/{guild_id}")
@@ -1185,12 +1090,12 @@ def get_discord_members(guild_id: str, _: dict = Depends(verify_guild_access)):
 
 
 @app.post("/api/settings/{guild_id}")
-def update_log_setting(guild_id: str, update: LogSettingsUpdate, _: dict = Depends(verify_write_access)):
+async def update_log_setting(guild_id: str, update: LogSettingsUpdate, _: dict = Depends(verify_write_access)):
     """ON/OFF şalteri günceller — db_log_settings tablosuna yazar."""
     if update.setting_name not in TOGGLE_COLUMNS:
         raise HTTPException(status_code=400, detail="Geçersiz ayar sütunu")
 
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if not user_conn:
         raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
 
@@ -1199,30 +1104,30 @@ def update_log_setting(guild_id: str, update: LogSettingsUpdate, _: dict = Depen
         val = 1 if update.state.lower() == "on" else 0
         
         # 1) db_log_settings (Web)
-        c.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", (guild_id,))
-        c.execute(
+        await c.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", (guild_id,))
+        await c.execute(
             f"UPDATE db_log_settings SET {update.setting_name} = ? WHERE guild_id = ?",
             (val, guild_id)
         )
         
         # 2) log_settings (Discord Embed)
-        c.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", (guild_id,))
-        c.execute(
+        await c.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", (guild_id,))
+        await c.execute(
             f"UPDATE log_settings SET {update.setting_name} = ? WHERE guild_id = ?",
             (val, guild_id)
         )
         
-        user_conn.commit()
+        await user_conn.commit()
         return {"status": "success", "setting": update.setting_name, "state": update.state}
     except Exception as e:
         print("Settings yazma hatası:", e)
         raise HTTPException(status_code=500, detail="Ayar kaydedilemedi")
     finally:
-        user_conn.close()
+        await user_conn.close()
 
 
 @app.post("/api/channel-setting/{guild_id}")
-def update_channel_setting(guild_id: str, update: ChannelSettingUpdate, _: dict = Depends(verify_write_access)):
+async def update_channel_setting(guild_id: str, update: ChannelSettingUpdate, _: dict = Depends(verify_write_access)):
     """
     Discord log kanalını günceller — log_settings tablosuna yazar.
     channel_id = None ise kanal seçimi temizlenir.
@@ -1230,25 +1135,25 @@ def update_channel_setting(guild_id: str, update: ChannelSettingUpdate, _: dict 
     if update.column not in CHANNEL_COLUMNS:
         raise HTTPException(status_code=400, detail="Geçersiz kanal kolonu")
 
-    user_conn = get_db_connection(MAIN_DB_PATH)
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if not user_conn:
         raise HTTPException(status_code=500, detail="Veritabanına bağlanılamadı")
 
     try:
         c = user_conn.cursor()
         # Satır yoksa oluştur
-        c.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", (guild_id,))
-        c.execute(
+        await c.execute("INSERT OR IGNORE INTO log_settings (guild_id) VALUES (?)", (guild_id,))
+        await c.execute(
             f"UPDATE log_settings SET {update.column} = ? WHERE guild_id = ?",
             (update.channel_id, guild_id)
         )
-        user_conn.commit()
+        await user_conn.commit()
         return {"status": "success", "column": update.column, "channel_id": update.channel_id}
     except Exception as e:
         print("Kanal yazma hatası:", e)
         raise HTTPException(status_code=500, detail="Kanal kaydedilemedi")
     finally:
-        user_conn.close()
+        await user_conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -1260,42 +1165,42 @@ class NoteCreate(BaseModel):
     added_by: str
 
 @app.get("/api/notes/{guild_id}/{user_id}")
-def get_user_notes(guild_id: str, user_id: str, payload: dict = Depends(verify_guild_access)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def get_user_notes(guild_id: str, user_id: str, payload: dict = Depends(verify_guild_access)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         c = user_conn.cursor()
-        c.execute("SELECT * FROM admin_notes WHERE user_id = ? AND guild_id IN (?, 'GLOBAL') ORDER BY created_at DESC", (user_id, guild_id))
-        notes = c.fetchall()
-        user_conn.close()
+        await c.execute("SELECT * FROM admin_notes WHERE user_id = ? AND guild_id IN (?, 'GLOBAL') ORDER BY created_at DESC", (user_id, guild_id))
+        notes = await c.fetchall()
+        await user_conn.close()
         is_owner = guild_id in payload.get("owned_guilds", [])
         return {"notes": notes, "current_admin_id": payload.get("user_id"), "is_owner": is_owner}
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.post("/api/notes/{guild_id}")
-def add_admin_note(guild_id: str, note_data: dict, payload: dict = Depends(verify_write_access)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def add_admin_note(guild_id: str, note_data: dict, payload: dict = Depends(verify_write_access)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         c = user_conn.cursor()
         admin_id = payload.get("user_id", "unknown")
         admin_name = payload.get("username", "Admin")
         
-        c.execute("INSERT INTO admin_notes (guild_id, user_id, note, added_by, admin_id) VALUES (?, ?, ?, ?, ?)", 
+        await c.execute("INSERT INTO admin_notes (guild_id, user_id, note, added_by, admin_id) VALUES (?, ?, ?, ?, ?)", 
                   (guild_id, note_data['user_id'], note_data['note'], admin_name, admin_id))
-        user_conn.commit()
-        user_conn.close()
+        await user_conn.commit()
+        await user_conn.close()
         return {"success": True}
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.delete("/api/notes/{guild_id}/{note_id}")
-def delete_admin_note(guild_id: str, note_id: int, payload: dict = Depends(verify_write_access)):
-    user_conn = get_db_connection(MAIN_DB_PATH)
+async def delete_admin_note(guild_id: str, note_id: int, payload: dict = Depends(verify_write_access)):
+    user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
             c = user_conn.cursor()
             admin_id = payload.get("user_id")
             
-            c.execute("SELECT admin_id FROM admin_notes WHERE id = ? AND guild_id = ?", (note_id, guild_id))
-            row = c.fetchone()
+            await c.execute("SELECT admin_id FROM admin_notes WHERE id = ? AND guild_id = ?", (note_id, guild_id))
+            row = await c.fetchone()
             if not row:
                 return {"error": "Not bulunamadı."}
                 
@@ -1303,11 +1208,11 @@ def delete_admin_note(guild_id: str, note_id: int, payload: dict = Depends(verif
             if row["admin_id"] != admin_id and not is_owner:
                 return {"error": "Bu notu sadece ekleyen veya sunucu sahibi silebilir."}
             
-            c.execute("DELETE FROM admin_notes WHERE id = ? AND guild_id = ?", (note_id, guild_id))
-            user_conn.commit()
+            await c.execute("DELETE FROM admin_notes WHERE id = ? AND guild_id = ?", (note_id, guild_id))
+            await user_conn.commit()
             return {"success": True}
         finally:
-            user_conn.close()
+            await user_conn.close()
     return {"error": "DB_CONNECTION_FAILED"}
 
 # ---------------------------------------------------------------------------
@@ -1319,17 +1224,17 @@ class CommandPermUpdate(BaseModel):
     allowed_roles: str # JSON array formatında virgülle ayrılmış liste veya json string
 
 @app.get("/api/commands/{guild_id}")
-def get_commands(guild_id: str, _: dict = Depends(verify_guild_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def get_commands(guild_id: str, _: dict = Depends(verify_guild_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT * FROM command_permissions WHERE guild_id = ?", (guild_id,))
-    perms = c.fetchall()
+    await c.execute("SELECT * FROM command_permissions WHERE guild_id = ?", (guild_id,))
+    perms = await c.fetchall()
 
     # Veritabanından (bot_commands_registry) komut listesini oku
     categories = {}
     try:
-        c.execute("SELECT command_name, category, description, default_access FROM bot_commands_registry")
-        registry_rows = c.fetchall()
+        await c.execute("SELECT command_name, category, description, default_access FROM bot_commands_registry")
+        registry_rows = await c.fetchall()
         for row in registry_rows:
             cat = row['category']
             if cat not in categories:
@@ -1343,21 +1248,21 @@ def get_commands(guild_id: str, _: dict = Depends(verify_guild_access)):
         # Tablo henüz oluşmamışsa veya hata varsa boş döner
         categories = {}
     finally:
-        conn.close()
+        await conn.close()
         
     return {"permissions": perms, "categories": categories}
 
 @app.post("/api/commands/{guild_id}")
-def update_command(guild_id: str, req: CommandPermUpdate, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def update_command(guild_id: str, req: CommandPermUpdate, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+    await c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
                  VALUES (?, ?, ?, ?)
                  ON CONFLICT(guild_id, command_name) 
                  DO UPDATE SET is_enabled=excluded.is_enabled, allowed_roles=excluded.allowed_roles''',
               (guild_id, req.command_name, req.is_enabled, req.allowed_roles))
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
 # ---------------------------------------------------------------------------
 # Form Yönetimi (Başvuru Şalterleri / Form UI)
 # ---------------------------------------------------------------------------
@@ -1380,104 +1285,104 @@ class SummonFormReq(BaseModel):
     target_channel_id: str
 
 @app.get("/api/forms/{guild_id}")
-def get_forms(guild_id: str, _: dict = Depends(verify_guild_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def get_forms(guild_id: str, _: dict = Depends(verify_guild_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     if not conn:
         return []
     c = conn.cursor()
-    c.execute("SELECT * FROM custom_forms WHERE guild_id = ?", (guild_id,))
-    forms = c.fetchall()
+    await c.execute("SELECT * FROM custom_forms WHERE guild_id = ?", (guild_id,))
+    forms = await c.fetchall()
     
     for form in forms:
-        c.execute("SELECT question_text FROM form_questions WHERE guild_id = ? AND form_id = ?", (guild_id, form['form_id']))
-        form['questions'] = [row['question_text'] for row in c.fetchall()]
+        await c.execute("SELECT question_text FROM form_questions WHERE guild_id = ? AND form_id = ?", (guild_id, form['form_id']))
+        form['questions'] = [row['question_text'] for row in await c.fetchall()]
         
         if form['form_type'] == 2:
-            c.execute("SELECT role_id FROM form_roles WHERE guild_id = ? AND form_id = ?", (guild_id, form['form_id']))
-            form['roles'] = [row['role_id'] for row in c.fetchall()]
+            await c.execute("SELECT role_id FROM form_roles WHERE guild_id = ? AND form_id = ?", (guild_id, form['form_id']))
+            form['roles'] = [row['role_id'] for row in await c.fetchall()]
             
-    conn.close()
+    await conn.close()
     return forms
 
 @app.post("/api/forms/{guild_id}")
-def create_form(guild_id: str, form_data: CustomFormCreate, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def create_form(guild_id: str, form_data: CustomFormCreate, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     
-    c.execute("SELECT form_id FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_data.form_id))
-    if c.fetchone():
-        conn.close()
+    await c.execute("SELECT form_id FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_data.form_id))
+    if await c.fetchone():
+        await conn.close()
         raise HTTPException(status_code=400, detail="Bu Form ID zaten kullanımda.")
         
-    c.execute('''INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve)
+    await c.execute('''INSERT INTO custom_forms (form_id, guild_id, title, channel_id, form_type, action_target, auto_approve)
                  VALUES (?, ?, ?, ?, ?, ?, ?)''', 
               (form_data.form_id, guild_id, form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve))
               
     for q in form_data.questions:
-        c.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (form_data.form_id, guild_id, q))
+        await c.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (form_data.form_id, guild_id, q))
         
     if form_data.form_type == 2 and form_data.roles:
         for r in form_data.roles:
-            c.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (form_data.form_id, guild_id, r))
+            await c.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (form_data.form_id, guild_id, r))
             
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success", "form_id": form_data.form_id}
 
 @app.put("/api/forms/{guild_id}/{form_id}")
-def update_form(guild_id: str, form_id: str, form_data: CustomFormCreate, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def update_form(guild_id: str, form_id: str, form_data: CustomFormCreate, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     
-    c.execute("SELECT form_id FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
-    if not c.fetchone():
-        conn.close()
+    await c.execute("SELECT form_id FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
+    if not await c.fetchone():
+        await conn.close()
         raise HTTPException(status_code=404, detail="Form bulunamadı.")
         
-    c.execute('''UPDATE custom_forms SET title = ?, channel_id = ?, form_type = ?, action_target = ?, auto_approve = ?
+    await c.execute('''UPDATE custom_forms SET title = ?, channel_id = ?, form_type = ?, action_target = ?, auto_approve = ?
                  WHERE guild_id = ? AND form_id = ?''', 
               (form_data.title, form_data.channel_id, form_data.form_type, form_data.action_target, form_data.auto_approve, guild_id, form_id))
               
-    c.execute("DELETE FROM form_questions WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
-    c.execute("DELETE FROM form_roles WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
+    await c.execute("DELETE FROM form_questions WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
+    await c.execute("DELETE FROM form_roles WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
     
     for q in form_data.questions:
-        c.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (form_id, guild_id, q))
+        await c.execute("INSERT INTO form_questions (form_id, guild_id, question_text) VALUES (?, ?, ?)", (form_id, guild_id, q))
         
     if form_data.form_type == 2 and form_data.roles:
         for r in form_data.roles:
-            c.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (form_id, guild_id, r))
+            await c.execute("INSERT INTO form_roles (form_id, guild_id, role_id) VALUES (?, ?, ?)", (form_id, guild_id, r))
             
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success", "form_id": form_id}
 
 @app.delete("/api/forms/{guild_id}/{form_id}")
-def delete_form(guild_id: str, form_id: str, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def delete_form(guild_id: str, form_id: str, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute("DELETE FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
-    conn.commit()
-    conn.close()
+    await c.execute("DELETE FROM custom_forms WHERE guild_id = ? AND form_id = ?", (guild_id, form_id))
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 @app.post("/api/forms/{guild_id}/{form_id}/summon")
-def summon_form(guild_id: str, form_id: str, req: SummonFormReq, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def summon_form(guild_id: str, form_id: str, req: SummonFormReq, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     
     import json
     payload = json.dumps({"form_id": form_id, "target_channel_id": req.target_channel_id})
-    c.execute("INSERT INTO web_actions (guild_id, action_type, payload) VALUES (?, ?, ?)", 
+    await c.execute("INSERT INTO web_actions (guild_id, action_type, payload) VALUES (?, ?, ?)", 
               (guild_id, "summon_form", payload))
               
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success", "message": "Form tetiklendi"}
 
 @app.get("/api/roles/{guild_id}")
-def search_roles(guild_id: str, q: Optional[str] = "", _: dict = Depends(verify_guild_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def search_roles(guild_id: str, q: Optional[str] = "", _: dict = Depends(verify_guild_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     query = "SELECT role_id, role_name FROM roles WHERE guild_id = ?"
     params = [guild_id]
@@ -1486,11 +1391,11 @@ def search_roles(guild_id: str, q: Optional[str] = "", _: dict = Depends(verify_
         params.append(f"%{q}%")
     query += " LIMIT 20"
     try:
-        c.execute(query, params)
-        roles = c.fetchall()
+        await c.execute(query, params)
+        roles = await c.fetchall()
     except:
         roles = []
-    conn.close()
+    await conn.close()
     return {"roles": roles}
 
 class CategoryPermUpdate(BaseModel):
@@ -1498,17 +1403,17 @@ class CategoryPermUpdate(BaseModel):
     is_enabled: int
 
 @app.post("/api/commands/category/{guild_id}")
-def update_category_commands(guild_id: str, req: CategoryPermUpdate, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def update_category_commands(guild_id: str, req: CategoryPermUpdate, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
-        c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+        await c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
                      VALUES (?, ?, ?, '[]')
                      ON CONFLICT(guild_id, command_name) 
                      DO UPDATE SET is_enabled=excluded.is_enabled''',
                   (guild_id, cmd_name, req.is_enabled))
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 class CategoryRoleUpdate(BaseModel):
@@ -1516,13 +1421,13 @@ class CategoryRoleUpdate(BaseModel):
     role_id: str
 
 @app.post("/api/commands/category/{guild_id}/roles")
-def add_role_to_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
+async def add_role_to_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
     import json
-    conn = get_db_connection(MAIN_DB_PATH)
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
-        c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
-        row = c.fetchone()
+        await c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
+        row = await c.fetchone()
         is_enabled = 1
         allowed_roles = []
         if row:
@@ -1535,23 +1440,23 @@ def add_role_to_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depen
         if req.role_id not in allowed_roles:
             allowed_roles.append(req.role_id)
             
-        c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
+        await c.execute('''INSERT INTO command_permissions (guild_id, command_name, is_enabled, allowed_roles)
                      VALUES (?, ?, ?, ?)
                      ON CONFLICT(guild_id, command_name) 
                      DO UPDATE SET allowed_roles=excluded.allowed_roles''',
                   (guild_id, cmd_name, is_enabled, json.dumps(allowed_roles)))
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 @app.post("/api/commands/category/{guild_id}/roles/remove")
-def remove_role_from_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
+async def remove_role_from_category(guild_id: str, req: CategoryRoleUpdate, _: dict = Depends(verify_write_access)):
     import json
-    conn = get_db_connection(MAIN_DB_PATH)
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
     for cmd_name in req.commands:
-        c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
-        row = c.fetchone()
+        await c.execute("SELECT is_enabled, allowed_roles FROM command_permissions WHERE guild_id = ? AND command_name = ?", (guild_id, cmd_name))
+        row = await c.fetchone()
         
         if not row:
             continue
@@ -1565,11 +1470,11 @@ def remove_role_from_category(guild_id: str, req: CategoryRoleUpdate, _: dict = 
                 
         if req.role_id in allowed_roles:
             allowed_roles.remove(req.role_id)
-            c.execute("UPDATE command_permissions SET allowed_roles = ? WHERE guild_id = ? AND command_name = ?", 
+            await c.execute("UPDATE command_permissions SET allowed_roles = ? WHERE guild_id = ? AND command_name = ?", 
                       (json.dumps(allowed_roles), guild_id, cmd_name))
                       
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 
@@ -1583,14 +1488,14 @@ class ActionCreate(BaseModel):
     reason: str
 
 @app.post("/api/actions/{guild_id}")
-def create_action(guild_id: str, req: ActionCreate, _: dict = Depends(verify_write_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def create_action(guild_id: str, req: ActionCreate, _: dict = Depends(verify_write_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO pending_actions (guild_id, target_user_id, action_type, reason)
+    await c.execute('''INSERT INTO pending_actions (guild_id, target_user_id, action_type, reason)
                  VALUES (?, ?, ?, ?)''', 
               (guild_id, req.target_user_id, req.action_type, req.reason))
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 # --- PANEL AUTHENTICATION / RBAC ---
@@ -1601,41 +1506,41 @@ class PanelAuthUpdate(BaseModel):
     permission_level: str # 'read' or 'write'
 
 @app.get("/api/panel_auth/{guild_id}")
-def get_panel_auth(guild_id: str, _: dict = Depends(verify_owner_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def get_panel_auth(guild_id: str, _: dict = Depends(verify_owner_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     if not conn:
         return {"error": "DB error"}
     c = conn.cursor()
-    c.execute("SELECT target_id, target_type, permission_level FROM panel_access_controls WHERE guild_id = ?", (guild_id,))
-    rows = c.fetchall()
-    conn.close()
+    await c.execute("SELECT target_id, target_type, permission_level FROM panel_access_controls WHERE guild_id = ?", (guild_id,))
+    rows = await c.fetchall()
+    await conn.close()
     return {"permissions": rows}
 
 @app.post("/api/panel_auth/{guild_id}")
-def update_panel_auth(guild_id: str, req: PanelAuthUpdate, _: dict = Depends(verify_owner_access)):
+async def update_panel_auth(guild_id: str, req: PanelAuthUpdate, _: dict = Depends(verify_owner_access)):
     if req.permission_level not in ["read", "write"]:
         raise HTTPException(status_code=400, detail="Invalid permission level")
     if req.target_type not in ["user", "role"]:
         raise HTTPException(status_code=400, detail="Invalid target type")
         
-    conn = get_db_connection(MAIN_DB_PATH)
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute('''INSERT INTO panel_access_controls (guild_id, target_id, target_type, permission_level)
+    await c.execute('''INSERT INTO panel_access_controls (guild_id, target_id, target_type, permission_level)
                  VALUES (?, ?, ?, ?)
                  ON CONFLICT(guild_id, target_id)
                  DO UPDATE SET permission_level = excluded.permission_level, target_type = excluded.target_type''',
               (guild_id, req.target_id, req.target_type, req.permission_level))
-    conn.commit()
-    conn.close()
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 @app.delete("/api/panel_auth/{guild_id}/{target_id}")
-def delete_panel_auth(guild_id: str, target_id: str, _: dict = Depends(verify_owner_access)):
-    conn = get_db_connection(MAIN_DB_PATH)
+async def delete_panel_auth(guild_id: str, target_id: str, _: dict = Depends(verify_owner_access)):
+    conn = await get_db_connection(MAIN_DB_PATH)
     c = conn.cursor()
-    c.execute("DELETE FROM panel_access_controls WHERE guild_id = ? AND target_id = ?", (guild_id, target_id))
-    conn.commit()
-    conn.close()
+    await c.execute("DELETE FROM panel_access_controls WHERE guild_id = ? AND target_id = ?", (guild_id, target_id))
+    await conn.commit()
+    await conn.close()
     return {"status": "success"}
 
 @app.post("/api/upload-banner")
@@ -1673,33 +1578,33 @@ async def upload_banner(
     # so we assume blur_amount and upload_tokens exist in Oracle DB.
     # We added them manually via update_oracle.py
 
-    cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = :1", (token,))
-    row = cursor.fetchone()
+    await cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = :1", (token,))
+    row = await cursor.fetchone()
 
     if not row:
-        db.close()
+        await db.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
 
     user_id = row['user_id']
     expires_at = row['expires_at']
 
     if time.time() > expires_at:
-        cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
-        db.commit()
-        db.close()
+        await cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
+        await db.commit()
+        await db.close()
         raise HTTPException(status_code=401, detail="Token süresi dolmuş.")
 
     # Atomic delete
-    cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
+    await cursor.execute("DELETE FROM upload_tokens WHERE token = :1", (token,))
     if cursor.rowcount == 0:
-        db.close()
+        await db.close()
         raise HTTPException(status_code=401, detail="Geçersiz veya kullanılmış token.")
-    db.commit()
+    await db.commit()
 
     # Process image
     content = await file.read()
     if len(content) > 5 * 1024 * 1024:
-        db.close()
+        await db.close()
         raise HTTPException(status_code=413, detail="Dosya çok büyük (Maks 5MB)")
 
     try:
@@ -1715,11 +1620,11 @@ async def upload_banner(
         bg_path = os.path.join(banner_dir, f"{user_id}.png")
         img.save(bg_path, "PNG", optimize=True)
     except Exception as e:
-        db.close()
+        await db.close()
         raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")
 
     # Save customization to global_profiles in Oracle
-    cursor.execute(
+    await cursor.execute(
         """
         MERGE INTO global_profiles trg
         USING (SELECT :1 AS user_id, :2 AS bar_color, :3 AS border_color, :4 AS border_width, :5 AS overlay_opacity, :6 AS name_color, :7 AS blur_amount FROM dual) src
@@ -1736,8 +1641,8 @@ async def upload_banner(
         """,
         (user_id, bar_color, border_color, border_width, overlay_opacity, name_color, blur_amount)
     )
-    db.commit()
-    db.close()
+    await db.commit()
+    await db.close()
     return {"status": "success", "message": "Rank kartı başarıyla güncellendi."}
 
 

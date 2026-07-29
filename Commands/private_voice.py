@@ -400,6 +400,12 @@ class PrivateVoice(commands.Cog):
                         try:
                             await channel.delete(reason="Sistem Taraması: Boş oda silindi")
                             await self.bot.db.execute("DELETE FROM private_voice_rooms WHERE channel_id=?", str(channel_id))
+                        except discord.Forbidden:
+                            log_channel, _ = await self.get_log_settings(channel.guild)
+                            if log_channel:
+                                try:
+                                    await log_channel.send(f"⚠️ **KRİTİK HATA:** `{channel.name}` (ID: `{channel.id}`) boş odası silinmek istendi ancak botun **Kanalları Yönet** yetkisi yok! Lütfen yetkileri kontrol edin veya kanalı manuel silin.")
+                                except: pass
                         except Exception:
                             pass
                 else:
@@ -417,6 +423,12 @@ class PrivateVoice(commands.Cog):
                                 try:
                                     await channel.delete(reason="Sistem Taraması: Boş oda silindi (Yetim)")
                                     await self.bot.db.execute("DELETE FROM private_voice_rooms WHERE channel_id=?", str(channel.id))
+                                except discord.Forbidden:
+                                    log_channel, _ = await self.get_log_settings(channel.guild)
+                                    if log_channel:
+                                        try:
+                                            await log_channel.send(f"⚠️ **KRİTİK HATA:** `{channel.name}` (ID: `{channel.id}`) yetim boş odası silinmek istendi ancak botun **Kanalları Yönet** yetkisi yok! Lütfen yetkileri kontrol edin.")
+                                        except: pass
                                 except Exception as e:
                                     log.warning(f"Oda silinemedi: {e}")
         except Exception as e:
@@ -717,6 +729,22 @@ class PrivateVoice(commands.Cog):
                                     await member.move_to(None) # Hub'dan çıkar
                                 except Exception:
                                     pass
+                            elif getattr(e, "status", None) == 403 or isinstance(e, discord.Forbidden):
+                                log.warning(f"Kanal oluşturma yetkisi yok: {member.guild.id}")
+                                try:
+                                    await member.send("❌ Sunucuda özel oda oluşturulamadı! Botun **Kanalları Yönet** yetkisi eksik. Lütfen sunucu yetkililerine bildirin.")
+                                except discord.Forbidden:
+                                    pass
+                                try:
+                                    await member.move_to(None)
+                                except Exception:
+                                    pass
+                                log_channel, settings = await self.get_log_settings(member.guild)
+                                if log_channel and settings and settings.get("oda_create_on"):
+                                    try:
+                                        await log_channel.send(f"⚠️ **KRİTİK HATA:** {member.mention} özel oda oluşturmak istedi ancak botun **Kanalları Yönet** yetkisi olmadığı için oda açılamadı!")
+                                    except:
+                                        pass
                             else:
                                 log.error(f"Oda oluşturulurken HTTP hatası: {e}")
                         except Exception as e:

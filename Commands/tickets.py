@@ -497,6 +497,7 @@ class Tickets(commands.Cog):
     async def cleanup_task(self):
         # Hayalet odaları temizle
         try:
+            # 1. Kapalı durumdaki biletlerin kanallarını ve kayıtlarını temizle
             closed_tickets = await self.bot.db.fetchall("SELECT channel_id, guild_id, ticket_id FROM active_tickets WHERE status='closed'")
             for t in closed_tickets:
                 guild = self.bot.get_guild(int(t["guild_id"]))
@@ -511,6 +512,28 @@ class Tickets(commands.Cog):
                             log.error(f"Failed to delete ghost channel {chan.id}: {e}")
                 # Remove from db to not check again
                 await self.bot.db.execute("DELETE FROM active_tickets WHERE ticket_id=? AND guild_id=?", t["ticket_id"], t["guild_id"])
+                
+            # 2. Açık olup, Discord üzerinden manuel olarak (sağ tık -> sil) ile silinmiş biletleri DB'den temizle
+            open_tickets = await self.bot.db.fetchall("SELECT channel_id, guild_id, ticket_id FROM active_tickets WHERE status='open'")
+            for t in open_tickets:
+                guild = self.bot.get_guild(int(t["guild_id"]))
+                if guild:
+                    chan = guild.get_channel(int(t["channel_id"]))
+                    if chan is None:
+                        # Fetch ile doğrula (önbellekte olmayabilir)
+                        try:
+                            chan_test = await guild.fetch_channel(int(t["channel_id"]))
+                        except discord.NotFound:
+                            chan_test = None
+                        except discord.Forbidden:
+                            chan_test = True # Yetki yoksa var sayalım
+                        except Exception:
+                            chan_test = True
+                            
+                        if chan_test is None:
+                            await self.bot.db.execute("DELETE FROM active_tickets WHERE ticket_id=? AND guild_id=?", t["ticket_id"], t["guild_id"])
+                            log.info(f"Manuel silinmiş Ghost Ticket temizlendi: {t['ticket_id']}")
+                            
         except Exception as e:
             log.error(f"Ticket cleanup error: {e}")
 
