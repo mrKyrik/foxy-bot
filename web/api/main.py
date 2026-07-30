@@ -53,6 +53,32 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi.responses import JSONResponse
+
+RATE_LIMIT = 10 # 10 requests max
+RATE_LIMIT_PERIOD = 2 # per 2 seconds
+
+ip_request_counts = {}
+
+@app.middleware("http")
+async def rate_limit_middleware(request: Request, call_next):
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    
+    if client_ip not in ip_request_counts:
+        ip_request_counts[client_ip] = []
+        
+    # Remove old timestamps
+    ip_request_counts[client_ip] = [t for t in ip_request_counts[client_ip] if now - t < RATE_LIMIT_PERIOD]
+    
+    if len(ip_request_counts[client_ip]) >= RATE_LIMIT:
+        return JSONResponse(status_code=429, content={"detail": "Çok fazla istek attınız (Rate Limit). Lütfen kısa bir süre bekleyin."})
+        
+    ip_request_counts[client_ip].append(now)
+    
+    response = await call_next(request)
+    return response
+
 # Veritabanı yolları
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 MAIN_DB_PATH = os.path.join(BASE_DIR, "kumiho.db")
