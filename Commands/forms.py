@@ -430,7 +430,7 @@ class DynamicFormModal(discord.ui.Modal):
                     "username": str(interaction.user.id),
                     "text": log_text
                 },
-                channel_id=str(channel_id) if channel_id else None
+                channel_id=str(interaction.channel_id) if interaction.channel_id else (str(target_channel.id) if target_channel else None)
             )
 
 

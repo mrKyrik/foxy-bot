@@ -799,6 +799,11 @@ class Leveling(commands.Cog):
         expires_at = int(time.time()) + 900 # 15 mins
         
         try:
+            # Süresi dolmuş tokenları ve kullanıcının eski biletlerini temizle (Garbage Collector)
+            await self.db.execute(
+                "DELETE FROM upload_tokens WHERE expires_at < :1 OR user_id = :2",
+                int(time.time()), str(ctx.author.id)
+            )
             await self.db.execute(
                 "INSERT INTO upload_tokens (token, user_id, expires_at) VALUES (:1, :2, :3)",
                 token, str(ctx.author.id), expires_at

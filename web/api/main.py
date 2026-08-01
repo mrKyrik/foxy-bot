@@ -81,6 +81,10 @@ async def rate_limit_middleware(request: Request, call_next):
 
 # Veritabanı yolları
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+import sys
+if BASE_DIR not in sys.path:
+    sys.path.append(BASE_DIR)
+    
 MAIN_DB_PATH = os.path.join(BASE_DIR, "kumiho.db")
 
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -193,19 +197,35 @@ LIMIT_PARAM_RE = re.compile(r'(?i)\bLIMIT\s+\?\b')
 INSERT_IGNORE_RE = re.compile(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)')
 
 
-from core.database import Database
+from core.database import Database, DBRow
 shared_db = Database()
 
+@app.on_event("startup")
+async def startup_db():
+    try:
+        await shared_db.init()
+        print("Oracle DB connection pool successfully initialized for Web API.")
+    except Exception as e:
+        print(f"Oracle DB connection pool initialization error: {e}")
+
+@app.on_event("shutdown")
+async def shutdown_db():
+    try:
+        await shared_db.close()
+        print("Oracle DB connection pool closed.")
+    except Exception as e:
+        print(f"Oracle DB connection pool close error: {e}")
+
 class AsyncOracleCursor:
-    async def __init__(self, cursor):
+    def __init__(self, cursor):
         self.cursor = cursor
         
     @property
-    async def description(self):
+    def description(self):
         return self.cursor.description
 
     @property
-    async def rowcount(self):
+    def rowcount(self):
         return self.cursor.rowcount
 
     async def execute(self, query, params=()):
@@ -217,13 +237,15 @@ class AsyncOracleCursor:
             await self.cursor.execute(query, params)
         except Exception as e:
             print(f"Oracle Execution Error: {e} - Query: {query} - Params: {params}")
+            raise e
         return self
 
     async def fetchone(self):
         try:
             row = await self.cursor.fetchone()
             if not row: return None
-            return dict(zip([d[0].lower() for d in self.cursor.description], row))
+            cols = [d[0].lower() for d in self.cursor.description] if self.cursor.description else []
+            return DBRow(cols, row)
         except Exception as e:
             print(f"Fetchone error: {e}")
             return None
@@ -232,17 +254,18 @@ class AsyncOracleCursor:
         try:
             rows = await self.cursor.fetchall()
             if not rows: return []
-            cols = [d[0].lower() for d in self.cursor.description]
-            return [dict(zip(cols, row)) for row in rows]
+            cols = [d[0].lower() for d in self.cursor.description] if self.cursor.description else []
+            return [DBRow(cols, row) for row in rows]
         except Exception as e:
             print(f"Fetchall error: {e}")
             return []
 
 class AsyncOracleConnection:
-    async def __init__(self, conn):
+    def __init__(self, conn, pool):
         self.conn = conn
+        self.pool = pool
             
-    async def cursor(self):
+    def cursor(self):
         if not self.conn:
             return None
         return AsyncOracleCursor(self.conn.cursor())
@@ -252,17 +275,22 @@ class AsyncOracleConnection:
             await self.conn.commit()
             
     async def close(self):
-        if self.conn and oracle_pool:
-            await oracle_pool.release(self.conn)
+        if self.conn and self.pool:
+            try:
+                await self.pool.release(self.conn)
+            except Exception:
+                pass
             self.conn = None
 
 async def get_db_connection(db_path=None):
     try:
-        conn = await oracle_pool.acquire() if oracle_pool else None
-        return AsyncOracleConnection(conn)
+        if not shared_db.pool:
+            await shared_db.init()
+        conn = await shared_db.pool.acquire()
+        return AsyncOracleConnection(conn, shared_db.pool)
     except Exception as e:
         print(f"Oracle Connection Acquire Error: {e}")
-        return AsyncOracleConnection(None)
+        return AsyncOracleConnection(None, None)
 
 def init_db():
     pass
@@ -353,16 +381,16 @@ import requests
 async def fetch_kumiho_db_data():
     try:
         conn = await get_db_connection(MAIN_DB_PATH)
-        if not conn: return set(), {}
+        if not conn or not conn.conn: return set(), {}
         cur = conn.cursor()
         await cur.execute("SELECT guild_id FROM log_settings")
-        kumiho_guilds = {str(row[0]) for row in await cur.fetchall()}
+        kumiho_guilds = {str(row["guild_id"]) for row in await cur.fetchall()}
         
         await cur.execute("SELECT guild_id, role_id FROM role_permissions")
         mod_roles = {}
         for row in await cur.fetchall():
-            g_id = str(row[0])
-            r_id = str(row[1])
+            g_id = str(row["guild_id"])
+            r_id = str(row["role_id"])
             if g_id not in mod_roles:
                 mod_roles[g_id] = set()
             mod_roles[g_id].add(r_id)
@@ -496,18 +524,125 @@ async def discord_callback(request: Request):
         
         print(f"DEBUG CALLBACK: user={user_info.get('username')}, allowed_guilds={allowed_guilds}, owned_guilds={owned_guilds}")
                 
-        # Generate local JWT
-        jwt_payload = {
+        # Generate local JWTs
+        access_payload = {
+            "type": "access",
             "user_id": user_info["id"],
             "username": user_info.get("username"),
             "allowed_guilds": allowed_guilds,
             "owned_guilds": owned_guilds,
             "guilds_data": formatted_guilds,
+            "exp": datetime.utcnow() + timedelta(minutes=15)
+        }
+        refresh_payload = {
+            "type": "refresh",
+            "user_id": user_info["id"],
+            "discord_access_token": access_token,
             "exp": datetime.utcnow() + timedelta(days=7)
         }
-        local_token = jwt.encode(jwt_payload, JWT_SECRET, algorithm="HS256")
         
-        return {"status": "success", "token": local_token, "user": user_info}
+        local_token = jwt.encode(access_payload, JWT_SECRET, algorithm="HS256")
+        local_refresh = jwt.encode(refresh_payload, JWT_SECRET, algorithm="HS256")
+        
+        return {"status": "success", "token": local_token, "refresh_token": local_refresh, "user": user_info}
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@app.post("/api/auth/refresh")
+async def refresh_token_endpoint(req: RefreshRequest):
+    try:
+        payload = jwt.decode(req.refresh_token, JWT_SECRET, algorithms=["HS256"])
+        if payload.get("type") != "refresh":
+            raise HTTPException(status_code=401, detail="Geçersiz token tipi.")
+            
+        discord_token = payload.get("discord_access_token")
+        if not discord_token:
+            raise HTTPException(status_code=401, detail="Discord token eksik.")
+            
+        headers_auth = {
+            "Authorization": f"Bearer {discord_token}",
+            "User-Agent": "DiscordBot (https://github.com/kumiho, 1.0)"
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            # Kullanıcı Bilgisi
+            async with session.get("https://discord.com/api/v10/users/@me", headers=headers_auth, timeout=10) as res_user:
+                if res_user.status != 200:
+                    raise HTTPException(status_code=401, detail="Discord oturumu düşmüş.")
+                user_info = await res_user.json()
+                
+            # Sunucu Bilgisi
+            async with session.get("https://discord.com/api/v10/users/@me/guilds", headers=headers_auth, timeout=10) as res_guilds:
+                if res_guilds.status != 200:
+                    raise HTTPException(status_code=401, detail="Discord sunucuları alınamadı.")
+                guilds_data = await res_guilds.json()
+                
+            kumiho_guilds, mod_roles = await fetch_kumiho_db_data()
+            
+            allowed_guilds = []
+            owned_guilds = []
+            formatted_guilds = []
+            
+            OWNER_ID = os.getenv("OWNER_ID")
+            is_bot_owner = str(user_info["id"]) == str(OWNER_ID)
+            
+            for g in guilds_data:
+                g_id = str(g["id"])
+                if not is_bot_owner and g_id not in kumiho_guilds:
+                    continue
+                    
+                perms = int(g.get("permissions", 0))
+                is_owner = g.get("owner", False)
+                has_access = False
+                
+                if is_bot_owner or is_owner or (perms & 0x20) == 0x20 or (perms & 0x8) == 0x8:
+                    has_access = True
+                elif g_id in mod_roles and DISCORD_TOKEN:
+                    try:
+                        member_url = f"https://discord.com/api/v10/guilds/{g_id}/members/{user_info['id']}"
+                        headers_bot = {"Authorization": f"Bot {DISCORD_TOKEN}"}
+                        async with session.get(member_url, headers=headers_bot, timeout=5) as m_res:
+                            if m_res.status == 200:
+                                member_data = await m_res.json()
+                                user_roles = set(member_data.get("roles", []))
+                                if user_roles.intersection(mod_roles[g_id]):
+                                    has_access = True
+                    except:
+                        pass
+                        
+                if has_access:
+                    allowed_guilds.append(g_id)
+                    if is_owner or is_bot_owner:
+                        owned_guilds.append(g_id)
+                    icon_url = f"https://cdn.discordapp.com/icons/{g_id}/{g['icon']}.png" if g.get("icon") else None
+                    formatted_guilds.append({"id": g_id, "name": g["name"], "icon": icon_url})
+                    
+        # Yeni tokenlar
+        access_payload = {
+            "type": "access",
+            "user_id": user_info["id"],
+            "username": user_info.get("username"),
+            "allowed_guilds": allowed_guilds,
+            "owned_guilds": owned_guilds,
+            "guilds_data": formatted_guilds,
+            "exp": datetime.utcnow() + timedelta(minutes=15)
+        }
+        
+        # Refresh tokenı yenileyerek süresini uzatıyoruz
+        refresh_payload = {
+            "type": "refresh",
+            "user_id": user_info["id"],
+            "discord_access_token": discord_token,
+            "exp": datetime.utcnow() + timedelta(days=7)
+        }
+        
+        local_token = jwt.encode(access_payload, JWT_SECRET, algorithm="HS256")
+        local_refresh = jwt.encode(refresh_payload, JWT_SECRET, algorithm="HS256")
+        
+        return {"status": "success", "token": local_token, "refresh_token": local_refresh, "user": user_info}
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Refresh token geçersiz veya süresi dolmuş. ({str(e)})")
 
 
 @app.get("/api/global_stats")
@@ -804,7 +939,10 @@ async def get_voice_room_live(channel_id: str, _: dict = Depends(verify_token)):
     return {"error": "DB_CONNECTION_FAILED"}
 
 @app.get("/api/voice_settings/{user_id}")
-async def get_user_voice_settings(user_id: str, _: dict = Depends(verify_token)):
+async def get_user_voice_settings(user_id: str, payload: dict = Depends(verify_token)):
+    if payload.get("user_id") != user_id:
+        return {"error": "Yetkisiz işlem."}
+        
     user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
@@ -829,6 +967,9 @@ async def get_user_voice_settings(user_id: str, _: dict = Depends(verify_token))
 
 @app.patch("/api/voice_settings/{user_id}")
 async def update_user_voice_settings(user_id: str, settings: PrivateVoiceSettingsUpdate, guild_id: Optional[str] = None, payload: dict = Depends(verify_token)):
+    if payload.get("user_id") != user_id:
+        return {"error": "Yetkisiz işlem."}
+        
     user_conn = await get_db_connection(MAIN_DB_PATH)
     if user_conn:
         try:
@@ -880,8 +1021,27 @@ async def update_user_voice_settings(user_id: str, settings: PrivateVoiceSetting
 
 @app.delete("/api/voice_rooms/{channel_id}")
 async def delete_voice_room_force(channel_id: str, payload: dict = Depends(verify_token)):
-    # Sunucu doğrulama yapılamıyor çünkü channel_id sadece odaya ait. 
-    # Güvenlik açısından burada guild_id istenebilir ama şimdilik doğrudan discord API'ye DELETE atıyoruz.
+    req_user_id = payload.get("user_id")
+    if not req_user_id:
+        return {"error": "Yetkisiz işlem."}
+        
+    user_conn = await get_db_connection(MAIN_DB_PATH)
+    is_owner = False
+    if user_conn:
+        try:
+            c = user_conn.cursor()
+            await c.execute("SELECT owner_id FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
+            row = await c.fetchone()
+            if row and row["owner_id"] == req_user_id:
+                is_owner = True
+        except:
+            pass
+        finally:
+            await user_conn.close()
+            
+    if not is_owner:
+        return {"error": "Bu odayı silme yetkiniz yok."}
+
     if not DISCORD_TOKEN:
         return {"error": "DISCORD_TOKEN bulunamadı."}
     
@@ -906,7 +1066,28 @@ async def delete_voice_room_force(channel_id: str, payload: dict = Depends(verif
         return {"error": f"Discord API Error: {res.status_code}"}
 
 @app.post("/api/voice_rooms/{channel_id}/kick/{user_id}")
-def kick_voice_room_user(channel_id: str, user_id: str, payload: dict = Depends(verify_token)):
+async def kick_voice_room_user(channel_id: str, user_id: str, payload: dict = Depends(verify_token)):
+    req_user_id = payload.get("user_id")
+    if not req_user_id:
+        return {"error": "Yetkisiz işlem."}
+        
+    user_conn = await get_db_connection(MAIN_DB_PATH)
+    is_owner = False
+    if user_conn:
+        try:
+            c = user_conn.cursor()
+            await c.execute("SELECT owner_id FROM private_voice_rooms WHERE channel_id = ?", (channel_id,))
+            row = await c.fetchone()
+            if row and row["owner_id"] == req_user_id:
+                is_owner = True
+        except:
+            pass
+        finally:
+            await user_conn.close()
+            
+    if not is_owner:
+        return {"error": "Bu odadan kullanıcı atma yetkiniz yok."}
+
     if not DISCORD_TOKEN:
         return {"error": "DISCORD_TOKEN bulunamadı."}
     
@@ -1595,7 +1776,7 @@ async def upload_banner(
         if not _hex_re.match(col):
             raise HTTPException(status_code=422, detail=f"Geçersiz renk kodu: {col}")
 
-    db = SyncOracleConnection()
+    db = await get_db_connection()
     cursor = db.cursor()
     if not cursor:
         raise HTTPException(status_code=500, detail="Database connection failed")
@@ -1603,6 +1784,13 @@ async def upload_banner(
     # Oracle doesn't support schema alteration dynamically like sqlite during normal queries,
     # so we assume blur_amount and upload_tokens exist in Oracle DB.
     # We added them manually via update_oracle.py
+
+    # Clean up expired tokens in background
+    try:
+        await cursor.execute("DELETE FROM upload_tokens WHERE expires_at < :1", (int(time.time()),))
+        await db.commit()
+    except Exception:
+        pass
 
     await cursor.execute("SELECT user_id, expires_at FROM upload_tokens WHERE token = :1", (token,))
     row = await cursor.fetchone()
@@ -1633,9 +1821,33 @@ async def upload_banner(
         await db.close()
         raise HTTPException(status_code=413, detail="Dosya çok büyük (Maks 5MB)")
 
+    # Magic byte validation (PNG, JPEG, WEBP, GIF)
+    is_valid_image = False
+    if content.startswith(b'\x89PNG\r\n\x1a\n'):
+        is_valid_image = True
+    elif content.startswith(b'\xff\xd8\xff'):
+        is_valid_image = True
+    elif content.startswith(b'RIFF') and b'WEBP' in content[:16]:
+        is_valid_image = True
+    elif content.startswith(b'GIF87a') or content.startswith(b'GIF89a'):
+        is_valid_image = True
+
+    if not is_valid_image:
+        await db.close()
+        raise HTTPException(status_code=400, detail="Geçersiz dosya formatı. Sadece PNG, JPG, WEBP ve GIF kabul edilir.")
+
     try:
-        img = Image.open(io.BytesIO(content)).convert("RGBA")
+        # Prevent Decompression Bombs (Limit to 10 Megapixels)
+        Image.MAX_IMAGE_PIXELS = 10_000_000
+        
+        img = Image.open(io.BytesIO(content))
+        if img.width > 4000 or img.height > 4000:
+            await db.close()
+            raise HTTPException(status_code=400, detail="Resim çözünürlüğü çok yüksek. Maksimum 4000x4000 piksel yükleyebilirsiniz.")
+            
+        img = img.convert("RGBA")
         img = ImageOps.fit(img, (900, 250), method=Image.Resampling.LANCZOS)
+        
         # Apply blur before saving (bot reads raw file, blur baked in)
         if blur_amount > 0:
             from PIL import ImageFilter as _IF
@@ -1645,6 +1857,8 @@ async def upload_banner(
         os.makedirs(banner_dir, exist_ok=True)
         bg_path = os.path.join(banner_dir, f"{user_id}.png")
         img.save(bg_path, "PNG", optimize=True)
+    except HTTPException:
+        raise
     except Exception as e:
         await db.close()
         raise HTTPException(status_code=400, detail=f"Resim işlenemedi: {str(e)}")

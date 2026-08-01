@@ -30,12 +30,44 @@ axios.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor: 401 veya 403 alınırsa token'ı sil ve ana sayfaya yönlendir
+// Response interceptor: 401 alınırsa refresh yapmayı dene, olmazsa veya 403 ise token'ı sil ve çık
 axios.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // 401 hatası aldıysak ve daha önce retry yapmadıysak
+    if (error.response && error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('kumiho_refresh_token');
+      
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refresh_token: refreshToken });
+          if (res.data.token) {
+            localStorage.setItem('kumiho_token', res.data.token);
+            if (res.data.refresh_token) {
+              localStorage.setItem('kumiho_refresh_token', res.data.refresh_token);
+            }
+            // Başarılı olursa orjinal isteği yeni token ile tekrar dene
+            originalRequest.headers['Authorization'] = `Bearer ${res.data.token}`;
+            return axios(originalRequest);
+          }
+        } catch (refreshError) {
+          // Refresh de patlarsa her şeyi temizle
+          localStorage.removeItem('kumiho_token');
+          localStorage.removeItem('kumiho_refresh_token');
+          localStorage.removeItem('kumiho_active_guild');
+          window.location.href = '/';
+          return Promise.reject(refreshError);
+        }
+      }
+    }
+    
+    // Refresh yoksa veya 403 yetkisizlik hatasıysa
     if (error.response && (error.response.status === 401 || error.response.status === 403)) {
       localStorage.removeItem('kumiho_token');
+      localStorage.removeItem('kumiho_refresh_token');
       localStorage.removeItem('kumiho_active_guild');
       window.location.href = '/';
     }
