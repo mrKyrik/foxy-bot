@@ -1,0 +1,95 @@
+---
+title: Oyunlar & Eğlence Komutları
+sidebar_position: 2
+---
+
+import BotSimulator from '@site/src/components/BotSimulator';
+
+# 🎮 Oyunlar ve Eğlence
+
+Kumiho Bot, sunucuda arkadaşlarınızla vakit geçirebileceğiniz çeşitli mini oyunlar ve eğlenceli metin komutları sunar. 
+
+### 🕹️ İnteraktif Deneyim (Dene ve Gör)
+Aşağıdaki terminale `f.8ball Yarın hava güzel olacak mı?` veya `f.joke` yazarak Kumiho'nun komutlara nasıl tepki verdiğini simüle edebilirsiniz!
+
+<BotSimulator 
+  scenarios={[
+    {
+      command: 'f.8ball Yarın hava güzel olacak mı?',
+      response: {
+        embed: {
+          color: '#5865F2',
+          title: 'Magic 8-Ball 🎱',
+          description: '**Question**\nYarın hava güzel olacak mı?\n\n**Answer**\nKesinlikle evet!'
+        }
+      }
+    },
+    {
+      command: 'f.joke',
+      response: {
+        text: 'Neden bilgisayar üşümüş? \n\n*...Çünkü Windows açık kalmış!*'
+      }
+    }
+  ]}
+/>
+
+---
+
+## 🎱 Sihirli 8-Top (`8ball`)
+
+Bota evet/hayır tarzı sorular sorarak efsanevi sihirli kürenin cevabını öğrenebilirsiniz.
+
+### 📌 Kullanım
+`f.8ball <soru>`
+
+---
+
+## 🤡 Şaka Komutu (`joke`)
+
+Bot, JokeAPI entegrasyonu sayesinde size rastgele İngilizce (veya ayarlanan dilde) şakalar yapar.
+
+### 📌 Kullanım
+`f.joke`
+
+---
+
+## 🤪 Taklit (Mock) Komutu (`mock`)
+
+Bir arkadaşınızın yazdığı mesaja yanıt (reply) vererek onu alaycı bir şekilde (`SüNgEr BoB YaZıSı` gibi) tekrarlatabilirsiniz.
+
+### 📌 Kullanım
+`f.mock` (Bir mesaja yanıt vererek)
+veya `f.mock <metin>`
+
+---
+
+## ❤️ Aşk Ölçer (`love`)
+
+İki kullanıcı (veya sizinle etiketlediğiniz biri) arasındaki aşk oranını hesaplar ve durumu eğlenceli bir şekilde yorumlar.
+
+### 📌 Kullanım
+`f.love <@kullanıcı>`
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+8ball komutunun Python tarafındaki işleyişi (`Commands/fun.py`):
+
+```python
+    @commands.command(name="8ball")
+    @kumiho_check("public")
+    async def _8ball(self, ctx: commands.Context, *, question: str = None) -> None:
+        """Ask the magic 8ball a question."""
+        if question is None:
+            return await ctx.send(f"Usage: `{ctx.prefix}8ball <question>`")
+            
+        answer = random.choice(self.answers)
+        
+        embed = discord.Embed(title="Magic 8-Ball 🎱", color=discord.Color.blurple())
+        embed.add_field(name="Question", value=question, inline=False)
+        embed.add_field(name="Answer", value=answer, inline=False)
+        embed.set_footer(text=f"Asked by {ctx.author.display_name}")
+        
+        await ctx.send(embed=embed)
+```

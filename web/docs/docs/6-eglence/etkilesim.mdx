@@ -1,0 +1,83 @@
+---
+title: Etkileşim ve Tepkiler
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 👋 Etkileşim Komutları (Animeler & GIF'ler)
+
+Kumiho Bot, arkadaşlarınızla etkileşime girmeniz için harika anime GIF'leri eşliğinde çalışan sosyal komutlara sahiptir. Giphy ve Nekos.best API'leri entegre edilmiştir.
+
+## 🫂 Sosyal Etkileşimler
+
+Birisini etiketleyerek ona karşı sanal eylemlerde bulunabilirsiniz. 
+
+**Desteklenen Komutlar:**
+- `f.hug <@kullanıcı>` (Sarılma)
+- `f.kiss <@kullanıcı>` (Öpme)
+- `f.punch <@kullanıcı>` (Yumruklama)
+- `f.slap <@kullanıcı>` (Tokatlama)
+- `f.pat <@kullanıcı>` (Başını Okşama)
+- `f.cuddle <@kullanıcı>` (Kucaklama)
+- `f.bite <@kullanıcı>` (Isırma)
+
+### 📌 Kullanım
+- `f.<eylem> <@kullanıcı>` (Doğrudan kişiyi etiketleyerek)
+- `f.<eylem>` (Kimseyi etiketlemezseniz, bot size **interaktif bir açılır menü (dropdown)** sunar ve hedef kişiyi listeden kolayca seçebilirsiniz!)
+
+### 🖼️ Görsel Çıktı
+
+<DiscordEmbed 
+  color="#EB459E" 
+  title="" 
+  description="<@987654321> kullanıcısı <@123456789> kullanıcısına sarıldı!">
+  *(Burada API'den çekilmiş anime hug GIF'i görünür)*
+</DiscordEmbed>
+
+---
+
+## 🎭 Bireysel Tepkiler
+
+Sadece kendi duygunuzu ifade etmek için kullanabileceğiniz komutlar da mevcuttur (kimseyi etiketlemeniz gerekmez):
+
+- `f.cry` (Ağlama)
+- `f.laugh` (Gülme)
+- `f.dance` (Dans Etme)
+- `f.blush` (Kızarma)
+
+### 📌 Kullanım
+`f.<eylem>`
+
+---
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Tepki komutlarının çalışması için anime GIF API'lerine (Nekos.best vb.) istek atan yardımcı fonksiyon (`Commands/fun.py`):
+
+```python
+    async def get_reaction_gif(self, action: str) -> str:
+        """Fetches an anime SFW action GIF. Falls back to a static Giphy URL."""
+        
+        # ... Fallback GIF linkleri sözlüğü ...
+
+        if action in ("lick", "boop"):
+            url = f"https://api.otakugifs.xyz/gif?reaction={action}"
+        elif action == "hug":
+            url = "https://nekos.best/api/v2/hug"
+        else:
+            url = f"https://nekos.best/api/v2/{action}"
+
+        try:
+            async with aiohttp.ClientSession(headers=headers) as session:
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=5)) as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        results = data.get("results", [])
+                        if results:
+                            return results[0].get("url") or fallbacks.get(action, "")
+        except Exception:
+            pass
+            
+        return fallbacks.get(action, "https://media.giphy.com/media/V8E0wV5D1fSSY/giphy.gif")
+```

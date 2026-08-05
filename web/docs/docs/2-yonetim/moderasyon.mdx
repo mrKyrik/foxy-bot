@@ -1,0 +1,70 @@
+---
+title: Moderasyon Komutları
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🛡️ Moderasyon Komutları (`ban`, `kick`, `mute` vb.)
+
+Kumiho Bot, sunucunuzun düzenini sağlamak için gelişmiş moderasyon komutları sunar. Bütün moderasyon işlemleri veritabanına loglanır ve (eğer ayarlandıysa) log kanalına gönderilir.
+
+## 🔨 Ban Komutu (`ban`)
+
+### 📌 Kullanım (Usage)
+`f.ban <@kullanıcı> [sebep]`
+
+### 🛡️ Yetkiler ve Sınırlar (Permissions & Limits)
+- **Kimler Kullanabilir:** Yönetici (`owner` seviyesi).
+- **Bot Yetkisi:** Üyeleri Engelle (Ban Members).
+- **Bekleme Süresi:** Yok.
+
+### 🖼️ Görsel Çıktı (Discord Simülasyonu)
+
+<DiscordEmbed 
+  color="#ED4245" 
+  title="🔨 Kullanıcı Banlandı" 
+  description="<@123456789> sunucudan banlandı.
+**Sebep:** Kurallara aykırı davranış.">
+</DiscordEmbed>
+
+:::danger Dikkat
+Kullanıcı banlandığında sunucudan tamamen uzaklaştırılır. Banı kaldırmak için `f.unban` komutunu kullanmalısınız. Kendinizi veya botu banlayamazsınız.
+:::
+
+### 💻 Kaynak Kod (Meraklısına)
+
+```python
+    @commands.command()
+    @kumiho_check("owner")
+    @commands.bot_has_permissions(ban_members=True)
+    async def ban(
+        self, ctx: commands.Context, user: typing.Optional[discord.Member] = None, *, reason: str = "Belirtilmedi"
+    ) -> None:
+        if user is None:
+            return await ctx.send("Kimi yasaklayacaksınız?", view=MemberSelectView("ban", self), ephemeral=True)
+            
+        if user == ctx.author or user == self.bot.user:
+            return await ctx.send(embed=EmbedBuilder(
+                title="❌ İşlem Başarısız",
+                description="Kendinizi veya botu banlayamazsınız.",
+                color=discord.Color.red(),
+            ).build())
+
+        if not await self.can_moderate(ctx, user):
+            return
+
+        await user.ban(reason=reason)
+        await self._log(ctx, "BAN", user.id, reason)
+
+        embed = EmbedBuilder(
+            title="🔨 Kullanıcı Banlandı",
+            description=f"{user.mention} sunucudan banlandı.\n**Sebep:** {reason}",
+            color=discord.Color.red(),
+        ).set_footer(f"İşlemi yapan: {ctx.author}").set_timestamp().build()
+        await ctx.send(embed=embed)
+```
+
+---
+
+*Not: Diğer moderasyon komutları (kick, mute, warn) için menüyü veya sonraki sayfaları inceleyebilirsiniz.*

@@ -145,14 +145,14 @@ class Permissions(commands.Cog):
 
     panel_yetki_group = app_commands.Group(name="panel-yetki", description="Web paneli erişim yetkilerini yönetin")
 
-    @panel_yetki_group.command(name="ekle", description="Belirli bir role veya üyeye web panel yetkisi verir.")
+    @panel_yetki_group.command(name="ekle", description="Belirli bir role veya üyeye web panel yetkisi tanımlar.")
     @app_commands.default_permissions(administrator=True)
     @kumiho_check("owner")
     @app_commands.choices(seviye=[
         app_commands.Choice(name="Okuma (Read)", value="read"),
         app_commands.Choice(name="Yazma/Düzenleme (Write)", value="write")
     ])
-    async def panel_yetki_ekle(self, interaction: discord.Interaction, hedef: discord.Mentionable, seviye: app_commands.Choice[str]):
+    async def panel_yetki_ekle(self, interaction: discord.Interaction, hedef: discord.Role | discord.Member | discord.User, seviye: app_commands.Choice[str]):
         hedef_id = str(hedef.id)
         hedef_type = "role" if isinstance(hedef, discord.Role) else "user"
         
@@ -172,7 +172,7 @@ class Permissions(commands.Cog):
     @panel_yetki_group.command(name="sil", description="Belirli bir rolün veya üyenin web panel yetkisini kaldırır.")
     @app_commands.default_permissions(administrator=True)
     @kumiho_check("owner")
-    async def panel_yetki_sil(self, interaction: discord.Interaction, hedef: discord.Mentionable):
+    async def panel_yetki_sil(self, interaction: discord.Interaction, hedef: discord.Role | discord.Member | discord.User):
         await self.bot.db.execute("DELETE FROM panel_access_controls WHERE guild_id = ? AND target_id = ?", 
                                   str(interaction.guild.id), str(hedef.id))
         

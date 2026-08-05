@@ -1,4 +1,7 @@
 # Kumiho Bot - Kurulum ve Optimizasyon Raporu
+> [!WARNING]
+> **[ARCHIVED/RESOLVED]** Bu raporda bahsedilen manuel log kurulum sorunları `f.setup` komutu geliştirilerek çözülmüştür.
+
 
 ## 1. Mevcut Kurulum Sürecinin Analizi
 

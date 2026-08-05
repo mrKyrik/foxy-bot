@@ -39,6 +39,9 @@ const CallbackPage = () => {
           sessionStorage.removeItem('pkce_verifier');
           sessionStorage.removeItem('oauth_state');
           localStorage.setItem('kumiho_token', res.data.token);
+          if (res.data.refresh_token) {
+            localStorage.setItem('kumiho_refresh_token', res.data.refresh_token);
+          }
           // Reload to initialize contexts with new token
           window.location.href = '/'; 
         }

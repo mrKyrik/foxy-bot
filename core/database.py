@@ -12,17 +12,67 @@ class DBRow(dict):
     def __getitem__(self, key):
         if isinstance(key, int):
             return self.vals[key]
+        if isinstance(key, str):
+            if super().__contains__(key):
+                return super().__getitem__(key)
+            if super().__contains__(key.lower()):
+                return super().__getitem__(key.lower())
+            if super().__contains__(key.upper()):
+                return super().__getitem__(key.upper())
         return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if isinstance(key, str):
+            if super().__contains__(key):
+                return super().get(key, default)
+            if super().__contains__(key.lower()):
+                return super().get(key.lower(), default)
+            if super().__contains__(key.upper()):
+                return super().get(key.upper(), default)
+        return super().get(key, default)
+
+    def __contains__(self, key):
+        if isinstance(key, str):
+            if super().__contains__(key) or super().__contains__(key.lower()) or super().__contains__(key.upper()):
+                return True
+        return super().__contains__(key)
 
     def __iter__(self):
         return iter(self.vals)
 
+from dotenv import load_dotenv
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+load_dotenv()
+
 log = logging.getLogger(__name__)
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DSN = os.getenv("DB_DSN")
 WALLET_DIR = os.path.join(os.path.dirname(__file__), "wallet")
+
+TABLE_PRIMARY_KEYS = {
+    "private_voice_hubs": ["guild_id"],
+    "custom_forms": ["guild_id", "form_id"],
+    "form_admin_roles": ["guild_id"],
+    "ragepoints": ["guild_id", "user_id"],
+    "level_rewards": ["guild_id", "level"],
+    "suggestion_config": ["guild_id"],
+    "private_voice_settings": ["user_id"],
+    "command_permissions": ["guild_id", "command_name"],
+    "roles": ["guild_id", "role_id"],
+    "user_cache": ["user_id"],
+    "channel_cache": ["channel_id"],
+    "ticket_settings": ["guild_id"],
+    "log_settings": ["guild_id"],
+    "db_log_settings": ["guild_id"],
+    "level_settings": ["guild_id"],
+    "levels": ["user_id", "guild_id"],
+    "saved_roles": ["user_id", "guild_id", "role_id"],
+    "temp_bans": ["guild_id", "user_id"],
+    "eco_bans": ["user_id", "guild_id"],
+    "level_ignores": ["guild_id", "channel_id"],
+    "user_current_roles": ["guild_id", "user_id", "role_id"],
+}
 
 class Database:
     """
@@ -44,18 +94,25 @@ class Database:
         """Oracle DB Connection Pool oluştur."""
         log.info("Oracle DB bağlantı havuzu başlatılıyor...")
         
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+        load_dotenv()
+        
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASSWORD")
+        dsn = os.getenv("DB_DSN")
+        
         # Sadece thin mode ile bağlan
         try:
             self.pool = oracledb.create_pool_async(
-                user=DB_USER,
-                password=DB_PASSWORD,
-                dsn=DB_DSN,
+                user=user,
+                password=password,
+                dsn=dsn,
                 min=2,
                 max=20,
                 increment=2,
                 config_dir=WALLET_DIR,
                 wallet_location=WALLET_DIR,
-                wallet_password=DB_PASSWORD
+                wallet_password=password
             )
             log.info("Oracle Autonomous DB bağlantı havuzu başarıyla oluşturuldu!")
         except Exception as e:
@@ -70,20 +127,49 @@ class Database:
 
     def _translate_query(self, query: str) -> str:
         """
-        SQLite '?' parametrelerini Oracle ':1, :2' formatına çevirir.
-        Ayrıca bazı SQLite terimlerini (LIMIT, INSERT OR IGNORE) Oracle uyumlu hale getirir.
+        SQLite sorgularını Oracle uyumlu hale getirir:
+        - '?' -> ':1, :2'
+        - 'LIMIT 1' -> 'FETCH FIRST 1 ROWS ONLY'
+        - 'INSERT OR REPLACE INTO' -> 'MERGE INTO'
+        - 'INSERT OR IGNORE INTO' -> 'BEGIN INSERT ... EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;'
+        - 'ON CONFLICT DO UPDATE SET' -> 'MERGE INTO'
+        - 'level' sütununu "LEVEL" olarak tırnaklar.
         """
         # LIMIT 1 -> FETCH FIRST 1 ROWS ONLY
         if "LIMIT 1" in query.upper():
             query = re.sub(r'(?i)\bLIMIT\s+1\b', 'FETCH FIRST 1 ROWS ONLY', query)
         
+        # INSERT OR REPLACE INTO -> MERGE INTO
+        if "INSERT OR REPLACE INTO" in query.upper():
+            match = re.search(r'(?is)INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)\s*\((.*?)\)\s*VALUES\s*\((.*?)\)', query)
+            if match:
+                table = match.group(1).strip()
+                cols = [c.strip() for c in match.group(2).split(',')]
+                vals = [v.strip() for v in match.group(3).split(',')]
+                
+                pk_cols = TABLE_PRIMARY_KEYS.get(table.lower(), [cols[0]])
+                upd_cols = [c for c in cols if c.lower() not in [pk.lower() for pk in pk_cols]]
+                
+                using_cols = [f"{v} as {c}" for c, v in zip(cols, vals)]
+                using_str = "SELECT " + ", ".join(using_cols) + " FROM DUAL"
+                
+                on_cond = " AND ".join(f"t.{pk} = s.{pk}" for pk in pk_cols)
+                matched_clause = f"WHEN MATCHED THEN UPDATE SET {', '.join(f't.{c} = s.{c}' for c in upd_cols)}" if upd_cols else ""
+                
+                query = f"""
+                MERGE INTO {table} t
+                USING ({using_str}) s
+                ON ({on_cond})
+                {matched_clause}
+                WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join('s.'+c for c in cols)})
+                """
+
         # INSERT OR IGNORE -> PL/SQL blok
-        if "INSERT OR IGNORE" in query.upper():
-            # Regex ile yakalayıp PL/SQL'e saralım
+        elif "INSERT OR IGNORE" in query.upper():
             query = re.sub(r'(?is)INSERT\s+OR\s+IGNORE\s+INTO\s+(.*?)(?:;|\s*$)', r'BEGIN INSERT INTO \1; EXCEPTION WHEN DUP_VAL_ON_INDEX THEN NULL; END;', query)
 
         # ON CONFLICT DO UPDATE SET -> MERGE INTO
-        if "ON CONFLICT" in query.upper():
+        elif "ON CONFLICT" in query.upper():
             match = re.search(r'(?is)INSERT\s+INTO\s+(\w+)\s*\((.*?)\)\s*VALUES\s*\((.*?)\)\s*ON\s+CONFLICT\s*\((.*?)\)\s*DO\s+UPDATE\s+SET\s+(.*)', query)
             if match:
                 table = match.group(1)
@@ -108,15 +194,12 @@ class Database:
                     f"WHEN NOT MATCHED THEN INSERT ({', '.join(cols)}) VALUES ({', '.join('s.'+c for c in cols)})"
                 )
 
-        # Oracle'da LEVEL reserved word olduğu için sorgulardaki (tablo ismi olmayan) level kelimesini "LEVEL" yap
-        # Sadece "level" sütunlarını değiştirmek için (level_id vs etkilenmez)
+        # Oracle'da LEVEL reserved word olduğu için sorgulardaki level kelimesini "LEVEL" yap
         query = re.sub(r'(?i)\blevel\b', '"LEVEL"', query)
         
         # ? -> :1, :2, :3
-        def repl(match, c=itertools.count(1)):
-            return f":{next(c)}"
-            
-        return re.sub(r'\?', repl, query)
+        counter = itertools.count(1)
+        return re.sub(r'\?', lambda _: f":{next(counter)}", query)
 
     async def execute(self, query: str, *args) -> None:
         """DB'de INSERT/UPDATE/DELETE çalıştır ve commit et."""
@@ -130,7 +213,6 @@ class Database:
         """DB'den tek satır döndür. aiosqlite.Row gibi dict döndürür."""
         query = self._translate_query(query)
         async with self.pool.acquire() as conn:
-            # Sütun isimlerini döndürmesi için rowfactory
             conn.autocommit = False
             async with conn.cursor() as cursor:
                 await cursor.execute(query, args)
@@ -151,7 +233,6 @@ class Database:
                 cursor.rowfactory = lambda *vals: DBRow(columns, vals)
                 
                 return await cursor.fetchall()
-
 
     async def executemany(self, query: str, data: list) -> None:
         """DB'de toplu INSERT/UPDATE."""
@@ -253,8 +334,6 @@ class Database:
             log.error(f"log_db_events_bulk hatası: {e}")
 
     async def update_user_cache(self, user_id: str, username: str, avatar_url: str | None) -> None:
-        # SQLite'daki ON CONFLICT DO UPDATE -> Oracle'da MERGE INTO'dur.
-        # Bu fonksiyonu MERGE INTO olarak yeniden yazdık:
         try:
             query = """
             MERGE INTO user_cache t
@@ -309,3 +388,68 @@ class Database:
             )
         except Exception as e:
             log.error(f"update_role_cache hatası: {e}")
+
+    async def sync_user_roles_bulk(self, guild_id: str, data: list) -> None:
+        """
+        Kullanıcıların anlık rollerini toplu olarak günceller.
+        data = [(guild_id, user_id, role_id, role_name), ...]
+        """
+        try:
+            await self.execute("DELETE FROM user_current_roles WHERE guild_id=?", str(guild_id))
+            await self.executemany(
+                "INSERT INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                data
+            )
+        except Exception as e:
+            log.error(f"sync_user_roles_bulk hatası: {e}")
+
+    async def add_user_role(self, guild_id: str, user_id: str, role_id: str, role_name: str) -> None:
+        try:
+            await self.execute(
+                "INSERT OR IGNORE INTO user_current_roles (guild_id, user_id, role_id, role_name) VALUES (?, ?, ?, ?)",
+                str(guild_id), str(user_id), str(role_id), role_name
+            )
+        except Exception as e:
+            log.error(f"add_user_role hatası: {e}")
+
+    async def remove_user_role(self, guild_id: str, user_id: str, role_id: str) -> None:
+        try:
+            await self.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=? AND role_id=?",
+                str(guild_id), str(user_id), str(role_id)
+            )
+        except Exception as e:
+            log.error(f"remove_user_role hatası: {e}")
+
+    async def clear_user_roles(self, guild_id: str, user_id: str) -> None:
+        try:
+            await self.execute(
+                "DELETE FROM user_current_roles WHERE guild_id=? AND user_id=?",
+                str(guild_id), str(user_id)
+            )
+        except Exception as e:
+            log.error(f"clear_user_roles hatası: {e}")
+
+    async def fetch_admin_events(
+        self, guild_id: int, target_id: int | None = None, limit: int = 10
+    ) -> list[dict]:
+        """Bir sunucunun mod eylem geçmişini döndür, isteğe bağlı hedef filtresi ile."""
+        if target_id:
+            return await self.fetchall(
+                f"""
+                SELECT * FROM admin_events
+                WHERE guild_id = ? AND target_id = ?
+                ORDER BY timestamp DESC FETCH FIRST {limit} ROWS ONLY
+                """,
+                str(guild_id), str(target_id)
+            )
+        else:
+            return await self.fetchall(
+                f"""
+                SELECT * FROM admin_events
+                WHERE guild_id = ?
+                ORDER BY timestamp DESC FETCH FIRST {limit} ROWS ONLY
+                """,
+                str(guild_id)
+            )
+

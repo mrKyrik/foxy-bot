@@ -4,7 +4,7 @@ import os
 
 # Oracle Credentials
 DB_USER = "admin"
-DB_PASSWORD = "$@P%5WCUgMnb"
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_DSN = "kumihodb_high"
 WALLET_DIR = os.path.join(os.path.dirname(__file__), "core", "wallet")
 

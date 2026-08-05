@@ -1,0 +1,67 @@
+---
+title: Özel Ses Odaları
+sidebar_position: 1
+---
+
+import DiscordEmbed from '@site/src/components/DiscordEmbed';
+
+# 🎙️ Özel Ses Odaları (`oda-kurulum`)
+
+Kullanıcıların kendi ses odalarını (geçici olarak) oluşturup yönetebilmesi için **Kumiho Bot**'un özel ses odaları sistemini kullanabilirsiniz. Bu sistem sayesinde kalabalık sunucularda ses kanalı kirliliği önlenir; sadece ihtiyaç duyulduğunda kanal açılır ve son kişi çıktığında silinir.
+
+## 📌 Kullanım (Usage)
+
+Kullanımı son derece basittir:
+`f.oda-kurulum` veya `f.oda`
+
+## 🛡️ Yetkiler ve Sınırlar (Permissions & Limits)
+
+- **Kimler Kullanabilir:** Sunucu Sahibi (`Owner` yetkisi).
+- **Bot Yetkisi:** Kanalları Yönet, Rolleri Yönet.
+- **Alternatif Komutlar (Aliases):** `f.oda`
+- **Bekleme Süresi (Cooldown):** Yok.
+
+## 🖼️ Görsel Çıktı (Discord Simülasyonu)
+
+Komut çalıştırıldığında bot, hızlı kurulum için butonlar barındıran bir mesaj gönderir:
+
+<DiscordEmbed 
+  color="#5865F2" 
+  title="🎙️ Özel Ses Odası Kurulumu" 
+  description="**Hızlı Kurulum** ile anında gerekli kategoriyi ve kanalı oluşturabilirsiniz.
+Var olan bir ses kanalını ayarlamak için **Mevcut Kanalı Ayarla** butonunu kullanabilirsiniz.">
+  *Butonlar: [Hızlı Kurulum] [Mevcut Kanalı Ayarla]*
+</DiscordEmbed>
+
+## ⚙️ Nasıl Çalışır?
+
+1. Admin `f.oda-kurulum` yazar ve sistemi kurar.
+2. Bot, `➕ Oda Oluştur` adında bir ses kanalı oluşturur.
+3. Bir kullanıcı `➕ Oda Oluştur` kanalına girdiğinde, bot **otomatik olarak** o kullanıcının adına özel bir ses kanalı (örn: *Kyrik'in Odası*) oluşturur ve kullanıcıyı oraya taşır.
+4. Kullanıcının özel odasına bir **Oda Kontrol Paneli** gönderilir. Kullanıcı bu panelden odasını kilitleyebilir, isim değiştirebilir veya kişileri atabilir.
+5. Odadaki herkes çıktığında oda **otomatik olarak silinir**.
+
+## 💻 Kaynak Kod (Meraklısına)
+
+Sistemin temel kurulum komutu aşağıdaki gibidir:
+
+```python
+    @commands.command(name="oda-kurulum", aliases=["oda"])
+    @kumiho_check(default_access="owner")
+    async def oda_kurulum(self, ctx):
+        """Setup the private voice channels system.\n\n**Usage:** `{prefix}oda`"""
+        from Commands.administration.setup import VoiceSetupView
+        embed = discord.Embed(
+            title="🎙️ Özel Ses Odası Kurulumu",
+            description="**Hızlı Kurulum** ile anında gerekli kategoriyi ve kanalı oluşturabilirsiniz.\nVar olan bir ses kanalını ayarlamak için **Mevcut Kanalı Ayarla** butonunu kullanabilirsiniz.",
+            color=discord.Color.blurple()
+        )
+        await ctx.send(embed=embed, view=VoiceSetupView(self.bot))
+```
+
+## ⚠️ Olası Hatalar ve Çözümleri
+
+- **Hata:** "Kategori oda limiti doldu."
+  **Çözüm:** Discord'da bir kategorinin altında en fazla 50 kanal olabilir. Çok aktif sunucularda kategori dolduğunda yeni oda açılamaz. Eski/hayalet kanalları temizleyin.
+- **Hata:** "Oda ismi değiştirilemiyor."
+  **Çözüm:** Discord'un API sınırlarına göre bir kanalın ismi 10 dakikada en fazla 2 kez değiştirilebilir. 10 dakika beklemelisiniz.

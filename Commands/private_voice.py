@@ -400,6 +400,12 @@ class PrivateVoice(commands.Cog):
                         try:
                             await channel.delete(reason="Sistem Taraması: Boş oda silindi")
                             await self.bot.db.execute("DELETE FROM private_voice_rooms WHERE channel_id=?", str(channel_id))
+                        except discord.Forbidden:
+                            log_channel, _ = await self.get_log_settings(channel.guild)
+                            if log_channel:
+                                try:
+                                    await log_channel.send(f"⚠️ **KRİTİK HATA:** `{channel.name}` (ID: `{channel.id}`) boş odası silinmek istendi ancak botun **Kanalları Yönet** yetkisi yok! Lütfen yetkileri kontrol edin veya kanalı manuel silin.")
+                                except: pass
                         except Exception:
                             pass
                 else:
@@ -417,6 +423,12 @@ class PrivateVoice(commands.Cog):
                                 try:
                                     await channel.delete(reason="Sistem Taraması: Boş oda silindi (Yetim)")
                                     await self.bot.db.execute("DELETE FROM private_voice_rooms WHERE channel_id=?", str(channel.id))
+                                except discord.Forbidden:
+                                    log_channel, _ = await self.get_log_settings(channel.guild)
+                                    if log_channel:
+                                        try:
+                                            await log_channel.send(f"⚠️ **KRİTİK HATA:** `{channel.name}` (ID: `{channel.id}`) yetim boş odası silinmek istendi ancak botun **Kanalları Yönet** yetkisi yok! Lütfen yetkileri kontrol edin.")
+                                        except: pass
                                 except Exception as e:
                                     log.warning(f"Oda silinemedi: {e}")
         except Exception as e:
@@ -573,7 +585,8 @@ class PrivateVoice(commands.Cog):
             hub_row = await self.bot.db.fetchone("SELECT category_id, hub_id FROM private_voice_hubs WHERE guild_id=?", str(member.guild.id))
             log.info(f"[PrivateVoice Debug] Join channel {after.channel.id} in guild {member.guild.id}. Hub row from DB: {hub_row}")
             if hub_row:
-                category_id, hub_id = hub_row
+                category_id = hub_row.get("category_id") if isinstance(hub_row, dict) else hub_row[0]
+                hub_id = hub_row.get("hub_id") if isinstance(hub_row, dict) else hub_row[1]
                 log.info(f"[PrivateVoice Debug] category_id={category_id}, hub_id={hub_id}, after.channel.id={after.channel.id}. Match? {str(after.channel.id) == str(hub_id)}")
                 if str(after.channel.id) == str(hub_id):
                     # Kilit Sistemi (Spam Engelleme)
@@ -586,7 +599,7 @@ class PrivateVoice(commands.Cog):
                         # KULLANICININ ZATEN ODASI VAR MI KONTROL ET
                         old_room_row = await self.bot.db.fetchone("SELECT channel_id FROM private_voice_rooms WHERE owner_id=?", str(member.id))
                         if old_room_row:
-                            old_room_id = int(old_room_row[0])
+                            old_room_id = int(old_room_row.get("channel_id") if isinstance(old_room_row, dict) else old_room_row[0])
                             old_room = member.guild.get_channel(old_room_id)
                             if old_room:
                                 try:
@@ -608,11 +621,11 @@ class PrivateVoice(commands.Cog):
                         is_hidden = False
                         
                         if settings:
-                            room_name = settings[1] or room_name
-                            user_limit = settings[2] or 0
-                            bitrate = settings[3] or 64000
-                            is_locked = bool(settings[4])
-                            is_hidden = bool(settings[5])
+                            room_name = (settings.get("room_name") if isinstance(settings, dict) else settings[1]) or room_name
+                            user_limit = (settings.get("user_limit") if isinstance(settings, dict) else settings[2]) or 0
+                            bitrate = (settings.get("bitrate") if isinstance(settings, dict) else settings[3]) or 64000
+                            is_locked = bool(settings.get("is_locked") if isinstance(settings, dict) else settings[4])
+                            is_hidden = bool(settings.get("is_hidden") if isinstance(settings, dict) else settings[5])
                             
                         try:
                             category = member.guild.get_channel(int(category_id))
@@ -649,8 +662,8 @@ class PrivateVoice(commands.Cog):
                             await self.bot.db.execute("INSERT INTO private_voice_rooms (channel_id, owner_id) VALUES (?, ?)", str(new_channel.id), str(member.id))
                             
                             # Log Event & Master Embed
-                            log_channel, settings = await self.get_log_settings(member.guild)
-                            if log_channel and settings and settings.get("oda_create_on"):
+                            log_channel, log_set = await self.get_log_settings(member.guild)
+                            if log_channel and log_set and log_set.get("oda_create_on"):
                                 embed = discord.Embed(
                                     title=f"🎙️ Özel Ses Odası: {room_name}",
                                     color=discord.Color.green(),
@@ -672,6 +685,13 @@ class PrivateVoice(commands.Cog):
                             
                             try:
                                 await member.move_to(new_channel)
+                            except discord.Forbidden:
+                                log.warning(f"Kullanıcı yeni odaya taşınamadı (Botta 'Üyeleri Taşı' yetkisi eksik): Guild ID {member.guild.id}")
+                                if log_channel:
+                                    try:
+                                        await log_channel.send(f"⚠️ **YETKİ HATASI:** {member.mention} için özel ses odası oluşturuldu ancak botun **Üyeleri Taşı** (Move Members) yetkisi olmadığı için kullanıcı odaya otomatik taşınamadı!")
+                                    except Exception:
+                                        pass
                             except Exception as e:
                                 log.warning(f"Kullanıcı yeni odaya taşınamadı (İzole edildi/DC yedi): {e}")
                                 # Hayalet odayı anında temizle!
@@ -717,6 +737,22 @@ class PrivateVoice(commands.Cog):
                                     await member.move_to(None) # Hub'dan çıkar
                                 except Exception:
                                     pass
+                            elif getattr(e, "status", None) == 403 or isinstance(e, discord.Forbidden):
+                                log.warning(f"Kanal oluşturma yetkisi yok: {member.guild.id}")
+                                try:
+                                    await member.send("❌ Sunucuda özel oda oluşturulamadı! Botun **Kanalları Yönet** yetkisi eksik. Lütfen sunucu yetkililerine bildirin.")
+                                except discord.Forbidden:
+                                    pass
+                                try:
+                                    await member.move_to(None)
+                                except Exception:
+                                    pass
+                                log_channel, settings = await self.get_log_settings(member.guild)
+                                if log_channel and settings and settings.get("oda_create_on"):
+                                    try:
+                                        await log_channel.send(f"⚠️ **KRİTİK HATA:** {member.mention} özel oda oluşturmak istedi ancak botun **Kanalları Yönet** yetkisi olmadığı için oda açılamadı!")
+                                    except:
+                                        pass
                             else:
                                 log.error(f"Oda oluşturulurken HTTP hatası: {e}")
                         except Exception as e:
