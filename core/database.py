@@ -12,16 +12,42 @@ class DBRow(dict):
     def __getitem__(self, key):
         if isinstance(key, int):
             return self.vals[key]
+        if isinstance(key, str):
+            if super().__contains__(key):
+                return super().__getitem__(key)
+            if super().__contains__(key.lower()):
+                return super().__getitem__(key.lower())
+            if super().__contains__(key.upper()):
+                return super().__getitem__(key.upper())
         return super().__getitem__(key)
+
+    def get(self, key, default=None):
+        if isinstance(key, str):
+            if super().__contains__(key):
+                return super().get(key, default)
+            if super().__contains__(key.lower()):
+                return super().get(key.lower(), default)
+            if super().__contains__(key.upper()):
+                return super().get(key.upper(), default)
+        return super().get(key, default)
+
+    def __contains__(self, key):
+        if isinstance(key, str):
+            if super().__contains__(key) or super().__contains__(key.lower()) or super().__contains__(key.upper()):
+                return True
+        return super().__contains__(key)
 
     def __iter__(self):
         return iter(self.vals)
 
+from dotenv import load_dotenv
+
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+load_dotenv()
+
 log = logging.getLogger(__name__)
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DSN = os.getenv("DB_DSN")
 WALLET_DIR = os.path.join(os.path.dirname(__file__), "wallet")
 
 class Database:
@@ -44,18 +70,25 @@ class Database:
         """Oracle DB Connection Pool oluştur."""
         log.info("Oracle DB bağlantı havuzu başlatılıyor...")
         
+        load_dotenv(os.path.join(PROJECT_ROOT, ".env"))
+        load_dotenv()
+        
+        user = os.getenv("DB_USER")
+        password = os.getenv("DB_PASSWORD")
+        dsn = os.getenv("DB_DSN")
+        
         # Sadece thin mode ile bağlan
         try:
             self.pool = oracledb.create_pool_async(
-                user=DB_USER,
-                password=DB_PASSWORD,
-                dsn=DB_DSN,
+                user=user,
+                password=password,
+                dsn=dsn,
                 min=2,
                 max=20,
                 increment=2,
                 config_dir=WALLET_DIR,
                 wallet_location=WALLET_DIR,
-                wallet_password=DB_PASSWORD
+                wallet_password=password
             )
             log.info("Oracle Autonomous DB bağlantı havuzu başarıyla oluşturuldu!")
         except Exception as e:
@@ -113,10 +146,8 @@ class Database:
         query = re.sub(r'(?i)\blevel\b', '"LEVEL"', query)
         
         # ? -> :1, :2, :3
-        def repl(match, c=itertools.count(1)):
-            return f":{next(c)}"
-            
-        return re.sub(r'\?', repl, query)
+        counter = itertools.count(1)
+        return re.sub(r'\?', lambda _: f":{next(counter)}", query)
 
     async def execute(self, query: str, *args) -> None:
         """DB'de INSERT/UPDATE/DELETE çalıştır ve commit et."""
