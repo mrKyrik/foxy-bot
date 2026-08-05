@@ -6,6 +6,7 @@ from discord import app_commands
 import datetime
 import json
 import time
+import random
 
 _form_cooldowns: dict[int, float] = {}
 
@@ -363,9 +364,6 @@ class DynamicFormModal(discord.ui.Modal):
                         ))
                         await publish_channel.send(embed=publish_embed, view=pub_view)
                     else:
-                        import json
-                        import time
-                        import random
                         embed_dict = publish_embed.to_dict()
                         embed_json = json.dumps(embed_dict)
                         
