@@ -38,3 +38,4 @@ jobs:
           source: "web/dashboard/dist"
           target: "/home/ubuntu/prc/foxy"
           overwrite: true
+

@@ -38,3 +38,4 @@ jobs:
           source: "web/landing/dist"
           target: "/home/ubuntu/prc/foxy"
           overwrite: true
+
