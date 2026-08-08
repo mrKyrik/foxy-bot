@@ -462,10 +462,13 @@ class KumihoBot(commands.Bot):
         except Exception as e:
             log.error("Failed to register form views: %s", e)
 
+bot_owner_ids = {int(x.strip()) for x in OWNER_IDS_RAW.split(",") if x.strip().isdigit()}
+
 bot = KumihoBot(
     command_prefix="f.",
     intents=intents,
     help_command=MyHelp(),
+    owner_ids=bot_owner_ids if bot_owner_ids else None,
 )
 
 

@@ -162,36 +162,60 @@ class Fun(commands.Cog):
         embed.set_footer(text=f"Asked by {ctx.author.display_name}")
         await ctx.send(embed=embed)
     @commands.command()
-
     @kumiho_check("owner")
     @commands.cooldown(1, 5.0, commands.BucketType.user)
     async def say(self, ctx: commands.Context, target: str = None, *, message: str = None) -> None:
-        """Make the bot say something.\n\n**Usage:** `{prefix}say`"""
+        """Make the bot say something.\n\n**Usage:** `{prefix}say <message>` or `{prefix}say @user <message>`"""
         if target is None:
-            return await ctx.send(f"Usage: `{ctx.prefix}say <message>`")
+            return await ctx.send(f"Usage: `{ctx.prefix}say <message>` veya `{ctx.prefix}say @kullanıcı <mesaj>`")
 
         user = None
         try:
             user = await commands.MemberConverter().convert(ctx, target)
-        except commands.MemberNotFound:
-            pass
+        except Exception:
+            user = None
 
-        is_owner = await ctx.bot.is_owner(ctx.author)
-        if user is not None and is_owner:
-            if message is None:
-                return await ctx.send(f"Usage: `{ctx.prefix}say @user <message>`")
-            avatar_bytes = await user.display_avatar.read()
-            webhook = await ctx.channel.create_webhook(
-                name=user.display_name, avatar=avatar_bytes, reason="say command"
-            )
-            await ctx.message.delete()
+        owners_env = [o.strip() for o in os.getenv("OWNER_ID", "").split(",") if o.strip()]
+        is_bot_owner = str(ctx.author.id) in owners_env or await ctx.bot.is_owner(ctx.author)
+        is_admin = bool(ctx.guild and (ctx.author.id == ctx.guild.owner_id or ctx.author.guild_permissions.administrator))
+        is_authorized = is_bot_owner or is_admin
+
+        if user is not None and is_authorized and message:
             try:
-                await webhook.send(message)
-            finally:
-                await webhook.delete()
+                await ctx.message.delete()
+            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                pass
+
+            avatar_bytes = None
+            try:
+                # Discord Webhook PNG/JPEG/GIF zorunludur (WebP 415 hatası verir)
+                avatar_bytes = await user.display_avatar.replace(format="png", size=256).read()
+            except Exception as e:
+                log.warning("Webhook avatar okunamadı: %s", e)
+                avatar_bytes = None
+
+            try:
+                webhook = await ctx.channel.create_webhook(
+                    name=user.display_name,
+                    avatar=avatar_bytes,
+                    reason=f"Say command by {ctx.author}"
+                )
+                try:
+                    await webhook.send(message)
+                finally:
+                    await webhook.delete()
+            except discord.Forbidden:
+                # Webhook izni yoksa doğrudan bot olarak gönder
+                await ctx.send(f"**{user.display_name}**: {message}")
+            except Exception as e:
+                log.error("Webhook gönderim hatası: %s", e)
+                await ctx.send(f"**{user.display_name}**: {message}")
         else:
             full_msg = f"{target} {message or ''}".strip()
-            await ctx.message.delete()
+            try:
+                await ctx.message.delete()
+            except (discord.Forbidden, discord.NotFound, discord.HTTPException):
+                pass
             await ctx.send(full_msg)
     @commands.command()
 
