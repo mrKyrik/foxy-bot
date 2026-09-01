@@ -84,10 +84,10 @@ const OverviewPage = () => {
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 600, color: 'var(--accent-blue)', marginBottom: '4px' }}>{log.event_type}</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Kullanıcı / Hedef: {log.user_id}</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{log.username ? `${log.username} (${log.user_id})` : `Kullanıcı / Hedef: ${log.user_id || 'Bilinmiyor'}`}</div>
                     </div>
                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Clock size={14} /> {new Date(log.timestamp).toLocaleString()}
+                      <Clock size={14} /> {log.timestamp ? new Date(log.timestamp).toLocaleString('tr-TR') : 'Bilinmiyor'}
                     </div>
                   </div>
                 ))}

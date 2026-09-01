@@ -1,16 +1,20 @@
 export const parseTimestamp = (tsString) => {
-  if (!tsString) return 0;
-  let cleanStr = tsString.replace(' ', 'T');
+  if (!tsString || tsString === 'Z' || tsString === 'null') return 0;
+  if (typeof tsString === 'number') return tsString;
+  let cleanStr = String(tsString).trim().replace(' ', 'T');
   if (!cleanStr.endsWith('Z')) {
     cleanStr += 'Z';
   }
   const tsObj = new Date(cleanStr);
-  return tsObj.getTime();
+  const time = tsObj.getTime();
+  return isNaN(time) ? 0 : time;
 };
 
 export const formatTime = (ts) => {
   if (!ts) return "";
-  const d = new Date(ts);
+  const tsNum = typeof ts === 'string' ? parseTimestamp(ts) : ts;
+  if (!tsNum || isNaN(tsNum)) return "";
+  const d = new Date(tsNum);
   return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 };
 

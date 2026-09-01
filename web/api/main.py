@@ -689,26 +689,60 @@ async def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_ac
     c = conn.cursor()
     try:
         await c.execute("SELECT COUNT(*) as c FROM db_event_logs WHERE guild_id = ?", (guild_id,))
-        total_logs = await c.fetchone()["c"]
+        total_logs = (await c.fetchone())["c"]
     except Exception:
         total_logs = 0
 
     try:
         await c.execute("SELECT COUNT(*) as c FROM warns WHERE guild_id = ?", (guild_id,))
-        total_warns = await c.fetchone()["c"]
+        total_warns = (await c.fetchone())["c"]
     except Exception:
         total_warns = 0
 
     try:
         await c.execute("SELECT COUNT(*) as c FROM admin_events WHERE guild_id = ?", (guild_id,))
-        total_admin_actions = await c.fetchone()["c"]
+        total_admin_actions = (await c.fetchone())["c"]
     except Exception:
         total_admin_actions = 0
 
+    recent_logs = []
     try:
-        await c.execute("SELECT * FROM db_event_logs WHERE guild_id = ? ORDER BY timestamp DESC LIMIT 5", (guild_id,))
-        recent_logs = await c.fetchall()
-    except Exception:
+        await c.execute("""
+            SELECT 
+                e.log_id as id, 
+                e.event_type, 
+                e.user_id, 
+                e.details, 
+                NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
+                u.username,
+                u.avatar_url
+            FROM db_event_logs e
+            LEFT JOIN user_cache u ON e.user_id = u.user_id
+            WHERE e.guild_id = ? 
+            ORDER BY e.timestamp DESC NULLS LAST 
+            FETCH FIRST 5 ROWS ONLY
+        """, (guild_id,))
+        recent_logs = [dict(r) for r in await c.fetchall()]
+
+        if not recent_logs:
+            await c.execute("""
+                SELECT 
+                    e.event_id as id, 
+                    e.action_type as event_type, 
+                    e.admin_id as user_id, 
+                    e.reason as details, 
+                    NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
+                    u.username,
+                    u.avatar_url
+                FROM admin_events e
+                LEFT JOIN user_cache u ON e.admin_id = u.user_id
+                WHERE e.guild_id = ? 
+                ORDER BY e.timestamp DESC NULLS LAST 
+                FETCH FIRST 5 ROWS ONLY
+            """, (guild_id,))
+            recent_logs = [dict(r) for r in await c.fetchall()]
+    except Exception as e:
+        print("get_guild_stats recent_logs error:", e)
         recent_logs = []
 
     await conn.close()
@@ -780,7 +814,7 @@ async def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = Non
                 e.event_type,
                 e.user_id,
                 e.details,
-                TO_CHAR(e.timestamp, 'YYYY-MM-DD HH24:MI:SS') || 'Z' as timestamp,
+                NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
                 e.channel_id,
                 u.username,
                 u.avatar_url,
@@ -791,7 +825,7 @@ async def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = Non
             LEFT JOIN channel_cache c ON e.channel_id = c.channel_id
             LEFT JOIN roles r ON e.channel_id = r.role_id AND e.guild_id = r.guild_id
             WHERE e.guild_id = :1 {date_filter_user}
-            ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
+            ORDER BY e.timestamp DESC NULLS LAST FETCH FIRST {limit} ROWS ONLY
         """
             await cursor.execute(query, tuple(params_user))
             rows = await cursor.fetchall()
@@ -828,7 +862,7 @@ async def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = Non
                     e.admin_id as user_id,
                     e.admin_id as admin_id,
                     e.reason as details,
-                    TO_CHAR(e.timestamp, 'YYYY-MM-DD HH24:MI:SS') || 'Z' as timestamp,
+                    NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
                     e.target_id as channel_id,
                     u.username,
                     u.avatar_url,
@@ -841,7 +875,7 @@ async def get_guild_logs(guild_id: str, limit: int = 2000, start_time: int = Non
                 LEFT JOIN channel_cache t_c ON e.target_id = t_c.channel_id
                 LEFT JOIN roles t_r ON e.target_id = t_r.role_id
                 WHERE e.guild_id = :1 {date_filter_admin}
-                ORDER BY e.timestamp DESC FETCH FIRST {limit} ROWS ONLY
+                ORDER BY e.timestamp DESC NULLS LAST FETCH FIRST {limit} ROWS ONLY
             """
             await cursor.execute(query, tuple(params_admin))
 
@@ -1169,10 +1203,14 @@ async def get_log_settings(guild_id: str, _: dict = Depends(verify_guild_access)
 
             # 1) ON/OFF şalterleri — db_log_settings
             await c.execute("SELECT * FROM db_log_settings WHERE guild_id = ?", (guild_id,))
-            row_db = await c.fetchone() or {}
-            for tk in TOGGLE_COLUMNS:
-                val = row_db.get(tk)
-                settings[tk] = "on" if val == 1 else "off"
+            row_db = await c.fetchone()
+            if row_db:
+                for tk in TOGGLE_COLUMNS:
+                    val = row_db.get(tk)
+                    settings[tk] = "off" if val == 0 else "on"
+            else:
+                for tk in TOGGLE_COLUMNS:
+                    settings[tk] = "on"
 
             # 2) Discord kanal seçimleri — log_settings
             await c.execute("SELECT * FROM log_settings WHERE guild_id = ?", (guild_id,))

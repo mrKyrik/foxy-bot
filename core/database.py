@@ -135,9 +135,10 @@ class Database:
         - 'ON CONFLICT DO UPDATE SET' -> 'MERGE INTO'
         - 'level' sütununu "LEVEL" olarak tırnaklar.
         """
-        # LIMIT 1 -> FETCH FIRST 1 ROWS ONLY
-        if "LIMIT 1" in query.upper():
-            query = re.sub(r'(?i)\bLIMIT\s+1\b', 'FETCH FIRST 1 ROWS ONLY', query)
+        # LIMIT N -> FETCH FIRST N ROWS ONLY
+        # LIMIT ? -> FETCH FIRST ? ROWS ONLY
+        query = re.sub(r'(?i)\bLIMIT\s+(\d+)\b', r'FETCH FIRST \1 ROWS ONLY', query)
+        query = re.sub(r'(?i)\bLIMIT\s+\?', r'FETCH FIRST ? ROWS ONLY', query)
         
         # INSERT OR REPLACE INTO -> MERGE INTO
         if "INSERT OR REPLACE INTO" in query.upper():
@@ -261,8 +262,8 @@ class Database:
 
         await self.execute(
             """
-            INSERT INTO admin_events (guild_id, admin_id, action_type, target_id, reason)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO admin_events (guild_id, admin_id, action_type, target_id, reason, timestamp)
+            VALUES (?, ?, ?, ?, ?, SYSTIMESTAMP)
             """,
             str(guild_id), str(admin_id), action_type, str(target_id), reason,
         )
@@ -285,7 +286,10 @@ class Database:
                     if setting_key in row and row[setting_key] != 1:
                         return
                 else:
-                    return
+                    try:
+                        await self.execute("INSERT OR IGNORE INTO db_log_settings (guild_id) VALUES (?)", str(guild_id))
+                    except Exception:
+                        pass
             except Exception as e:
                 log.error("log_db_event ayar kontrol hatası: %s", e)
 
@@ -295,8 +299,8 @@ class Database:
         try:
             await self.execute(
                 """
-                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id, timestamp)
+                VALUES (?, ?, ?, ?, ?, SYSTIMESTAMP)
                 """,
                 str(guild_id),
                 event_type,
@@ -325,8 +329,8 @@ class Database:
         try:
             await self.executemany(
                 """
-                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO db_event_logs (guild_id, event_type, user_id, details, channel_id, timestamp)
+                VALUES (?, ?, ?, ?, ?, SYSTIMESTAMP)
                 """,
                 insert_data
             )

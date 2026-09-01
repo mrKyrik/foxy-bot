@@ -58,5 +58,11 @@ dist_exe/
 KumihoBot.spec
 node_modules/
 
+# Local Dev Tools — Sadece yerelde çalışır, Git'e ekleme!
+db_viewer/
+run_db_viewer.py
+tools/
+
 .aider*
 core/wallet/
+
