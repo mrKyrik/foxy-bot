@@ -683,69 +683,116 @@ async def get_guilds(payload: dict = Depends(verify_token)):
 async def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_access)):
     conn = await get_db_connection(MAIN_DB_PATH)
     guild_permission = payload.get("guild_permission", "read")
-    if not conn:
-        return {"total_logs": 0, "total_warns": 0, "total_admin_actions": 0, "recent_logs": [], "guild_permission": guild_permission}
+    if not conn or not getattr(conn, "conn", None):
+        return {
+            "total_logs": 0,
+            "total_warns": 0,
+            "total_admin_actions": 0,
+            "recent_logs": [],
+            "guild_permission": guild_permission
+        }
     
-    c = conn.cursor()
-    try:
-        await c.execute("SELECT COUNT(*) as c FROM db_event_logs WHERE guild_id = ?", (guild_id,))
-        total_logs = (await c.fetchone())["c"]
-    except Exception:
-        total_logs = 0
-
-    try:
-        await c.execute("SELECT COUNT(*) as c FROM warns WHERE guild_id = ?", (guild_id,))
-        total_warns = (await c.fetchone())["c"]
-    except Exception:
-        total_warns = 0
-
-    try:
-        await c.execute("SELECT COUNT(*) as c FROM admin_events WHERE guild_id = ?", (guild_id,))
-        total_admin_actions = (await c.fetchone())["c"]
-    except Exception:
-        total_admin_actions = 0
-
+    total_logs = 0
+    total_warns = 0
+    total_admin_actions = 0
     recent_logs = []
+
     try:
-        await c.execute("""
-            SELECT 
-                e.log_id as id, 
-                e.event_type, 
-                e.user_id, 
-                e.details, 
-                NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
-                u.username,
-                u.avatar_url
-            FROM db_event_logs e
-            LEFT JOIN user_cache u ON e.user_id = u.user_id
-            WHERE e.guild_id = ? 
-            ORDER BY e.timestamp DESC NULLS LAST 
-            FETCH FIRST 5 ROWS ONLY
-        """, (guild_id,))
-        recent_logs = [dict(r) for r in await c.fetchall()]
+        c = conn.cursor()
 
-        if not recent_logs:
-            await c.execute("""
-                SELECT 
-                    e.event_id as id, 
-                    e.action_type as event_type, 
-                    e.admin_id as user_id, 
-                    e.reason as details, 
-                    NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
-                    u.username,
-                    u.avatar_url
-                FROM admin_events e
-                LEFT JOIN user_cache u ON e.admin_id = u.user_id
-                WHERE e.guild_id = ? 
-                ORDER BY e.timestamp DESC NULLS LAST 
-                FETCH FIRST 5 ROWS ONLY
-            """, (guild_id,))
-            recent_logs = [dict(r) for r in await c.fetchall()]
+        # 1. Total event logs count
+        total_event_logs = 0
+        try:
+            await c.execute("SELECT COUNT(*) as c FROM db_event_logs WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            total_event_logs = row["c"] if row else 0
+        except Exception as e:
+            print(f"Error fetching total_event_logs for guild {guild_id}: {e}")
+
+        # 2. Total admin events count
+        try:
+            await c.execute("SELECT COUNT(*) as c FROM admin_events WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            total_admin_actions = row["c"] if row else 0
+        except Exception as e:
+            print(f"Error fetching total_admin_actions for guild {guild_id}: {e}")
+
+        # Total logs is sum of general events + admin events
+        total_logs = total_event_logs + total_admin_actions
+
+        # 3. Total warns count
+        try:
+            await c.execute("SELECT COUNT(*) as c FROM warns WHERE guild_id = ?", (guild_id,))
+            row = await c.fetchone()
+            total_warns = row["c"] if row else 0
+        except Exception as e:
+            print(f"Error fetching total_warns for guild {guild_id}: {e}")
+
+        # 4. Recent logs (Union of db_event_logs and admin_events)
+        try:
+            union_query = """
+                SELECT * FROM (
+                    SELECT 
+                        e.log_id as id, 
+                        'general' as source,
+                        e.event_type, 
+                        e.user_id, 
+                        e.details, 
+                        NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
+                        e.timestamp as raw_ts,
+                        u.username,
+                        u.avatar_url
+                    FROM db_event_logs e
+                    LEFT JOIN user_cache u ON e.user_id = u.user_id
+                    WHERE e.guild_id = ?
+                    
+                    UNION ALL
+                    
+                    SELECT 
+                        e.event_id as id, 
+                        'admin' as source,
+                        e.action_type as event_type, 
+                        e.admin_id as user_id, 
+                        e.reason as details, 
+                        NVL(TO_CHAR(e.timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"'), TO_CHAR(SYSTIMESTAMP, 'YYYY-MM-DD"T"HH24:MI:SS"Z"')) as timestamp,
+                        e.timestamp as raw_ts,
+                        u.username,
+                        u.avatar_url
+                    FROM admin_events e
+                    LEFT JOIN user_cache u ON e.admin_id = u.user_id
+                    WHERE e.guild_id = ?
+                )
+                ORDER BY raw_ts DESC NULLS LAST
+                FETCH FIRST 6 ROWS ONLY
+            """
+            await c.execute(union_query, (guild_id, guild_id))
+            raw_rows = await c.fetchall()
+            for r in raw_rows:
+                r_dict = dict(r)
+                if "raw_ts" in r_dict:
+                    del r_dict["raw_ts"]
+                if r_dict.get("details"):
+                    try:
+                        d_obj = json.loads(r_dict["details"])
+                        if not r_dict.get("username") and "username" in d_obj:
+                            r_dict["username"] = d_obj["username"]
+                        if not r_dict.get("avatar_url") and "avatar_url" in d_obj:
+                            r_dict["avatar_url"] = d_obj["avatar_url"]
+                        if "text" in d_obj:
+                            r_dict["details_text"] = d_obj["text"]
+                    except Exception:
+                        pass
+                recent_logs.append(r_dict)
+        except Exception as e:
+            print(f"Error fetching recent_logs for guild {guild_id}: {e}")
+            recent_logs = []
+
     except Exception as e:
-        print("get_guild_stats recent_logs error:", e)
-        recent_logs = []
+        print(f"General error in get_guild_stats: {e}")
+    finally:
+        if hasattr(conn, 'close'):
+            await conn.close()
 
-    await conn.close()
     return {
         "total_logs": total_logs,
         "total_warns": total_warns,
@@ -753,6 +800,7 @@ async def get_guild_stats(guild_id: str, payload: dict = Depends(verify_guild_ac
         "recent_logs": recent_logs,
         "guild_permission": guild_permission
     }
+
 
 # ---------------------------------------------------------------------------
 # Logs
