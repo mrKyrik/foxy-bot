@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useRef } from "react";
 import { Shield, Plus, Trash2, User, Users, AlertTriangle, ChevronDown, Check, Search } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
+import UserAvatar from "../components/UserAvatar";
 import { API_BASE_URL } from "../config";
 import { GuildContext } from "../GuildContext";
 
@@ -101,14 +102,11 @@ const SearchableSelect = ({ items, type, value, onChange, placeholder }) => {
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       {type === "user" ? (
-                        <img
-                          src={
-                            item.avatar
-                              ? `https://cdn.discordapp.com/avatars/${item.id}/${item.avatar}.png`
-                              : "https://cdn.discordapp.com/embed/avatars/0.png"
-                          }
+                        <UserAvatar
+                          src={item.avatar ? `https://cdn.discordapp.com/avatars/${item.id}/${item.avatar}.png` : null}
+                          userId={item.id}
+                          size={24}
                           alt="avatar"
-                          style={{ width: '24px', height: '24px', borderRadius: '50%' }}
                         />
                       ) : (
                         <div

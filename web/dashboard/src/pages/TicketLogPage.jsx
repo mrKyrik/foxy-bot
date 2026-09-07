@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Ticket } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
 
@@ -62,7 +63,7 @@ const TicketLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedT
                           <strong style={{ fontSize: '1rem' }}>Ticket {actionStr}</strong>
                         </div>
                         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
-                          <img src={ev.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '30px', height: '30px', borderRadius: '50%' }} alt="User" />
+                          <UserAvatar src={ev.avatar_url} userId={ev.user_id} size={30} alt="User" />
                           <div>
                             <div><strong>{ev.username || ev.user_id || "Bilinmeyen Kullanıcı"}</strong></div>
                             <div style={{ fontSize: '0.85rem', color: '#ccc' }}>{ev.channel_name ? `#${ev.channel_name}` : "Bilinmeyen Kanal"}</div>

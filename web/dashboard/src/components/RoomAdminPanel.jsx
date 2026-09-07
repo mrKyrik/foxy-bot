@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Settings, Users, Activity, Loader, Trash2, UserMinus } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 const RoomAdminPanel = ({ channelId, guildId }) => {
   const [liveData, setLiveData] = useState(null);
@@ -134,10 +135,7 @@ const RoomAdminPanel = ({ channelId, guildId }) => {
             {liveData.members.map(m => (
               <div key={m.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.05)', padding: '8px 12px', borderRadius: '6px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {m.avatar ? 
-                    <img src={m.avatar} alt={m.name} style={{ width: '28px', height: '28px', borderRadius: '50%' }} /> :
-                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>?</div>
-                  }
+                  <UserAvatar src={m.avatar} userId={m.id} size={28} alt={m.name} />
                   <span style={{ color: '#fff', fontWeight: 500 }}>{m.name}</span>
                 </div>
                 

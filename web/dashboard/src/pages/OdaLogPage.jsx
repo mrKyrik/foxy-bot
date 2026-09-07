@@ -3,6 +3,7 @@ import { Headphones, ChevronDown, ChevronRight, Settings, Users } from 'lucide-r
 import LogPageLayout from '../components/LogPageLayout';
 import RoomAdminPanel from '../components/RoomAdminPanel';
 import RoomSettingsModal from '../components/RoomSettingsModal';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent } from '../utils/time';
 
@@ -173,11 +174,7 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
                   onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                   onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                 >
-                  {uAv ? (
-                    <img src={uAv} alt="" style={{ width: '20px', height: '20px', borderRadius: '50%' }} />
-                  ) : (
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px' }}>?</div>
-                  )}
+                  <UserAvatar src={uAv} userId={ev.user_id} size={20} alt="" />
                   <span style={{ color: 'var(--accent-blue)', fontWeight: 500, fontSize: '0.9rem' }}>{uName}</span>
                 </div>
               )}
@@ -255,10 +252,12 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
     return Object.values(participants).map(user => (
       <div key={user.id} className="user-track" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', height: '40px', position: 'relative' }}>
         <div style={{ width: '48px', minWidth: '48px', marginRight: '16px' }}>
-          <img 
-            src={user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} 
+          <UserAvatar 
+            src={user.avatar_url} 
+            userId={user.id}
             alt={user.username} 
-            style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'border 0.2s' }} 
+            size={40}
+            style={{ border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'border 0.2s' }} 
             title={`${user.username} (Detaylar için tıkla)`} 
             onClick={() => onUserClick && onUserClick({ id: user.id, name: user.username, avatar_url: user.avatar_url })}
             onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--panel-border-glow)'}
@@ -347,11 +346,13 @@ const OdaLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
               >
                 <h4 style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                  {group.avatar ? (
-                     <img src={group.avatar} alt={group.name} style={{ width: '24px', height: '24px', borderRadius: '50%', border: '1px solid rgba(255,255,255,0.1)' }} />
-                  ) : (
-                     <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Users size={14} /></div>
-                  )}
+                  <UserAvatar 
+                    src={group.avatar} 
+                    userId={group.userId} 
+                    size={24} 
+                    alt={group.name} 
+                    style={{ border: '1px solid rgba(255,255,255,0.1)' }} 
+                  />
                   <span style={{ fontWeight: 600, color: 'var(--accent-blue)' }}>{group.name}</span> 
                   <span style={{ color: 'var(--text-muted)' }}>adlı kullanıcının Odaları</span>
                   {isDeleted && <span style={{ fontSize: '0.75rem', background: 'rgba(239, 68, 68, 0.2)', color: 'var(--accent-red)', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px' }}>ODA SİLİNDİ</span>}

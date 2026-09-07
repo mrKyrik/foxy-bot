@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Shield, Hammer, UserMinus, FileEdit } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
 
@@ -70,7 +71,7 @@ const ModLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTags
             onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
             onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
           >
-            <img src={mod.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="Mod" />
+            <UserAvatar src={mod.avatar_url} userId={mod.id} size={40} alt="Mod" />
             <span style={{ fontWeight: 'bold', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {mod.name}
             </span>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Tag } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
 import DiscordMention from '../components/DiscordMention';
@@ -106,7 +107,7 @@ const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
                onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
                onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
              >
-               <img src={user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '32px', height: '32px', borderRadius: '50%' }} alt="User" />
+                <UserAvatar src={user.avatar_url} userId={user.id} size={32} alt="User" />
                <h3 style={{ fontSize: '1.1rem', color: '#fff', margin: 0 }}>{user.name}</h3>
              </div>
              
@@ -158,7 +159,7 @@ const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
             {Object.values(role.users).map(user => (
                <div key={user.id} style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', height: '30px' }}>
                  <div style={{ width: '150px', display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }} title={user.name}>
-                    <img src={user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '20px', height: '20px', borderRadius: '50%' }} alt="User" />
+                    <UserAvatar src={user.avatar_url} userId={user.id} size={20} alt="User" />
                     <span style={{ fontSize: '0.85rem', color: '#ccc', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{user.name}</span>
                  </div>
                  <div style={{ flex: 1, position: 'relative', height: '24px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px' }}>
@@ -211,7 +212,7 @@ const RoleLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
                          <strong style={{ fontSize: '1.1rem', color }}>{isAdd ? 'Rol Verildi' : 'Rol Alındı'}</strong>
                        </div>
                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '8px' }}>
-                         <img src={ev.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '30px', height: '30px', borderRadius: '50%' }} alt="User" />
+                         <UserAvatar src={ev.avatar_url} userId={ev.user_id} size={30} alt="User" />
                          <div>
                            <div><strong>{ev.username || ev.user_id || "Bilinmeyen Kullanıcı"}</strong></div>
                            <div style={{ fontSize: '0.85rem', color: '#ccc' }}>Rol: {ev.roleId}</div>

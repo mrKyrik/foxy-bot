@@ -63,6 +63,12 @@ db_viewer/
 run_db_viewer.py
 tools/
 
+# Arşiv ve Güvenli Yedekler — GITHUB'A ASLA PUSHLANMAZ!
+archive/
+_archive/
+*.sql
+*.bak
+
 .aider*
 core/wallet/
 

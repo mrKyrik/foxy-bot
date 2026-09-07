@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import axios from 'axios';
 import { X, Mic, MessageSquare, ShieldAlert, Tag, Hash, Calendar, Edit3, Send, AlertTriangle, ShieldX, Hammer, Trash2 } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 import { formatTime } from '../utils/time';
 import { API_BASE_URL } from '../config';
 import { GuildContext } from '../GuildContext';
@@ -169,9 +170,11 @@ const UserLookPanel = ({ user, allLogs, onClose }) => {
 
       {/* Profil Header */}
       <div style={{ padding: '40px 24px 24px 24px', borderBottom: '1px solid var(--panel-border)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <img 
-            src={user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} 
-            style={{ width: '80px', height: '80px', borderRadius: '50%', border: '2px solid var(--panel-border-glow)', boxShadow: '0 0 20px rgba(0,0,0,0.3)', marginBottom: '16px', objectFit: 'cover' }} 
+        <UserAvatar 
+            src={user.avatar_url} 
+            userId={user.id}
+            size={80}
+            style={{ border: '2px solid var(--panel-border-glow)', boxShadow: '0 0 20px rgba(0,0,0,0.3)', marginBottom: '16px' }} 
             alt="avatar" 
         />
         <h2 style={{ margin: '0 0 4px 0', fontSize: '1.4rem', fontFamily: 'Outfit, sans-serif' }}>{user.name}</h2>

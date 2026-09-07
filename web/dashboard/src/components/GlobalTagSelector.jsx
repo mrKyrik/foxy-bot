@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Search, Hash, Tag, User, FolderTree } from 'lucide-react';
+import UserAvatar from './UserAvatar';
 
 const GlobalTagSelector = ({ availableTags, selectedTags, setSelectedTags }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,8 +43,8 @@ const GlobalTagSelector = ({ availableTags, selectedTags, setSelectedTags }) => 
     return { bg: 'rgba(255, 255, 255, 0.2)', border: 'rgba(255, 255, 255, 0.5)', text: '#fff' };
   };
 
-  const getIcon = (type, url) => {
-    if (type === 'user') return url ? <img src={url} style={{ width: '16px', height: '16px', borderRadius: '50%' }} alt="" /> : <User size={14} />;
+  const getIcon = (type, url, id) => {
+    if (type === 'user') return <UserAvatar src={url} userId={id} size={16} alt="" />;
     if (type === 'role') return <Tag size={14} />;
     if (type === 'category') return <FolderTree size={14} />;
     if (type === 'channel') return <Hash size={14} />;
@@ -63,7 +64,7 @@ const GlobalTagSelector = ({ availableTags, selectedTags, setSelectedTags }) => 
               background: colors.bg, border: `1px solid ${colors.border}`, 
               padding: '4px 8px', borderRadius: '16px', fontSize: '0.85rem', color: '#fff' 
             }}>
-              {getIcon(t.type, t.avatar_url)}
+              {getIcon(t.type, t.avatar_url, t.id)}
               <span>{t.name || t.id}</span>
               <X size={14} style={{ cursor: 'pointer', color: '#ff4d4f', marginLeft: '4px' }} onClick={() => handleRemove(t)} />
             </div>
@@ -108,7 +109,7 @@ const GlobalTagSelector = ({ availableTags, selectedTags, setSelectedTags }) => 
                   onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                 >
                   <div style={{ color: colors.text, display: 'flex', alignItems: 'center' }}>
-                    {getIcon(t.type, t.avatar_url)}
+                    {getIcon(t.type, t.avatar_url, t.id)}
                   </div>
                   <span style={{ fontSize: '0.9rem', color: '#e5e7eb' }}>
                     {t.name || t.id}

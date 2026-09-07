@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
 
@@ -117,7 +118,7 @@ const MessageLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selected
                                   if (onUserClick) onUserClick({ id: ev.user_id || ev.username, name: ev.username || ev.user_id || "Bilinmeyen Kullanıcı", avatar_url: ev.avatar_url });
                                 }}
                               >
-                                <img src={ev.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{width:'24px', height:'24px', borderRadius:'50%'}} alt="avatar" />
+                                <UserAvatar src={ev.avatar_url} userId={ev.user_id} size={24} alt="avatar" />
                                 <strong style={{ fontSize: '0.9rem', transition: 'color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.color = 'var(--accent-blue)'} onMouseOut={(e) => e.currentTarget.style.color = '#fff'}>{ev.username || ev.user_id || "Bilinmeyen Kullanıcı"}</strong>
                               </div>
                               <div style={{ fontSize: '0.85rem', color: '#ccc', marginBottom: '8px' }}>

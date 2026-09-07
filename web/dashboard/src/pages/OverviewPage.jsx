@@ -3,6 +3,7 @@ import axios from 'axios';
 import { Activity, AlertTriangle, Shield, Clock, LayoutDashboard, RefreshCw, User, Volume2, MessageSquare, Wrench } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { GuildContext } from '../GuildContext';
+import UserAvatar from '../components/UserAvatar';
 import { API_BASE_URL } from '../config';
 
 const EVENT_TYPE_MAP = {
@@ -146,18 +147,13 @@ const OverviewPage = () => {
                   const IconComp = evInfo.icon;
                   return (
                     <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '16px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '16px', border: '1px solid var(--panel-border)' }}>
-                      {log.avatar_url ? (
-                        <img 
-                          src={log.avatar_url} 
-                          alt="avatar" 
-                          style={{ width: '40px', height: '40px', borderRadius: '10px', objectFit: 'cover', border: '1px solid var(--panel-border)' }}
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      ) : (
-                        <div style={{ background: 'var(--panel-bg)', padding: '10px', borderRadius: '10px', color: evInfo.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <IconComp size={20} />
-                        </div>
-                      )}
+                      <UserAvatar 
+                        src={log.avatar_url} 
+                        userId={log.user_id}
+                        size={40}
+                        alt="avatar" 
+                        style={{ borderRadius: '10px', border: '1px solid var(--panel-border)' }}
+                      />
                       <div style={{ flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
                           <span style={{ fontWeight: 700, color: evInfo.color, fontSize: '0.95rem' }}>{evInfo.label}</span>

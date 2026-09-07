@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, Shield } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent, formatTime } from '../utils/time';
 
@@ -119,7 +120,7 @@ const WarnLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
                   onMouseOver={(e) => e.currentTarget.style.opacity = '0.8'}
                   onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
                 >
-                  <img src={admin.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '40px', height: '40px', borderRadius: '50%' }} alt="Admin" />
+                  <UserAvatar src={admin.avatar_url} userId={admin.id} size={40} alt="Admin" />
                   <span style={{ fontWeight: 'bold', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {admin.name}
                   </span>
@@ -147,7 +148,7 @@ const WarnLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTag
                               </div>
                               <div style={{ marginBottom: '8px' }}>
                                 <span style={{ color: '#aaa', fontSize: '0.85rem', marginRight: '4px' }}>Kullanıcı: </span>
-                                <img src={ev.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} style={{ width: '20px', height: '20px', borderRadius: '50%', verticalAlign: 'middle', marginRight: '6px' }} />
+                                <UserAvatar src={ev.avatar_url} userId={ev.user_id} size={20} alt="User" style={{ verticalAlign: 'middle', marginRight: '6px' }} />
                                 <strong style={{ fontSize: '0.9rem', color: '#fff' }}>{ev.username || ev.user_id}</strong>
                               </div>
                               <div style={{ color: '#aaa', fontSize: '0.85rem', marginBottom: '8px' }}>Saat: {formatTime(ev.ts)}</div>

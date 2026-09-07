@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Mic } from 'lucide-react';
 import LogPageLayout from '../components/LogPageLayout';
+import UserAvatar from '../components/UserAvatar';
 import { useLogFilter } from '../hooks/useLogFilter';
 import { getPercent } from '../utils/time';
 
@@ -122,10 +123,12 @@ const VoiceLogPage = ({ logs, viewWindow, setViewWindow, globalRange, selectedTa
             {Object.values(channel.users).map(user => (
               <div key={user.id} className="user-track" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', height: '40px', position: 'relative' }}>
                 <div style={{ width: '48px', minWidth: '48px', marginRight: '16px' }}>
-                  <img 
-                    src={user.avatar_url || 'https://cdn.discordapp.com/embed/avatars/0.png'} 
+                  <UserAvatar 
+                    src={user.avatar_url} 
+                    userId={user.id}
                     alt={user.username} 
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'border 0.2s' }} 
+                    size={40}
+                    style={{ border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer', transition: 'border 0.2s' }} 
                     title={`${user.username} (Detaylar için tıkla)`} 
                     onClick={() => onUserClick && onUserClick({ id: user.id, name: user.username, avatar_url: user.avatar_url })}
                     onMouseOver={(e) => e.currentTarget.style.borderColor = 'var(--panel-border-glow)'}
